@@ -1,0 +1,17 @@
+{
+  "_comment": "Settings every project shares. A project's project.json only needs projectId (plus title); anything it sets wins over this file, key by key. {key} is replaced with the project's folder name. Used at build time only, never embedded in a page.",
+  "client": "",
+  "source": {
+    "_comment": "One call per refresh: baseUrl?accessToken=<VL_TOKEN_<CODE> secret>&projectId=<projectId>&type=<type>&<extraQuery>. sampleFile is what --source sample reads (.json or .json.gz).",
+    "baseUrl": "https://go.visilean.com/pb/PowerBiAPI/resource/powerBi/getData/visilean",
+    "type": "task",
+    "extraQuery": "IncludeStatusChange=true&IncludeReschedule=true&IncludeQuantities=true&IncludeOther=true",
+    "sampleFile": "sample/{key}.tasks.json.gz"
+  },
+  "facts": [
+    {"label": "Project", "value": null},
+    {"label": "Client", "value": null},
+    {"label": "Status", "value": null}
+  ],
+  "display": {}
+}

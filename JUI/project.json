@@ -1,0 +1,395 @@
+{
+  "key": "JUI",
+  "title": "JUI",
+  "projectId": "5C57A386-D0F3-E63B-F076-8CD9CE218042",
+  "facts": [],
+  "scurve": {
+    "_comment": "Second page: the weightage S-curve from the master schedule project. Its token is found under tokenKey (secret VL_TOKEN_JUI_1A, or tokens.json \"JUI-1A\").",
+    "title": "JUI-1A master schedule",
+    "projectId": "F7126A24-1E22-0186-8A88-E9BC72BFF388",
+    "tokenKey": "JUI-1A",
+    "extraQuery": "IncludeStatusChange=true&IncludeReschedule=true&IncludeQuantities=true&IncludeConstraintNotes=true"
+  },
+  "workforce": {
+    "_comment": "Workforce page: VisiLean's type=workForce feed (daily planned / actual workers per activity) for this same project, matched guid to guid to its task feed. It uses the project's own token (tokenKey JUI: secret VL_TOKEN_JUI, or tokens.json \"JUI\"); only type= differs.",
+    "title": "JUI daily labour report",
+    "projectId": "5C57A386-D0F3-E63B-F076-8CD9CE218042",
+    "tokenKey": "JUI"
+  },
+  "display": {
+    "scurve": {
+      "weightField": "VL-JUI-1A-Weightage",
+      "groupField": "VL-JUI-1A-S Curve",
+      "phaseField": "Construction Phase"
+    },
+    "model3d": {
+      "_comment": "Progress on the campus images (Progress & S-curve page). views: the images in JUI/model/, published next to the page; a hotspot pins a building's progress ring at x/y (% of the image), optionally nudged by dx/dy pixels. buildings: which master schedule S-curve groups each building's figures come from (storeys, bottom up; 'group' and 'finish' are regular expressions).",
+      "plot": {
+        "w": 232,
+        "d": 152
+      },
+      "wall": {
+        "label": "Boundary wall",
+        "group": "External Development - Boundary Wall",
+        "h": 2.6
+      },
+      "buildings": [
+        {
+          "name": "DC Building",
+          "area": "DC Building",
+          "x": 96,
+          "z": 12,
+          "w": 92,
+          "d": 62,
+          "span": 9.2,
+          "storeys": [
+            {
+              "type": "pads",
+              "label": "Footings & stub columns",
+              "group": "DC - Footings",
+              "h": 1.2,
+              "below": true
+            },
+            {
+              "type": "beams",
+              "label": "Plinth beams",
+              "group": "DC - Plinth Beams",
+              "h": 0.8
+            },
+            {
+              "type": "slab",
+              "label": "Ground floor slab",
+              "group": "DC - Ground Floor Slab",
+              "h": 0.35
+            },
+            {
+              "type": "frame",
+              "label": "Structure GF to 1F",
+              "group": "DC - Super Structure - First Floor$",
+              "finish": "DC - Finish Works - Ground Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 1F to 2F",
+              "group": "DC - Super Structure - Second Floor$",
+              "finish": "DC - Finish Works - First Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 2F to 3F",
+              "group": "DC - Super Structure - Third Floor$",
+              "finish": "DC - Finish Works - Second Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 3F to 4F",
+              "group": "DC - Super Structure - Fourth Floor$",
+              "finish": "DC - Finish Works - Third Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 4F to terrace",
+              "group": "DC - Super Structure - Terrace Floor$",
+              "finish": "DC - Finish Works - Fourth Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure above terrace",
+              "group": "DC - Super Structure - Above Terrace",
+              "h": 3.5,
+              "inset": 0.3
+            }
+          ]
+        },
+        {
+          "name": "DG Building",
+          "area": "DG Building",
+          "x": 194,
+          "z": 60,
+          "w": 30,
+          "d": 36,
+          "span": 6,
+          "storeys": [
+            {
+              "type": "pads",
+              "label": "Footings & stub columns",
+              "group": "DG - Footings",
+              "h": 1.2,
+              "below": true
+            },
+            {
+              "type": "beams",
+              "label": "Plinth beams",
+              "group": "DG - Plinth Beams",
+              "h": 0.8
+            },
+            {
+              "type": "slab",
+              "label": "Ground floor slab",
+              "group": "DG - Ground Floor Slab",
+              "h": 0.35
+            },
+            {
+              "type": "frame",
+              "label": "Structure GF to 1F",
+              "group": "DG - Super Structure - First Floor$",
+              "finish": "DG - Finish Works - Ground Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 1F to 2F",
+              "group": "DG - Super Structure - Second Floor$",
+              "finish": "DG - Finish Works - First Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 2F to 3F",
+              "group": "DG - Super Structure - Third Floor$",
+              "finish": "DG - Finish Works - Second Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 3F to 4F",
+              "group": "DG - Super Structure - Fourth Floor$",
+              "finish": "DG - Finish Works - Third Floor$",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Structure 4F to terrace",
+              "group": "DG - Super Structure - Terrace Floor$",
+              "finish": "DG - Finish Works - Fourth Floor$",
+              "h": 5
+            }
+          ]
+        },
+        {
+          "name": "HSD Yard",
+          "area": "Ancillary Structures",
+          "x": 194,
+          "z": 12,
+          "w": 30,
+          "d": 38,
+          "span": 7.5,
+          "storeys": [
+            {
+              "type": "pads",
+              "label": "Foundation",
+              "group": "HSD Yard - Foundation",
+              "h": 1.0
+            },
+            {
+              "type": "walls",
+              "label": "Walls",
+              "group": "HSD Yard - Walls",
+              "h": 3
+            }
+          ]
+        },
+        {
+          "name": "GIS Substation",
+          "area": "GIS",
+          "x": 58,
+          "z": 92,
+          "w": 46,
+          "d": 36,
+          "span": 7.6,
+          "storeys": [
+            {
+              "type": "pads",
+              "label": "Substructure: footings",
+              "group": "GIS - Substructure",
+              "h": 1.2,
+              "below": true
+            },
+            {
+              "type": "beams",
+              "label": "Substructure: plinth",
+              "group": "GIS - Substructure",
+              "h": 0.8
+            },
+            {
+              "type": "frame",
+              "label": "Superstructure GF to 1F",
+              "group": "GIS - Superstructure",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Superstructure 1F to 2F",
+              "group": "GIS - Superstructure",
+              "h": 5
+            },
+            {
+              "type": "frame",
+              "label": "Superstructure 2F to terrace",
+              "group": "GIS - Superstructure",
+              "h": 5
+            }
+          ]
+        },
+        {
+          "name": "Transformer Yard",
+          "area": "GIS",
+          "x": 108,
+          "z": 96,
+          "w": 30,
+          "d": 30,
+          "span": 7.5,
+          "storeys": [
+            {
+              "type": "pads",
+              "label": "Transformer foundations",
+              "group": "GIS - Transformers Yard",
+              "h": 1.6
+            }
+          ]
+        },
+        {
+          "name": "Pump Room",
+          "area": "Ancillary Structures",
+          "x": 10,
+          "z": 14,
+          "w": 26,
+          "d": 18,
+          "storeys": [
+            {
+              "type": "block",
+              "label": "Pump Room",
+              "group": "Ancillary Structures - Pump Room$",
+              "finish": "Pump Room & UGT - Finish",
+              "h": 5
+            }
+          ]
+        },
+        {
+          "name": "Water Tanks",
+          "area": "Ancillary Structures",
+          "x": 10,
+          "z": 38,
+          "w": 26,
+          "d": 18,
+          "storeys": [
+            {
+              "type": "block",
+              "label": "Water tanks",
+              "group": "Ancillary Structures - Water Tanks",
+              "h": 4
+            }
+          ]
+        },
+        {
+          "name": "STP",
+          "area": "Ancillary Structures",
+          "x": 146,
+          "z": 100,
+          "w": 18,
+          "d": 14,
+          "storeys": [
+            {
+              "type": "block",
+              "label": "STP",
+              "group": "Ancillary Structures - STP$",
+              "h": 4
+            }
+          ]
+        },
+        {
+          "name": "OWC",
+          "area": "Ancillary Structures",
+          "x": 170,
+          "z": 104,
+          "w": 10,
+          "d": 10,
+          "storeys": [
+            {
+              "type": "block",
+              "label": "OWC",
+              "group": "Ancillary Structures - OWC",
+              "h": 3
+            }
+          ]
+        },
+        {
+          "name": "Nano Entry",
+          "area": "Ancillary Structures",
+          "x": 10,
+          "z": 122,
+          "w": 18,
+          "d": 12,
+          "storeys": [
+            {
+              "type": "block",
+              "label": "Nano entry facilities",
+              "group": "Nano Entry Facilities",
+              "h": 3.5
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "key": "layout",
+          "label": "Site layout",
+          "image": "site-3d.png",
+          "w": 1144,
+          "h": 576,
+          "alt": "3D model of the campus: DC Building, DG Building, HSD Yard, Pump Room, GIS Substation and STP",
+          "hotspots": [
+            {
+              "building": "DC Building",
+              "x": 77.62,
+              "y": 12.5
+            },
+            {
+              "building": "DG Building",
+              "x": 76.84,
+              "y": 34.38,
+              "tag": "left"
+            },
+            {
+              "building": "HSD Yard",
+              "x": 86.98,
+              "y": 32.81
+            },
+            {
+              "building": "Pump Room",
+              "x": 10.31,
+              "y": 33.68
+            },
+            {
+              "building": "STP",
+              "x": 65.91,
+              "y": 55.9
+            },
+            {
+              "building": "GIS Substation",
+              "x": 49.65,
+              "y": 75.69
+            }
+          ],
+          "cutout": true
+        },
+        {
+          "key": "structure",
+          "label": "Structure progress",
+          "image": "structure-progress.png",
+          "w": 901,
+          "h": 538,
+          "alt": "Structural model of the DC Building coloured by construction progress",
+          "caption": "Structural progress model of the DC Building, as rendered from the BIM model: green elements are complete and salmon elements are in progress; other colours are as marked in the source model."
+        }
+      ]
+    }
+  },
+  "progressDeck": "DPR PPT - Formatted.pptx",
+  "_progressDeck": "Site progress page: a .pptx whose slides are titled '<Area> – <work item> – <level>', each holding one marked-up drawing. Replace the file to update the page."
+}

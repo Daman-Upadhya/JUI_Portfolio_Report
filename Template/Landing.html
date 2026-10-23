@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>{{TITLE}}</title>
+<meta name="description" content="{{TITLE}}: one card per project, built {{GENERATED_AT}}">
+<style>
+{{TOKENS_CSS}}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+h1, h2 { margin: 0; font-weight: 600; }
+.container { max-width: 1500px; margin: 0 auto; padding: 20px 20px calc(28px + env(safe-area-inset-bottom)); }
+@media (max-width: 760px) { .container { padding-left: 14px; padding-right: 14px; } }
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.logos { display: flex; border-radius: 10px; }
+.logo { height: 28px; display: block; }
+:root[data-theme="dark"] .logos { background: var(--logo-plate); padding: 4px 10px; }
+.spacer { flex: 1; }
+.btn { appearance: none; border: 1px solid var(--line-soft); background: var(--card); color: var(--ink); border-radius: 10px; min-height: 34px; padding: 0 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .12s linear, transform .1s var(--ease); }
+.btn:hover { border-color: var(--brand); }
+.btn:active { transform: scale(.985); }
+.btn:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.hero { margin-top: 18px; background: var(--panel-grad); box-shadow: var(--panel-glow); color: var(--on-panel); border-radius: var(--r-2xl); padding: 22px; }
+.eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--on-panel-soft); }
+.hero h1 { font-size: 24px; letter-spacing: -.02em; margin-top: 2px; }
+.hero p { margin: 6px 0 0; color: var(--on-panel-soft); font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; margin-top: 26px; }
+.card { display: block; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--r-xl); padding: 16px 18px; box-shadow: var(--shadow); transition: border-color .12s linear, transform .1s var(--ease); }
+.card:hover { border-color: var(--brand); }
+.card:active { transform: scale(.985); }
+.card-top { display: flex; align-items: baseline; gap: 10px; }
+.code { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); }
+.card h2 { font-size: 15px; letter-spacing: -.01em; margin-top: 2px; }
+.state { margin-left: auto; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.state.fresh { background: var(--good-bg); color: var(--good); }
+.state.stale { background: var(--warn-bg); color: var(--warn); }
+.state.unavailable { background: var(--bad-bg); color: var(--bad); }
+.nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+.v { font-size: 20px; font-weight: 600; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.l { margin-top: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.track { margin-top: 14px; height: 8px; border-radius: 4px; background: var(--inset); display: flex; gap: 2px; overflow: hidden; }
+.track i { display: block; height: 100%; border-radius: 4px; }
+.c-complete { background: var(--s-app); } .c-started { background: var(--s-prog); } .c-notStarted { background: var(--s-idle); }
+.when { margin-top: 10px; font-size: 12px; color: var(--faint); }
+.sc { margin-top: 12px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sc b { color: var(--ink); font-weight: 600; }
+.neg { color: var(--bad); }
+.empty { margin-top: 26px; color: var(--muted); }
+.foot { margin-top: 30px; display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--faint); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="container">
+  <div class="top">
+    <span class="logos"><img class="logo" src="{{LOGO_VISILEAN}}" alt="VisiLean"></span>
+    <div class="spacer"></div>
+    <button class="btn" id="theme" type="button">Dark</button>
+  </div>
+  <section class="hero">
+    <div class="eyebrow">{{EYEBROW}}</div>
+    <h1>{{TITLE}}</h1>
+    <p>Construction quantities by subtrade and location, and weightage S-curves, refreshed from VisiLean twice a day.</p>
+  </section>
+  <div class="grid" id="cards"></div>
+  <footer class="foot"><span>Built {{GENERATED_AT}}</span><span>Build {{BUILD_ID}}</span><span>Logic {{LOGIC_HASH}}</span></footer>
+</main>
+<script type="application/json" id="data">{{DATA}}</script>
+<script>
+(function () {
+  "use strict";
+  var P = JSON.parse(document.getElementById("data").textContent), root = document.documentElement;
+  var nf = new Intl.NumberFormat(P.meta.locale || "en-IN");
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function n(v) { return v == null ? "—" : nf.format(v); }
+  function p(v) { return v == null ? "—" : (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, "") + "%"; }
+  var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function d(iso) { if (!iso) return "—"; var x = iso.slice(0, 10).split("-"); return +x[2] + " " + MON[+x[1] - 1] + " " + x[0] + ", " + iso.slice(11, 16) + " IST"; }
+  function setTheme(t) { root.setAttribute("data-theme", t); document.getElementById("theme").textContent = t === "dark" ? "Light" : "Dark"; try { localStorage.setItem("jui-theme", t); } catch (e) { /* storage unavailable */ } }
+  var t0 = "light"; try { t0 = localStorage.getItem("jui-theme") || "light"; } catch (e) { /* storage unavailable */ }
+  setTheme(t0);
+  document.getElementById("theme").addEventListener("click", function () { setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark"); });
+  var STATE = { fresh: "Up to date", stale: "Stale copy", unavailable: "No data" };
+  var el = document.getElementById("cards");
+  if (!P.projects.length) { el.outerHTML = '<p class="empty">No project has been built yet. Run a project refresh to add its card.</p>'; return; }
+  function pts(v) { return v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1).replace(/\.0$/, "") + " pts"; }
+  el.innerHTML = P.projects.map(function (s) {
+    var t = s.tasks || 0;
+    function seg(cls, v) { return v ? '<i class="' + cls + '" style="flex:' + v + ' 1 0" title="' + n(v) + '"></i>' : ""; }
+    return '<a class="card" href="' + esc(s.href) + '"><div class="card-top"><div><div class="code">' + esc(s.key) + "</div><h2>" + esc(s.title) + '</h2></div><span class="state ' + esc(s.state) + '">' + esc(STATE[s.state] || s.state) + "</span></div>" +
+      '<div class="nums"><div><div class="v">' + n(s.tasks) + '</div><div class="l">Activities</div></div><div><div class="v">' + p(s.completePct) + '</div><div class="l">Complete</div></div><div><div class="v">' + n(s.overdue) + '</div><div class="l">Overdue</div></div></div>' +
+      (t ? '<div class="track" aria-label="' + n(s.complete) + " complete, " + n(s.started) + " started, " + n(s.notStarted) + ' not started">' + seg("c-complete", s.complete) + seg("c-started", s.started) + seg("c-notStarted", s.notStarted) + "</div>" : "") +
+      (s.scurveActualPct != null ? '<div class="sc">S-curve: actual <b>' + p(s.scurveActualPct) + "</b> vs baseline <b>" + p(s.scurveBaselinePct) + '</b> <span class="' + (s.scurveActualPct - s.scurveBaselinePct < -0.05 ? "neg" : "") + '">(' + pts(s.scurveActualPct - s.scurveBaselinePct) + ")</span></div>" : "") +
+      '<div class="when">' + n(s.subtrades) + " subtrades · " + n(s.areas) + " areas · refreshed " + d(s.dataAsOf || s.generatedAt) + "</div></a>";
+  }).join("");
+})();
+</script>
+</body>
+</html>

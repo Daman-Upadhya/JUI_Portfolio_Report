@@ -1,0 +1,57 @@
+{
+  "_comment": "Everything configurable in the calculation and the page. A project overrides any key in project.json -> display.",
+  "eyebrow": "JUI Portfolio",
+  "locale": "en-IN",
+  "staleAfterHours": 20,
+  "taskTypes": [
+    "Construction"
+  ],
+  "excludeParents": true,
+  "subtradeField": "Subtrade",
+  "scheduleFields": {
+    "start": "Schedule Start",
+    "finish": "Schedule Finish"
+  },
+  "noSubtrade": "Unassigned",
+  "noUnit": "No unit",
+  "_unitAliases": "Spellings of the same unit, merged after trimming",
+  "unitAliases": {
+    "Nos.": "Nos",
+    "NOS": "Nos",
+    "nos": "Nos",
+    "RMT": "Rmt",
+    "rmt": "Rmt",
+    "CUM": "Cum",
+    "cum": "Cum",
+    "SQM": "Sqm",
+    "sqm": "Sqm"
+  },
+  "_subtradeAliases": "Spaces around hyphens are removed first, so 'Plinth Beam - RCC' already reads 'Plinth Beam-RCC'",
+  "subtradeAliases": {},
+  "location": {
+    "_comment": "Area and sub-location from the location text. tokenRules first: a building token anywhere in the value (any prefix, suffix or separator) sets the area and becomes the sub-location, e.g. 'SS_DC-2A' -> DC Building / DC-2A. Otherwise split on the delimiter ('GIS_Transformer Yard' -> GIS / Transformer Yard; a bare value is the whole area), then map the area through areaAliases.",
+    "delimiter": "_",
+    "blank": "Unassigned",
+    "wholeArea": "Whole area",
+    "tokenRules": [
+      {
+        "pattern": "(?<![A-Za-z])DC[\\s_-]?\\d+[A-Za-z]?(?![A-Za-z0-9])",
+        "area": "DC Building"
+      },
+      {
+        "pattern": "(?<![A-Za-z])DG[\\s_-]?\\d+[A-Za-z]?(?![A-Za-z0-9])",
+        "area": "DG Building"
+      }
+    ],
+    "areaAliases": {
+      "ED": "External Development",
+      "AS": "Ancillary Structures"
+    }
+  },
+  "statusGroups": {
+    "Complete": "complete",
+    "Started": "started",
+    "Not Ready": "notStarted",
+    "Not Committed": "notStarted"
+  }
+}

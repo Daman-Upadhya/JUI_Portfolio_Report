@@ -1,0 +1,21 @@
+# build output (published to the gh-pages branch by the workflows, never committed to main)
+dist/
+# Tables 1-4 written by every build (uploaded as a workflow artifact in CI)
+data/
+# last-good copy of the live feed, restored in CI by actions/cache
+.cache/
+# offline exports of real project data
+sample/
+# local tokens — see tokens.json.example
+tokens.json
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+# BIM models: large, never committed
+*.ifc
+*.ifczip
+*.rvt
+*.rfa
+*.nwd
+*.nwc
