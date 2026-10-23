@@ -234,30 +234,6 @@ def png_data_uri(path: str) -> str:
     return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 
-def github_repo() -> str | None:
-    """owner/repo: GITHUB_REPOSITORY in Actions, else the git remote 'origin' (github.com only)."""
-    repo = os.environ.get("GITHUB_REPOSITORY")
-    if not repo:
-        try:
-            import subprocess
-            url = subprocess.run(["git", "remote", "get-url", "origin"], cwd=ROOT, capture_output=True,
-                                 text=True, timeout=10).stdout.strip()
-        except Exception:
-            url = ""
-        m = re.search(r"github\.com[:/]([\w.-]+/[\w.-]+?)(?:\.git)?/?$", url)
-        repo = m.group(1) if m else None
-    return repo if repo and re.fullmatch(r"[\w.-]+/[\w.-]+", repo) else None
-
-
-def refresh_target(key: str) -> dict | None:
-    """The project's refresh workflow on GitHub, for the page's Refresh link."""
-    wf = "refresh-%s.yml" % key
-    if not os.path.exists(os.path.join(ROOT, ".github", "workflows", wf)):
-        return None
-    repo = github_repo()
-    return {"repo": repo, "workflow": wf} if repo else None
-
-
 def fmt_when(dt: datetime) -> str:
     return "%d %s %d, %02d:%02d IST" % (dt.day, dt.strftime("%b"), dt.year, dt.hour, dt.minute)
 
@@ -418,7 +394,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         "key": key, "state": state, "origin": origin, "generatedAt": now_iso, "dataAsOf": data_as_of,
         "today": today.isoformat(), "buildId": build_id, "logicHash": assets.logic_hash,
         "staleAfterHours": data.get("staleAfterHours", 20), "locale": data.get("locale", "en-IN"),
-        "tokenRejected": token_rejected, "refresh": refresh_target(key),
+        "tokenRejected": token_rejected,
         "tables": sorted(os.listdir(os.path.join(out_dir, "tables"))) if metrics and os.path.isdir(os.path.join(out_dir, "tables")) else [],
     }
     payload = {"meta": meta, "project": public_project(cfg), "data": strip_private(data), "metrics": metrics}

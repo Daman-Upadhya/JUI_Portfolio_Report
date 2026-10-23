@@ -42,10 +42,6 @@
   if (window.ResizeObserver) {
     new ResizeObserver(function () { root.style.setProperty("--appbar-h", $("appbar").offsetHeight + "px"); }).observe($("appbar"));
   }
-  if (meta.refresh && meta.refresh.repo) {
-    $("refresh").href = "https://github.com/" + meta.refresh.repo + "/actions/workflows/" + meta.refresh.workflow;
-    $("refresh").hidden = false;
-  }
   var when = meta.dataAsOf || meta.generatedAt;
   $("asof").textContent = (meta.origin === "sample" ? "Sample export · " : "Data as of ") + (when ? fmtD(when) + ", " + when.slice(11, 16) + " IST" : DASH);
   (function banner() {
