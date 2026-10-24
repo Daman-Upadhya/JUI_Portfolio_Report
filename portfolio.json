@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "state": "fresh",
+    "generatedAt": "2026-10-24T19:33:06+05:30",
+    "buildId": "44c3e77e7c",
+    "logicHash": "fa34ac129d",
+    "staleAfterHours": 20,
+    "locale": "en-IN"
+  },
+  "projects": [
+    {
+      "key": "JUI",
+      "title": "JUI",
+      "client": "",
+      "order": 1000,
+      "state": "fresh",
+      "origin": "live",
+      "generatedAt": "2026-10-24T19:31:55+05:30",
+      "dataAsOf": "2026-10-24T19:31:55+05:30",
+      "today": "2026-10-24",
+      "tokenRejected": false,
+      "href": "./JUI/",
+      "projectStatus": "Started",
+      "tasks": 2047,
+      "complete": 1726,
+      "started": 32,
+      "notStarted": 289,
+      "completePct": 84.3,
+      "overdue": 270,
+      "subtrades": 34,
+      "areas": 6,
+      "scurveBaselinePct": 45.77,
+      "scurveActualPct": 6.22
+    }
+  ]
+}
