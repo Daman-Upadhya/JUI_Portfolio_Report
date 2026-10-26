@@ -125,15 +125,22 @@ model: give them their PB / GB marks in Revit, re-export and run `python -m buil
   beams (beams on storey "FGL EL 0.000M" with Comments "DC …") follow the 592 DC plinth-beam
   tasks, chosen by name (`DC1A-PB…`, as some have lost their subtrade in VisiLean); the panel
   gives their counts and a few of them.
+- **DC Building foundations and grade slab**: the structural elements of the DC building at
+  or below grade (top below 10.3 m, plan centre inside the building) follow the DC
+  foundation-stage tasks (earthworks, footings, stub columns, plinth beams, plinth RCC, filling,
+  flooring PCC, backfilling).
 - **pours**: the DC slab pour plan. Each zone (DC-1, DC-2, DC-3, DC-4, DC-2A, DC-4A) is a
-  rectangle in model metres read off the grid lines of the pour plan; each level (GF, 1F) a
-  height range. A DC slab point takes the state of the "Casting of slab" task of its zone and
+  rectangle in model metres read off the grid lines of the pour plan; each level a height range.
+  The task levels name the slab by the columns under it: **GF** (`Slab-RCC-GF`) is the GF roof
+  slab, on the ground-floor columns, i.e. the model's FIRST FLOOR slab (top 17.2 m); **1F**
+  (`Slab-RCC-1F`) is the 1F roof slab, the model's SECOND FLOOR slab (24.7 m). A DC slab point takes the state of the "Casting of slab" task of its zone and
   level (location `SS_<zone>`, subtrade `Slab-RCC-<level>`), so one large slab element shows
   every pour it spans, with the pour edges outlined. Clicking a slab shows the pour under the
   pointer.
 
-**Show up to** (All / 1F / GF) hides everything above that slab level, so the lower pours and
-the plinth beams can be seen. The building list beside the model was removed; the model uses the
+**Show up to** (All / 1F / GF / Plinth, `display.bim.cuts`) hides everything above the 1F roof
+slab, the GF roof slab or the grade slab, so the lower pours, the foundations and the plinth beams
+can be seen. The building list beside the model was removed; the model uses the
 whole card, and the rings' tooltips keep each building's figures.
 
 The IFC must carry the **VisiLean** property set (`propertySet` in `display.model3d.ifc`). In

@@ -145,10 +145,10 @@
     /* a slab in the pour plan: the pour under the pointer */
     var li = BIM && BIM.elZone ? BIM.elZone[key] : undefined;
     if (li != null) {
-      var lvl = BIM.levels[li], hit = at && BIM.zones.filter(function (z) { return z.li === li && at[0] >= z.rect[0] && at[0] <= z.rect[1] && at[1] >= z.rect[2] && at[1] <= z.rect[3]; })[0];
-      parts.push(hit ? '<div class="mdl-tasks-h">Pour ' + esc(hit.name) + " · " + esc(lvl) + " slab" + stPill(hit.state) + "</div>" +
-        (hit.tasks.length ? taskList(hit.tasks.map(function (k) { return BIM.tasks[k]; })) : '<p class="mdl-none">No ' + esc(lvl) + " slab task for this pour.</p>")
-        : '<div class="mdl-tasks-h">' + esc(lvl) + ' slab</div><p class="mdl-none">This point is outside the pour plan.</p>');
+      var lvl = BIM.levels[li], lname = (BIM.levelNames || {})[lvl] || lvl + " slab", hit = at && BIM.zones.filter(function (z) { return z.li === li && at[0] >= z.rect[0] && at[0] <= z.rect[1] && at[1] >= z.rect[2] && at[1] <= z.rect[3]; })[0];
+      parts.push(hit ? '<div class="mdl-tasks-h">Pour ' + esc(hit.name) + " · " + esc(lname) + stPill(hit.state) + "</div>" +
+        (hit.tasks.length ? taskList(hit.tasks.map(function (k) { return BIM.tasks[k]; })) : '<p class="mdl-none">No ' + esc(lname) + " task for this pour.</p>")
+        : '<div class="mdl-tasks-h">' + esc(lname) + '</div><p class="mdl-none">This point is outside the pour plan.</p>');
     }
     pane.innerHTML = '<div class="mdl-info-h"><b title="' + esc(f.name) + '">' + esc(f.name || "Element") + '</b><button type="button" class="mdl-x" aria-label="Close">&#215;</button></div>' +
       '<dl class="mdl-props">' + props.map(function (p) { return "<dt>" + esc(p[0]) + "</dt><dd>" + (p[1] ? esc(p[1]) : '<span class="faint">' + DASH + "</span>") + "</dd>"; }).join("") + "</dl>" +
@@ -184,9 +184,10 @@
     function start(idx) {
       if (!box.isConnected || !window.JUIModelViewer) return;
       var meta = modelMeta[v.model];
-      var LZ = (BIM && BIM.levelZ) || {}, cuts = Object.keys(LZ).sort(function (a, b) { return LZ[b][1] - LZ[a][1]; });
-      var cutSeg = cuts.length ? '<div class="seg mdl-cut" role="group" aria-label="Show up to"><button type="button" data-c="" aria-pressed="' + !cutAt + '" title="Every level">All</button>' +
-        cuts.map(function (c) { return '<button type="button" data-c="' + esc(c) + '" aria-pressed="' + (cutAt === c) + '" title="Hide everything above the ' + esc(c) + ' slab">' + esc(c) + "</button>"; }).join("") + "</div>" : "";
+      var CUTS = (BIM && BIM.cuts) || [], cutZ = {};
+      CUTS.forEach(function (c) { cutZ[c.key] = c.z; });
+      var cutSeg = CUTS.length ? '<div class="seg mdl-cut" role="group" aria-label="Show up to"><button type="button" data-c="" aria-pressed="' + !cutAt + '" title="Every level">All</button>' +
+        CUTS.map(function (c) { return '<button type="button" data-c="' + esc(c.key) + '" aria-pressed="' + (cutAt === c.key) + '" title="' + esc(c.title || "") + '">' + esc(c.label) + "</button>"; }).join("") + "</div>" : "";
       var tools = BIM && idx.elementOffset ? cutSeg + '<div class="seg mdl-mode" role="group" aria-label="Colour by"><button type="button" data-m="category" aria-pressed="' + (colourBy === "category") + '">Category</button><button type="button" data-m="state" aria-pressed="' + (colourBy === "state") + '">Task status</button></div>' : "";
       viewer = window.JUIModelViewer(box, "model/", idx, {
         pinHtml: function (p) { return pinButton(p.B, p.h); },
@@ -206,7 +207,7 @@
         box.querySelector(".mdl-mode").addEventListener("click", function (e) { var b = e.target.closest("button[data-m]"); if (b) setBy(b.getAttribute("data-m")); });
         setBy(colourBy);
         var setCut = function (c) {
-          cutAt = c; viewer.setClip(c && LZ[c] ? LZ[c][1] + 0.4 : null);
+          cutAt = c; viewer.setClip(c && cutZ[c] != null ? cutZ[c] : null);
           box.querySelectorAll(".mdl-cut button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === c)); });
         };
         if (box.querySelector(".mdl-cut")) box.querySelector(".mdl-cut").addEventListener("click", function (e) { var b = e.target.closest("button[data-c]"); if (b) setCut(b.getAttribute("data-c")); });

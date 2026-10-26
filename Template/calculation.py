@@ -990,6 +990,11 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
             z = boxes[i][5]
             if not (f["z"][0] <= z <= f["z"][1]):
                 return False
+        if f.get("inside") and boxes:  # the element's plan centre within [x0, x1, y0, y1]
+            b, r = boxes[i], f["inside"]
+            cx, cy = (b[0] + b[3]) / 2, (b[1] + b[4]) / 2
+            if not (r[0] <= cx <= r[1] and r[2] <= cy <= r[3]):
+                return False
         return True
 
     def task_match(t, f):
@@ -1067,4 +1072,5 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
             "groups": groups_out, "elGroup": {str(i): g for i, g in sorted(el_group.items())},
             "zones": zones, "elZone": {str(i): z for i, z in sorted(el_zone.items())},
             "levels": list((pc.get("levels") or {}).keys()) if pc else [],
-            "levelZ": dict(pc.get("levels") or {}) if pc else {}, "stats": dict(stats)}
+            "levelZ": dict(pc.get("levels") or {}) if pc else {}, "levelNames": dict(pc.get("levelNames") or {}) if pc else {},
+            "cuts": cfg.get("cuts") or [], "stats": dict(stats)}

@@ -526,7 +526,7 @@
       }
     },
     "bim": {
-      "_comment": "3D model task links beyond element marks (Template/calculation.py bim_links). groups: elements (class, Comments, storey, name patterns) linked as one set to tasks (subtrade, location). pours: the DC GF / 1F slab pour plan; zones are [x0, x1, y0, y1] in model metres from the grid lines (pour plan image x -> model y: grid 13 = 2108144.27, grid 1 = 2108266.10; image y -> model x: grid A' = 292007.66, grid H = 292069.80); a slab point takes the state of the pour task (location SS_<zone>, subtrade Slab-RCC-<level>) whose zone it lies in.",
+      "_comment": "3D model task links beyond element marks (Template/calculation.py bim_links). groups: elements (class, Comments, storey, name patterns) linked as one set to tasks (subtrade, location). pours: the DC GF / 1F slab pour plan; zones are [x0, x1, y0, y1] in model metres from the grid lines (pour plan image x -> model y: grid 13 = 2108144.27, grid 1 = 2108266.10; image y -> model x: grid A' = 292007.66, grid H = 292069.80); levels: GF = the GF roof slab above the ground-floor columns (model FIRST FLOOR slab), 1F = the 1F roof slab (SECOND FLOOR); a slab point takes the state of the pour task (location SS_<zone>, subtrade Slab-RCC-<level>) whose zone it lies in. cuts: the 'Show up to' buttons (z in model metres).",
       "groups": [
         {
           "label": "DC Building plinth beams",
@@ -541,17 +541,46 @@
             "name": "^DC\\d[AB]?-PB\\d",
             "location": "^DC Building"
           }
+        },
+        {
+          "label": "DC Building foundations and grade slab",
+          "elements": {
+            "class": [
+              "IfcFooting",
+              "IfcSlab",
+              "IfcColumn",
+              "IfcBeam",
+              "IfcWall",
+              "IfcWallStandardCase",
+              "IfcMember",
+              "IfcBuildingElementProxy"
+            ],
+            "z": [
+              -50,
+              10.3
+            ],
+            "inside": [
+              292007.0,
+              292073.0,
+              2108142.0,
+              2108268.0
+            ]
+          },
+          "tasks": {
+            "location": "^DC Building",
+            "subtrade": "^(Earthworks|Backfilling|Blasting|Drilling|Footing-|Plinth Beam|Plinth RCC|Filling in Plinth|Flooring-PCC)"
+          }
         }
       ],
       "pours": {
         "levels": {
           "GF": [
-            8.5,
-            10.0
-          ],
-          "1F": [
             16.5,
             17.6
+          ],
+          "1F": [
+            24.0,
+            25.1
           ]
         },
         "taskLevel": "Slab-RCC-(GF|1F)\\b",
@@ -599,8 +628,32 @@
             2108201.33,
             2108268.0
           ]
+        },
+        "levelNames": {
+          "GF": "GF roof slab",
+          "1F": "1F roof slab"
         }
-      }
+      },
+      "cuts": [
+        {
+          "key": "1F",
+          "label": "1F",
+          "z": 25.4,
+          "title": "Up to the 1F roof slab (above the first-floor columns)"
+        },
+        {
+          "key": "GF",
+          "label": "GF",
+          "z": 17.9,
+          "title": "Up to the GF roof slab (above the ground-floor columns)"
+        },
+        {
+          "key": "plinth",
+          "label": "Plinth",
+          "z": 10.4,
+          "title": "Up to the grade slab: foundations, plinth beams and grade slab"
+        }
+      ]
     }
   },
   "progressDeck": "DPR PPT - Formatted.pptx",
