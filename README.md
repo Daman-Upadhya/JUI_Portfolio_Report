@@ -84,27 +84,37 @@ the S-curve tab says so and the Quantities page is unaffected.
 
 ### Progress on the site model (on the S-curve tab)
 
-`JUI/project.json` → `display.model3d.views` lists the images the card toggles between; the
-images themselves live in `JUI/model/` and the build copies them to `dist/JUI/model/`. Today:
+`JUI/project.json` → `display.model3d.views` lists what the card toggles between:
 
-- **Site layout** (`site-3d.png`): the campus model render, cut out of the DPR slide image with
-  its sky, ground, road, callout labels and lines removed (transparent PNG; `"cutout": true`
-  stands it on a soft stage with a floor shadow). Each `hotspots` entry pins a ring and a name
-  tag on the image at `x` / `y` (percent of the image width / height) for one building; `tag`
-  (`left` / `right`) moves the name beside the ring, `label` overrides it, and `dx` / `dy` nudge
-  a ring in pixels. The
-  ring is that building's earned weightage in the master schedule; its colour compares earned
-  with what the baseline says is due by today (green on or ahead, amber up to 5 points behind,
-  red further behind), and the faint arc behind it is that baseline share. Hover or focus a
-  ring for its storeys and dates; select it to open the building in the list.
-- **Structure progress** (`structure-progress.png`): the DC Building structural render, shown
-  as is with its `caption`.
+- **3D model** (`"model": "site-model"`): the site built from the BIM model, drawn in the page
+  with WebGL (`Template/scripts/ifcview.js`, no library). Drag to turn, scroll or pinch to zoom,
+  right-drag or shift-drag to pan, double-click or Reset view to go back; the chips show or hide
+  each category (underground services, foundations, stairs and ramps, structural steel, columns,
+  beams, slabs and roofs, walls). Each building in `anchors` carries a ring of its earned
+  weightage in the master schedule, coloured against what the baseline says is due by today
+  (green on or ahead, amber up to 5 points behind, red further behind), with the baseline share
+  as the faint arc. Hover or focus a ring for its storeys and dates; select it to open the
+  building in the list. `dx` / `dy` nudge a ring in pixels, `tag` moves its name beside it.
+- **Structure progress** (`structure-progress.png`): the DC Building structural render.
 
-`display.model3d.buildings` still defines which master-schedule S-curve groups (`group`,
-`finish`, regular expressions) make up each building and storey; the list beside the image
-gives the earned, baseline and plan figures per building and storey. To add or replace an
-image, put it in `JUI/model/` and add a `views` entry (`key`, `label`, `image`, `w`, `h`, and
-`hotspots` if it should carry rings). The open view is kept in the URL as `sv=`.
+The model files `JUI/model/site-model.bin` and `.json` are made **on this PC** from the IFC
+and committed; the refresh only copies them. To update them after the model changes, put the
+new IFC in the repository folder (`*.ifc` is gitignored, it is never committed) and run:
+
+    python -m pip install ifcopenshell
+    python -m build.ifc_model JUI
+
+`display.model3d.ifc` says how: `source` (the IFC), `cell` and `heavy` (elements with more than
+`heavy` triangles are simplified by merging vertices on a `cell`-metre grid), `groups` (which
+IFC classes / names go in which category, first match wins; `skip` leaves elements out, such as
+the opening markers), `anchors` (storey-name patterns that place each building's ring) and
+`view` (the starting angle and zoom). Openings are not cut. A 465 MB IFC takes about 8 minutes
+and about 5 GB of memory.
+
+`display.model3d.buildings` defines which master-schedule S-curve groups (`group`, `finish`,
+regular expressions) make up each building and storey; the list beside the model gives the
+earned, baseline and plan figures per building and storey. The open view is kept in the URL as
+`sv=`.
 
 ## Site progress page (third tab)
 

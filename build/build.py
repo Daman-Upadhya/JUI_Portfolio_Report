@@ -213,6 +213,8 @@ class Assets:
         self.scurve_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "scurve.js"))
         # the Site progress page (project.json "progressDeck"), and the tabs, which run last
         self.sitepics_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "sitepics.js"))
+        # the 3D model viewer (WebGL, no library) and the site model card that uses it
+        self.ifcview_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "ifcview.js"))
         self.model3d_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "model3d.js"))
         # the Workforce page (project.json "workforce")
         self.workforce_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "workforce.js"))
@@ -293,11 +295,14 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         import shutil
         os.makedirs(os.path.join(out_dir, "model"), exist_ok=True)
         for v in views:
-            src = os.path.join(cfg["_dir"], "model", v.get("image") or "")
-            if os.path.isfile(src):
-                shutil.copyfile(src, os.path.join(out_dir, "model", v["image"]))
-            else:
-                log("::warning title=%s model image missing::%s" % (key, os.path.relpath(src, ROOT)))
+            # an image view, or the 3D model view (python -m build.ifc_model writes <model>.json and .bin)
+            names = [v["image"]] if v.get("image") else [v["model"] + ".json", v["model"] + ".bin"] if v.get("model") else []
+            for name in names:
+                src = os.path.join(cfg["_dir"], "model", name)
+                if os.path.isfile(src):
+                    shutil.copyfile(src, os.path.join(out_dir, "model", name))
+                else:
+                    log("::warning title=%s model file missing::%s (for the 3D model run: python -m build.ifc_model %s)" % (key, os.path.relpath(src, ROOT), key))
 
     def site_progress(tasks):
         """The Site progress page: the drawings of project.json "progressDeck" (a .pptx), matched
@@ -399,7 +404,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
     }
     payload = {"meta": meta, "project": public_project(cfg), "data": strip_private(data), "metrics": metrics}
 
-    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.tabs_js, assets.cardhide_js)))
+    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.tabs_js, assets.cardhide_js)))
     page = I.fill(page, {
         "TITLE": cfg.get("title") or key, "EYEBROW": data.get("eyebrow", "JUI Portfolio"),
         "GENERATED_AT": fmt_when(now), "BUILD_ID": build_id, "LOGIC_HASH": assets.logic_hash,

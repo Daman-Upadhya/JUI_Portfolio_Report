@@ -1,7 +1,7 @@
-/* Progress on the campus images (Progress & S-curve page; data.model3d, the master schedule facts).
-   Two views of images kept in the project folder: the 3D site layout, where each marked building
-   carries a progress ring (earned weightage, coloured against the baseline due by today), and
-   the structural progress render. A building's figures come from the S-curve groups its storeys
+/* Progress on the site model (Progress & S-curve page; data.model3d, the master schedule facts).
+   Views: the 3D model made from the IFC (build/ifc_model.py, drawn by ifcview.js), where each
+   building carries a progress ring at its anchor (earned weightage, coloured against the baseline
+   due by today), and images kept in the project folder, with rings at fixed spots. A building's figures come from the S-curve groups its storeys
    name; the list beside the image gives them storey by storey. */
 (function () {
   "use strict";
@@ -83,10 +83,51 @@
       (b > a ? '<circle class="lay-due" cx="22" cy="22" r="' + r + '" stroke-dasharray="' + (c * b / 100).toFixed(2) + " " + c.toFixed(2) + '" transform="rotate(-90 22 22)"/>' : "") +
       (a ? '<circle class="lay-val" cx="22" cy="22" r="' + r + '" stroke-dasharray="' + (c * a / 100).toFixed(2) + " " + c.toFixed(2) + '" transform="rotate(-90 22 22)"/>' : "") + "</svg>";
   }
+  /* the 3D model view: the rings sit on each building's anchor point and follow the model */
+  var viewer = null, modelIdx = {};
+  function pinButton(B, h) {
+    var bd = band(B.pct);
+    return '<button type="button" class="lay-pin bc-' + bd + (sel === B.i ? " is-sel" : "") + '" data-b="' + B.i + '" style="--dx:' + ((h && h.dx) || 0) + "px;--dy:" + ((h && h.dy) || 0) + 'px" aria-label="' +
+      esc(B.name + ": " + fmtP(B.pct && B.pct.a) + " earned against " + fmtP(B.pct && B.pct.b) + " due on the baseline, " + BAND[bd]) + '">' + ring(B.pct) + "<b>" + (B.pct && B.pct.a != null ? Math.round(B.pct.a) + "%" : DASH) + "</b>" +
+      '<span class="lay-name' + (h && h.tag ? " is-" + h.tag : "") + '" aria-hidden="true">' + esc((h && h.label) || B.name) + "</span></button>";
+  }
+  function bindPins() {
+    $("m3d").querySelectorAll(".lay-pin").forEach(function (el) {
+      var B = buildings[+el.getAttribute("data-b")];
+      el.addEventListener("mouseenter", function () { showTip(buildingTip(B), el); });
+      el.addEventListener("focus", function () { showTip(buildingTip(B), el); });
+      el.addEventListener("mouseleave", hideTip);
+      el.addEventListener("blur", hideTip);
+      el.addEventListener("click", function () { openInList(B.i); });
+    });
+  }
+  function renderModel(v) {
+    $("m3d").innerHTML = '<figure class="lay-fig"><div class="mdl"></div>' + (v.caption ? "<figcaption>" + esc(v.caption) + "</figcaption>" : "") + "</figure>";
+    $("m3d-legend").hidden = !(v.anchors || []).length;
+    var box = $("m3d").querySelector(".mdl");
+    function start(idx) {
+      if (!box.isConnected || !window.JUIModelViewer) return;
+      viewer = window.JUIModelViewer(box, "model/", idx, { pinHtml: function (p) { return pinButton(p.B, p.h); } });
+      var lift = v.pinLift == null ? 4 : v.pinLift;
+      viewer.setPins((v.anchors || []).map(function (h) {
+        var B = byName[h.building], at = h.at || (idx.anchors || {})[h.anchor || h.building];
+        return B && at ? { B: B, h: h, at: [at[0], at[1], at[2] + lift] } : null;
+      }).filter(Boolean));
+      bindPins();
+    }
+    if (modelIdx[v.model]) { start(modelIdx[v.model]); return; }
+    fetch("model/" + v.model + ".json").then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (idx) { modelIdx[v.model] = idx; start(idx); })
+      .catch(function (err) {
+        box.innerHTML = '<div class="mdl-msg">' + (location.protocol === "file:" ? "The 3D model loads when the report is served (python -m build serve), not from a file on disk." : "The 3D model could not be loaded (" + esc(err.message) + ").") + "</div>";
+      });
+  }
   function render() {
     var v = CFG.views[view];
+    if (viewer) { viewer.destroy(); viewer = null; }
     $("m3d-views").innerHTML = CFG.views.map(function (x, i) { return '<button type="button" data-v="' + i + '" aria-pressed="' + (i === view) + '">' + esc(x.label) + "</button>"; }).join("");
     $("m3d-views").querySelectorAll("button").forEach(function (b) { b.addEventListener("click", function () { view = +b.getAttribute("data-v"); hideTip(); render(); writeHash(); }); });
+    if (v.model) { renderModel(v); return; }
     var pins = (v.hotspots || []).map(function (h) {
       var B = byName[h.building];
       if (!B) return "";
@@ -98,14 +139,7 @@
     $("m3d").innerHTML = '<figure class="lay-fig"><div class="lay-img' + (v.cutout ? " is-cut" : "") + '" style="aspect-ratio:' + (v.w || 16) + " / " + (v.h || 9) + '"><img src="model/' + encodeURIComponent(v.image) + '" alt="' + esc(v.alt || v.label) + '" loading="lazy">' + pins + "</div>" +
       (v.caption ? "<figcaption>" + esc(v.caption) + "</figcaption>" : "") + "</figure>";
     $("m3d-legend").hidden = !(v.hotspots || []).length;
-    $("m3d").querySelectorAll(".lay-pin").forEach(function (el) {
-      var B = buildings[+el.getAttribute("data-b")];
-      el.addEventListener("mouseenter", function () { showTip(buildingTip(B), el); });
-      el.addEventListener("focus", function () { showTip(buildingTip(B), el); });
-      el.addEventListener("mouseleave", hideTip);
-      el.addEventListener("blur", hideTip);
-      el.addEventListener("click", function () { openInList(B.i); });
-    });
+    bindPins();
   }
   function writeHash() {
     var h = new URLSearchParams(location.hash.slice(1));

@@ -1,0 +1,134 @@
+{
+ "file": "site-model.bin",
+ "unit": "m",
+ "bbox": [
+  [
+   291856.281,
+   2107961.5,
+   -0.45
+  ],
+  [
+   292149.312,
+   2108295.75,
+   60.25
+  ]
+ ],
+ "vertices": 505086,
+ "indices": 2973477,
+ "indexOffset": 3030516,
+ "groups": [
+  {
+   "key": "ug",
+   "label": "Underground services",
+   "color": "#d4a27a",
+   "first": 0,
+   "count": 1216206,
+   "elements": 2501
+  },
+  {
+   "key": "fdn",
+   "label": "Foundations",
+   "color": "#9c8468",
+   "first": 1216206,
+   "count": 78819,
+   "elements": 1299
+  },
+  {
+   "key": "stair",
+   "label": "Stairs & ramps",
+   "color": "#7fb28a",
+   "first": 1295025,
+   "count": 100050,
+   "elements": 427
+  },
+  {
+   "key": "steel",
+   "label": "Structural steel",
+   "color": "#7d63c4",
+   "first": 1395075,
+   "count": 338928,
+   "elements": 2184
+  },
+  {
+   "key": "col",
+   "label": "Columns",
+   "color": "#e2a93b",
+   "first": 1734003,
+   "count": 93000,
+   "elements": 1967
+  },
+  {
+   "key": "beam",
+   "label": "Beams",
+   "color": "#4f8fdc",
+   "first": 1827003,
+   "count": 766491,
+   "elements": 7267
+  },
+  {
+   "key": "slab",
+   "label": "Slabs & roofs",
+   "color": "#b7c0ca",
+   "first": 2593494,
+   "count": 238353,
+   "elements": 3284
+  },
+  {
+   "key": "wall",
+   "label": "Walls",
+   "color": "#e6dfd2",
+   "first": 2831847,
+   "count": 85500,
+   "elements": 1737
+  },
+  {
+   "key": "other",
+   "label": "Other",
+   "color": "#98a3ae",
+   "first": 2917347,
+   "count": 56130,
+   "elements": 177
+  }
+ ],
+ "anchors": {
+  "Water Tanks": [
+   291899.45,
+   2108014.91,
+   12.3
+  ],
+  "DG Building": [
+   292046.75,
+   2108203.9,
+   9.7
+  ],
+  "DC Building": [
+   292055.5,
+   2108203.92,
+   47.2
+  ],
+  "GIS Substation": [
+   292080.79,
+   2108024.59,
+   25.05
+  ],
+  "HSD Yard": [
+   291947.01,
+   2108143.1,
+   8.65
+  ],
+  "Pump Room": [
+   292110.72,
+   2108202.47,
+   9.15
+  ]
+ },
+ "view": {
+  "yaw": -0.95,
+  "pitch": 0.72,
+  "zoom": 1.95
+ },
+ "source": {
+  "name": "JUI1A-STRC_UG SERVICES (2)_detached.ifc",
+  "modified": "2026-10-26T15:27"
+ }
+}
