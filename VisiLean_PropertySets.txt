@@ -1,0 +1,4 @@
+PropertySet:	VisiLean	I	IfcElement
+	Workset	Text	Workset
+	Comments	Text	Comments
+	Mark	Text	Mark

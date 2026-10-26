@@ -843,3 +843,108 @@ def workforce_invariants(tables: dict, metrics: dict) -> list[str]:
     if abs(t - total) > 1e-3 * max(1.0, t):
         problems.append("trade x month table sums to %.2f actual man-days, the daily table to %.2f" % (t, total))
     return problems
+
+
+# ----------------------------------------------------------------------------- BIM links (3D model)
+#
+# The site model's element table (<model>.meta.json, written by build/ifc_model.py from the IFC's
+# "VisiLean" property set: Workset, Comments, Mark) is linked to Table 2 by the element mark in
+# the task name: DC3B-C39-FT-CW (footing of column C39 in the DC building), DC2-SF-C52 (column
+# C52 on the second floor), GIS-GB44-PB-RCC (plinth beam GB44 of the GIS building).
+#
+#   building  task: name prefix or location (DC / DG / GIS); element: Comments, else storey, else
+#             Workset, by the patterns in data.bim.buildings (first match wins)
+#   mark      the first mark-like token of the task name (data.bim.markPattern)
+#   level     a floor code in the task name (1F, SF, ...) keeps the elements on that storey
+#             (data.bim.levels); footing / plinth tasks keep the foundation-level ones
+#             (data.bim.foundation); when that leaves none, every candidate stays
+#   fallback  a mark found in one building only links whatever the element's Comments say
+#
+# An element's state comes from all its tasks: complete when every one is, overdue when any open
+# one is past its planned finish, started when any has started, else not started.
+
+BIM_DEFAULTS = {
+    "buildings": [["GIS", r"GIS"], ["DG", r"\bDG\b|DG BLDG|DG FOUNDATION|DG-\d"], ["DC", r"\bDC"]],
+    "markPattern": r"(?<![A-Z])(PB|GB|SW|LW|FC|C|B|F)(\d+[A-Z]?)(?![0-9])",
+    "taskPrefix": r"^(DC\d[AB]?|DG-?\d|DG|GIS|SS)\s*-\s*",
+    "levels": {"GF": "GROUND|FGL", "1F": "FIRST", "SF": "SECOND", "2F": "SECOND", "3F": "THIRD", "4F": "FOURTH", "TF": "TERRACE"},
+    "levelPattern": r"-(\d+F|GF|SF|TF)-",
+    "foundationTask": r"(^|-)(FT|PCC|PB|GB)(-|$)",
+    "foundation": r"FOUNDATION|FGL|RAFT|BOF|GIS L0|PLINTH",
+}
+
+
+def bim_links(meta: dict, tasks: list[dict], data: dict, today: date) -> dict:
+    cfg = {**BIM_DEFAULTS, **(data.get("bim") or {})}
+    S, F = meta["strings"], meta["fields"]
+    col = {k: F.index(k) for k in F}
+    get = lambda row, k: S[row[col[k]]] if k in col else ""
+    brx = [(b, re.compile(p, re.I)) for b, p in cfg["buildings"]]
+
+    def building(*texts):
+        for t in texts:
+            for b, rx in brx:
+                if t and rx.search(t):
+                    return b
+        return ""
+
+    by_mark: dict[tuple, list[int]] = {}
+    mark_bldgs: dict[str, set] = {}
+    for i, row in enumerate(meta["rows"]):
+        mk = re.sub(r"\s+", "", get(row, "Mark")).upper()
+        if not mk:
+            continue
+        b = building(get(row, "Comments"), get(row, "storey"), get(row, "Workset"))
+        by_mark.setdefault((b, mk), []).append(i)
+        mark_bldgs.setdefault(mk, set()).add(b)
+
+    mrx, prx, lrx = re.compile(cfg["markPattern"]), re.compile(cfg["taskPrefix"], re.I), re.compile(cfg["levelPattern"], re.I)
+    frx, fdn = re.compile(cfg["foundationTask"], re.I), re.compile(cfg["foundation"], re.I)
+    levels = {k.upper(): re.compile(v, re.I) for k, v in cfg["levels"].items()}
+    out_tasks, el_tasks = [], {}
+    stats = Counter()
+    for t in tasks:
+        name = (t.get("taskName") or "").strip()
+        n = re.sub(r"\s*-\s*", "-", name.upper())
+        m = mrx.search(prx.sub("", n))
+        if not m:
+            continue
+        mark = m.group(1) + m.group(2)
+        b = building(n.split("-", 1)[0], t.get("location") or "")
+        stats["tasks with a mark"] += 1
+        cands = by_mark.get((b, mark))
+        if not cands and len(mark_bldgs.get(mark, ())) == 1:  # the mark is in one building only
+            cands = by_mark[(next(iter(mark_bldgs[mark])), mark)]
+            stats["linked by mark alone"] += 1
+        if not cands:
+            stats["not linked"] += 1
+            kind = "plinth beam" if mark[:2] in ("PB", "GB") else "column / footing" if mark[0] == "C" else "other"
+            stats["not linked: " + kind] += 1
+            continue
+        lv = lrx.search(n)
+        if lv and lv.group(1).upper() in levels:
+            keep = [i for i in cands if levels[lv.group(1).upper()].search(get(meta["rows"][i], "storey"))]
+        elif frx.search(n):
+            keep = [i for i in cands if fdn.search(get(meta["rows"][i], "storey"))]
+        else:
+            keep = []
+        cands = keep or cands
+        ti = len(out_tasks)
+        g = status_group(t.get("status"), data)
+        overdue = g != "complete" and bool(t.get("plannedEndDate")) and t["plannedEndDate"] < today.isoformat()
+        out_tasks.append({"n": name, "id": t.get("taskId"), "st": t.get("status"), "g": g, "od": overdue,
+                          "pc": round(num(t.get("percentComplete")), 1), "sub": t.get("subtrade"), "loc": t.get("location"),
+                          "ps": t.get("plannedStartDate"), "pe": t.get("plannedEndDate"), "as": t.get("actualStartDate"), "ae": t.get("actualEndDate")})
+        for i in cands:
+            el_tasks.setdefault(i, []).append(ti)
+        stats["linked"] += 1
+    state = {}
+    for i, ts in el_tasks.items():
+        gs = [out_tasks[k] for k in ts]
+        state[i] = ("complete" if all(x["g"] == "complete" for x in gs) else "overdue" if any(x["od"] for x in gs)
+                    else "started" if any(x["g"] in ("started", "complete") for x in gs) else "notStarted")
+    stats["elements linked"] = len(el_tasks)
+    for k, v in Counter(state.values()).items():
+        stats["elements " + k] = v
+    return {"tasks": out_tasks, "elements": {str(i): ts for i, ts in sorted(el_tasks.items())},
+            "state": {str(i): s for i, s in sorted(state.items())}, "stats": dict(stats)}

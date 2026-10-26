@@ -543,13 +543,38 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .mdl-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
 .mdl-btn { appearance: none; border: 1px solid var(--line); background: color-mix(in srgb, var(--card) 88%, transparent); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 4px 11px; cursor: pointer; box-shadow: var(--shadow-xs); }
 .mdl-btn:hover { border-color: var(--brand); }
-.mdl-cats { position: absolute; left: 10px; top: 10px; right: 112px; display: flex; flex-wrap: wrap; gap: 5px; pointer-events: none; }
+.mdl-cats { position: absolute; left: 10px; top: 10px; right: 290px; display: flex; flex-wrap: wrap; gap: 5px; pointer-events: none; }
 .mdl-cat { pointer-events: auto; appearance: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: color-mix(in srgb, var(--card) 88%, transparent); color: var(--ink); font: inherit; font-size: 11.5px; font-weight: 500; border-radius: 999px; padding: 3px 9px; cursor: pointer; }
 .mdl-cat i { width: 9px; height: 9px; border-radius: 2px; }
 .mdl-cat[aria-pressed="false"] { color: var(--faint); text-decoration: line-through; }
 .mdl-cat[aria-pressed="false"] i { opacity: .3; }
 .mdl-cat:hover { border-color: var(--brand); }
-@media (max-width: 760px) { .mdl { aspect-ratio: 4 / 3; } .mdl-cat { font-size: 10.5px; padding: 2px 7px; } }
+.mdl-mode { box-shadow: var(--shadow-xs); }
+.mdl-mode button { padding: 3px 9px; font-size: 12px; }
+.mdl-leg { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 5px 10px; border-radius: 10px; background: color-mix(in srgb, var(--card) 88%, transparent); border: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+.mdl-leg[hidden] { display: none; }
+.mdl-leg i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.st-complete { --st: var(--s-app); } .st-started { --st: var(--s-reop); } .st-overdue { --st: var(--s-rej); } .st-notStarted { --st: var(--s-draft); } .st-none { --st: #dfe3e8; }
+.mdl-leg i, .mdl-st::before { background: var(--st); }
+/* the element panel (a click on the model) */
+.mdl-info { position: absolute; top: 48px; right: 10px; bottom: 54px; width: min(290px, calc(100% - 20px)); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--tipsh, var(--shadow)); padding: 10px 12px; font-size: 12.5px; z-index: 3; }
+.mdl-info[hidden] { display: none; }
+.mdl-info-h { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; margin-bottom: 6px; }
+.mdl-info-h b { font-size: 13px; font-weight: 600; color: var(--brand-ink); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mdl-x { appearance: none; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.mdl-x:hover { color: var(--ink); }
+.mdl-props { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; margin: 0 0 10px; }
+.mdl-props dt { color: var(--faint); font-size: 11.5px; }
+.mdl-props dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.mdl-tasks-h { font-weight: 600; padding-top: 8px; border-top: 1px solid var(--line-soft); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.mdl-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mdl-tasks li { border: 1px solid var(--line-soft); border-left: 3px solid var(--brand); border-radius: 8px; padding: 6px 8px; }
+.mdl-tn { font-weight: 600; color: var(--ink); }
+.mdl-tm, .mdl-td { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.mdl-st { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--ink); font-size: 11.5px; }
+.mdl-st::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+.mdl-none { margin: 0; color: var(--muted); font-size: 12px; }
+@media (max-width: 760px) { .mdl { aspect-ratio: 4 / 3; } .mdl-cat { font-size: 10.5px; padding: 2px 7px; } .mdl-info { top: auto; height: 60%; } }
 .lay-fig figcaption { margin-top: 8px; font-size: 12px; color: var(--muted); }
 /* a ring pinned on the image's own marker; dx / dy nudge it off a neighbour */
 .lay-pin { position: absolute; width: 40px; height: 40px; margin: 0; padding: 0; transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))); appearance: none; border: 0; background: none; cursor: pointer; display: grid; place-items: center; z-index: 2; transition: transform .12s var(--ease); }

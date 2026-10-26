@@ -285,7 +285,24 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
             % (key, m["totals"]["forecastBaseline"], m["totals"]["forecastSchedule"]))
         m["progress"] = site_progress(tables["tasks"])
         publish_model_images()
+        m["bim"] = bim(tables["tasks"])
         return m
+
+    def bim(tasks):
+        """The 3D model's element table (<model>.meta.json, from build/ifc_model.py) linked to this
+        project's tasks by element mark; None without a model view or its element table."""
+        views = ((cfg.get("display") or {}).get("model3d") or {}).get("views") or []
+        mv = next((v for v in views if v.get("model")), None)
+        path = mv and os.path.join(cfg["_dir"], "model", mv["model"] + ".meta.json")
+        if not path or not os.path.isfile(path):
+            return None
+        meta = read_json(path)
+        links = assets.calc.bim_links(meta, tasks, data, today)
+        st = links["stats"]
+        log("%s: 3D model links: %d of %d tasks with an element mark linked to %d elements (%s)"
+            % (key, st.get("linked", 0), st.get("tasks with a mark", 0), st.get("elements linked", 0),
+               ", ".join("%s %d" % (k, v) for k, v in sorted(st.items()) if k.startswith("not linked:"))))
+        return links
 
     def publish_model_images():
         """The site model images (display.model3d.views) from <project>/model/ to dist/<key>/model/."""
@@ -296,7 +313,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         os.makedirs(os.path.join(out_dir, "model"), exist_ok=True)
         for v in views:
             # an image view, or the 3D model view (python -m build.ifc_model writes <model>.json and .bin)
-            names = [v["image"]] if v.get("image") else [v["model"] + ".json", v["model"] + ".bin"] if v.get("model") else []
+            names = [v["image"]] if v.get("image") else [v["model"] + ".json", v["model"] + ".bin", v["model"] + ".meta.json"] if v.get("model") else []
             for name in names:
                 src = os.path.join(cfg["_dir"], "model", name)
                 if os.path.isfile(src):

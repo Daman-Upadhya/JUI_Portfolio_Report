@@ -83,8 +83,46 @@
       (b > a ? '<circle class="lay-due" cx="22" cy="22" r="' + r + '" stroke-dasharray="' + (c * b / 100).toFixed(2) + " " + c.toFixed(2) + '" transform="rotate(-90 22 22)"/>' : "") +
       (a ? '<circle class="lay-val" cx="22" cy="22" r="' + r + '" stroke-dasharray="' + (c * a / 100).toFixed(2) + " " + c.toFixed(2) + '" transform="rotate(-90 22 22)"/>' : "") + "</svg>";
   }
-  /* the 3D model view: the rings sit on each building's anchor point and follow the model */
-  var viewer = null, modelIdx = {};
+  /* the 3D model view: the rings sit on each building's anchor point and follow the model; a click
+     on an element opens its panel (the IFC's VisiLean properties and the JUI tasks linked to it by
+     its mark, metrics.bim), and "Task status" colours the linked elements by their tasks */
+  var viewer = null, modelIdx = {}, modelMeta = {}, colourBy = "category";
+  var BIM = P.metrics && P.metrics.bim;
+  var STATE = { complete: ["Complete", "--s-app", "#2e9b4f"], started: ["In progress", "--s-reop", "#e0a100"], overdue: ["Overdue", "--s-rej", "#d84b4b"], notStarted: ["Not started", "--s-draft", "#7f8fa3"] };
+  function cssHex(v, dflt) {
+    var c = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    if (/^#[0-9a-f]{6}$/i.test(c)) return c;
+    var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c);
+    return m ? "#" + [m[1], m[2], m[3]].map(function (x) { return (+x).toString(16).padStart(2, "0"); }).join("") : dflt;
+  }
+  function stateColours() {
+    var out = {}, col = {};
+    Object.keys(STATE).forEach(function (k) { col[k] = cssHex(STATE[k][1], STATE[k][2]); });
+    Object.keys((BIM && BIM.state) || {}).forEach(function (i) { out[i] = col[BIM.state[i]]; });
+    return out;
+  }
+  function prettyClass(c) { return String(c || "").replace(/^Ifc/, "").replace(/StandardCase$/, "").replace(/([a-z])([A-Z])/g, "$1 $2"); }
+  function elementPanel(box, meta, i) {
+    var pane = box.querySelector(".mdl-info");
+    if (i < 0 || !meta) { pane.hidden = true; return; }
+    var row = meta.rows[i], f = {};
+    meta.fields.forEach(function (k, j) { f[k] = meta.strings[row[j]]; });
+    var ts = ((BIM && BIM.elements[String(i)]) || []).map(function (k) { return BIM.tasks[k]; });
+    var props = [["Category", f.category], ["Type", prettyClass(f["class"])], ["Level", f.storey]].concat(
+      meta.fields.filter(function (k) { return ["name", "class", "storey", "category"].indexOf(k) < 0; }).map(function (k) { return [k, f[k]]; }));
+    var st = BIM && BIM.state[String(i)];
+    pane.innerHTML = '<div class="mdl-info-h"><b title="' + esc(f.name) + '">' + esc(f.name || "Element") + '</b><button type="button" class="mdl-x" aria-label="Close">&#215;</button></div>' +
+      '<dl class="mdl-props">' + props.map(function (p) { return "<dt>" + esc(p[0]) + "</dt><dd>" + (p[1] ? esc(p[1]) : '<span class="faint">' + DASH + "</span>") + "</dd>"; }).join("") + "</dl>" +
+      '<div class="mdl-tasks-h">' + (ts.length ? ts.length + " linked task" + (ts.length > 1 ? "s" : "") : "No linked task") +
+      (st ? ' <span class="mdl-st st-' + st + '">' + STATE[st][0] + "</span>" : "") + "</div>" +
+      (ts.length ? '<ul class="mdl-tasks">' + ts.map(function (t) {
+        return '<li><div class="mdl-tn">' + esc(t.n) + '</div><div class="mdl-tm"><span class="mdl-st st-' + (t.od ? "overdue" : t.g) + '">' + esc(t.od ? "Overdue" : t.st || STATE[t.g][0]) + "</span> " +
+          fmtP(t.pc) + (t.sub ? " · " + esc(t.sub) : "") + '</div><div class="mdl-td">Plan ' + fmtD(t.ps) + " → " + fmtD(t.pe) +
+          (t.as ? " · actual " + fmtD(t.as) + (t.ae ? " → " + fmtD(t.ae) : " →") : "") + (t.loc ? " · " + esc(t.loc) : "") + "</div></li>";
+      }).join("") + "</ul>" : '<p class="mdl-none">' + (f.Mark ? "No JUI task names this element's mark (" + esc(f.Mark) + ") in its building." : "This element has no Mark, so no task can name it.") + "</p>");
+    pane.hidden = false;
+    pane.querySelector(".mdl-x").addEventListener("click", function () { pane.hidden = true; if (viewer) viewer.select(-1); });
+  }
   function pinButton(B, h) {
     var bd = band(B.pct);
     return '<button type="button" class="lay-pin bc-' + bd + (sel === B.i ? " is-sel" : "") + '" data-b="' + B.i + '" style="--dx:' + ((h && h.dx) || 0) + "px;--dy:" + ((h && h.dy) || 0) + 'px" aria-label="' +
@@ -102,12 +140,34 @@
     });
   }
   function renderModel(v) {
-    $("m3d").innerHTML = '<figure class="lay-fig"><div class="mdl"></div>' + (v.caption ? "<figcaption>" + esc(v.caption) + "</figcaption>" : "") + "</figure>";
+    var st = BIM && BIM.stats, nf = function (x) { return nf0.format(x || 0); };
+    var links = st ? " Click an element for its Workset, Comments, Mark and linked tasks. Task links: " + nf(st.linked) + " of " + nf(st["tasks with a mark"]) +
+      " JUI tasks that name an element mark are linked to " + nf(st["elements linked"]) + " elements" +
+      (st["not linked: plinth beam"] ? "; " + nf(st["not linked: plinth beam"]) + " plinth-beam tasks are not, as the model's plinth beams have no Mark yet" : "") + "." : "";
+    $("m3d").innerHTML = '<figure class="lay-fig"><div class="mdl"></div>' + (v.caption || links ? "<figcaption>" + esc((v.caption || "") + links) + "</figcaption>" : "") + "</figure>";
     $("m3d-legend").hidden = !(v.anchors || []).length;
     var box = $("m3d").querySelector(".mdl");
     function start(idx) {
       if (!box.isConnected || !window.JUIModelViewer) return;
-      viewer = window.JUIModelViewer(box, "model/", idx, { pinHtml: function (p) { return pinButton(p.B, p.h); } });
+      var meta = modelMeta[v.model];
+      var tools = BIM && idx.elementOffset ? '<div class="seg mdl-mode" role="group" aria-label="Colour by"><button type="button" data-m="category" aria-pressed="' + (colourBy === "category") + '">Category</button><button type="button" data-m="state" aria-pressed="' + (colourBy === "state") + '">Task status</button></div>' : "";
+      viewer = window.JUIModelViewer(box, "model/", idx, {
+        pinHtml: function (p) { return pinButton(p.B, p.h); },
+        tools: tools,
+        onPick: function (i) { viewer.select(i); elementPanel(box, meta, i); }
+      });
+      box.insertAdjacentHTML("beforeend", '<div class="mdl-info" hidden></div>' + (tools ? '<div class="mdl-leg" hidden>' + Object.keys(STATE).map(function (k) {
+        return '<span><i class="st-' + k + '"></i>' + STATE[k][0] + "</span>"; }).join("") + '<span><i class="st-none"></i>Not linked</span></div>' : ""));
+      if (tools) {
+        viewer.setStates(stateColours());
+        var setBy = function (m) {
+          colourBy = m; viewer.setMode(m);
+          box.querySelectorAll(".mdl-mode button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-m") === m)); });
+          box.querySelector(".mdl-leg").hidden = m !== "state";
+        };
+        box.querySelector(".mdl-mode").addEventListener("click", function (e) { var b = e.target.closest("button[data-m]"); if (b) setBy(b.getAttribute("data-m")); });
+        setBy(colourBy);
+      }
       var lift = v.pinLift == null ? 4 : v.pinLift;
       viewer.setPins((v.anchors || []).map(function (h) {
         var B = byName[h.building], at = h.at || (idx.anchors || {})[h.anchor || h.building];
@@ -117,7 +177,13 @@
     }
     if (modelIdx[v.model]) { start(modelIdx[v.model]); return; }
     fetch("model/" + v.model + ".json").then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (idx) { modelIdx[v.model] = idx; start(idx); })
+      .then(function (idx) {
+        modelIdx[v.model] = idx;
+        if (!idx.meta) return idx;  // the element table (names, Workset, Comments, Mark) for the click panel
+        return fetch("model/" + idx.meta).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+          .then(function (m) { modelMeta[v.model] = m; return idx; });
+      })
+      .then(function (idx) { start(idx); })
       .catch(function (err) {
         box.innerHTML = '<div class="mdl-msg">' + (location.protocol === "file:" ? "The 3D model loads when the report is served (python -m build serve), not from a file on disk." : "The 3D model could not be loaded (" + esc(err.message) + ").") + "</div>";
       });

@@ -3,9 +3,13 @@
    sorted by category so each category is one draw range) and its JSON index. Flat shading comes
    from screen-space derivatives, so no normals are stored. No library.
 
-   window.JUIModelViewer(container, base, index, opts) -> { setPins(pins), destroy() }
+   window.JUIModelViewer(container, base, index, opts)
+     -> { setPins(pins), setMode("category" | "state"), setStates({element: "#rrggbb"}), select(element), destroy() }
      base   folder of the files ("model/"), index the parsed JSON
-     opts   { pinHtml(pin) } for HTML markers that follow 3D anchor points */
+     opts   { pinHtml(pin), onPick(element or -1), tools: extra HTML for the top-right tool row }
+   When the index has an element number per vertex, a click picks the element under the pointer
+   (drawn once into an off-screen buffer with the number as its colour), and "state" mode colours
+   each element from setStates (unlisted elements turn pale). */
 (function () {
   "use strict";
 
@@ -36,17 +40,23 @@
   function hex(c) { c = c.replace("#", ""); return [parseInt(c.slice(0, 2), 16) / 255, parseInt(c.slice(2, 4), 16) / 255, parseInt(c.slice(4, 6), 16) / 255]; }
 
   var VS = "#version 300 es\n" +
-    "in vec3 a;\nuniform mat4 mvp;\nuniform vec3 bmin, bsize;\nout vec3 wp;\n" +
-    "void main(){ wp = bmin + a * bsize; gl_Position = mvp * vec4(wp, 1.0); }";
-  var FS = "#version 300 es\nprecision highp float;\n" +
-    "in vec3 wp;\nuniform vec3 col;\nuniform vec3 eye;\nout vec4 o;\n" +
+    "in vec3 a;\nin uint e;\nuniform mat4 mvp;\nuniform vec3 bmin, bsize;\nout vec3 wp;\nflat out uint ve;\n" +
+    "void main(){ wp = bmin + a * bsize; ve = e; gl_Position = mvp * vec4(wp, 1.0); }";
+  /* mode 0: category colour; 1: the element's colour from the state texture (alpha 0 = pale);
+     2: picking, the element number + 1 as RGB bytes */
+  var FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n" +
+    "in vec3 wp;\nflat in uint ve;\nuniform vec3 col;\nuniform vec3 eye;\nuniform int mode;\nuniform uint sel;\nuniform sampler2D st;\nout vec4 o;\n" +
     "void main(){\n" +
+    "  if (mode == 2) { uint k = ve + 1u; o = vec4(float(k & 255u), float((k >> 8) & 255u), float((k >> 16) & 255u), 255.0) / 255.0; return; }\n" +
     "  vec3 n = normalize(cross(dFdx(wp), dFdy(wp)));\n" +
     "  if (dot(n, eye - wp) < 0.0) n = -n;\n" +
     "  float k1 = max(dot(n, normalize(vec3(0.45, -0.35, 0.82))), 0.0);\n" +
     "  float k2 = max(dot(n, normalize(vec3(-0.6, 0.55, 0.3))), 0.0);\n" +
     "  float sky = 0.5 + 0.5 * n.z;\n" +
-    "  vec3 c = col * (0.34 + 0.22 * sky + 0.52 * k1 + 0.16 * k2);\n" +
+    "  vec3 base = col;\n" +
+    "  if (mode == 1) { vec4 t = texelFetch(st, ivec2(int(ve % 2048u), int(ve / 2048u)), 0); base = t.a > 0.0 ? t.rgb : mix(col, vec3(0.92), 0.82); }\n" +
+    "  if (ve == sel) base = vec3(0.09, 0.58, 0.9);\n" +
+    "  vec3 c = base * (0.34 + 0.22 * sky + 0.52 * k1 + 0.16 * k2);\n" +
     "  o = vec4(c, 1.0);\n" +
     "}";
 
@@ -56,13 +66,13 @@
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
     return s;
   }
-  var NOOP = { setPins: function () {}, destroy: function () {} };
+  var NOOP = { setPins: function () {}, setMode: function () {}, setStates: function () {}, select: function () {}, destroy: function () {} };
 
   window.JUIModelViewer = function (box, base, idx, opts) {
     opts = opts || {};
     box.innerHTML = '<canvas class="mdl-cv" tabindex="0" aria-label="3D model of the site. Drag to turn, scroll to zoom, right-drag or shift-drag to pan, arrow keys to turn, plus and minus to zoom, 0 to reset."></canvas>' +
       '<div class="mdl-pins"></div><div class="mdl-msg" role="status">Loading the 3D model…</div>' +
-      '<div class="mdl-tools"><button type="button" class="mdl-btn" data-a="reset" title="Reset the view (0)">Reset view</button></div>' +
+      '<div class="mdl-tools">' + (opts.tools || "") + '<button type="button" class="mdl-btn" data-a="reset" title="Reset the view (0)">Reset view</button></div>' +
       '<div class="mdl-cats" role="group" aria-label="Show or hide categories"></div>';
     var cv = box.querySelector(".mdl-cv"), msg = box.querySelector(".mdl-msg"), pinsBox = box.querySelector(".mdl-pins");
     var gl = cv.getContext("webgl2", { antialias: true, alpha: true, premultipliedAlpha: true });
@@ -78,6 +88,7 @@
     var on = {};
     (idx.groups || []).forEach(function (g) { on[g.key] = g.hidden !== true; });
     var prog, vao, loc = {}, ready = false, dirty = true, raf = 0, pins = [], destroyed = false;
+    var mode = 0, selected = 0xffffffff, stTex = null, hasIds = !!idx.elementOffset, pickFb = null, pickW = 0, pickH = 0;
 
     /* categories: a chip per category, coloured like the model */
     var cats = box.querySelector(".mdl-cats");
@@ -120,14 +131,45 @@
         gl.useProgram(prog);
         gl.bindVertexArray(vao);
         gl.uniformMatrix4fv(loc.mvp, false, new Float32Array(M.mvp));
-        gl.uniform3fv(loc.bmin, bmin); gl.uniform3fv(loc.bsize, bsize); gl.uniform3fv(loc.eye, M.eye);
-        (idx.groups || []).forEach(function (g) {
-          if (!on[g.key] || !g.count) return;
-          gl.uniform3fv(loc.col, g.rgb || (g.rgb = hex(g.color)));
-          gl.drawElements(gl.TRIANGLES, g.count, gl.UNSIGNED_INT, g.first * 4);
-        });
+        drawScene(M, mode);
       }
       placePins(M.mvp);
+    }
+    function drawScene(M, m) {
+      gl.uniformMatrix4fv(loc.mvp, false, new Float32Array(M.mvp));
+      gl.uniform3fv(loc.bmin, bmin); gl.uniform3fv(loc.bsize, bsize); gl.uniform3fv(loc.eye, M.eye);
+      gl.uniform1i(loc.mode, m); gl.uniform1ui(loc.sel, selected);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, stTex); gl.uniform1i(loc.st, 0);
+      (idx.groups || []).forEach(function (g) {
+        if (!on[g.key] || !g.count) return;
+        gl.uniform3fv(loc.col, g.rgb || (g.rgb = hex(g.color)));
+        gl.drawElements(gl.TRIANGLES, g.count, gl.UNSIGNED_INT, g.first * 4);
+      });
+    }
+    /* the element under a pointer position: draw the numbers off-screen, read one pixel */
+    function pick(clientX, clientY) {
+      if (!ready || !hasIds) return -1;
+      size();
+      var w = cv.width, h = cv.height, r = cv.getBoundingClientRect();
+      if (!pickFb || pickW !== w || pickH !== h) {
+        if (pickFb) gl.deleteFramebuffer(pickFb);
+        pickFb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, pickFb);
+        var cb = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, cb); gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, w, h);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, cb);
+        var db = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, db); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, db);
+        pickW = w; pickH = h;
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, pickFb);
+      gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(prog); gl.bindVertexArray(vao);
+      drawScene(matrices(), 2);
+      var px = new Uint8Array(4), x = Math.round((clientX - r.left) / r.width * w), y = Math.round((1 - (clientY - r.top) / r.height) * h);
+      gl.readPixels(Math.max(0, Math.min(w - 1, x)), Math.max(0, Math.min(h - 1, y)), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      var k = px[0] + (px[1] << 8) + (px[2] << 16);
+      draw();
+      return k ? k - 1 : -1;
     }
     /* HTML markers that follow 3D points */
     function placePins(mvp) {
@@ -153,7 +195,7 @@
     cv.addEventListener("pointerdown", function (e) {
       cv.setPointerCapture(e.pointerId);
       pts[e.pointerId] = [e.clientX, e.clientY];
-      drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey || e.ctrlKey };
+      drag = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, pan: e.button === 2 || e.shiftKey || e.ctrlKey };
     });
     cv.addEventListener("pointermove", function (e) {
       if (!drag || !pts[e.pointerId]) return;
@@ -171,7 +213,12 @@
       drag.x = e.clientX; drag.y = e.clientY; pts[e.pointerId] = [e.clientX, e.clientY];
       draw();
     });
-    function up(e) { delete pts[e.pointerId]; if (!Object.keys(pts).length) drag = null; }
+    function up(e) {
+      var click = drag && e.type === "pointerup" && e.button === 0 && Object.keys(pts).length === 1 && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5;
+      delete pts[e.pointerId];
+      if (!Object.keys(pts).length) drag = null;
+      if (click && opts.onPick) opts.onPick(pick(e.clientX, e.clientY));
+    }
     cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
     cv.addEventListener("wheel", function (e) { e.preventDefault(); zoomBy(Math.exp(e.deltaY * 0.0012)); draw(); }, { passive: false });
     cv.addEventListener("dblclick", reset);
@@ -193,7 +240,7 @@
       gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FS));
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-      ["mvp", "bmin", "bsize", "col", "eye"].forEach(function (n) { loc[n] = gl.getUniformLocation(prog, n); });
+      ["mvp", "bmin", "bsize", "col", "eye", "mode", "sel", "st"].forEach(function (n) { loc[n] = gl.getUniformLocation(prog, n); });
     } catch (err) { msg.textContent = "The 3D model could not start: " + err.message; return NOOP; }
     fetch(base + idx.file).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);
@@ -206,6 +253,13 @@
       var a = gl.getAttribLocation(prog, "a");
       gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.UNSIGNED_SHORT, true, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, ind, gl.STATIC_DRAW);
+      var ea = gl.getAttribLocation(prog, "e");
+      if (hasIds) {
+        var u16 = idx.elementType === "u16", ids = u16 ? new Uint16Array(ab, idx.elementOffset, idx.vertices) : new Uint32Array(ab, idx.elementOffset, idx.vertices);
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, ids, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(ea); gl.vertexAttribIPointer(ea, 1, u16 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT, 0, 0);
+      } else gl.vertexAttribI4ui(ea, 0xffffffe, 0, 0, 0);
+      stTex = gl.createTexture(); setStates(pendingStates || {});
       gl.enable(gl.DEPTH_TEST);
       ready = true; msg.hidden = true; box.classList.add("is-ready");
       draw();
@@ -213,7 +267,25 @@
       msg.textContent = location.protocol === "file:" ? "The 3D model loads when the report is served (python -m build serve), not from a file on disk." : "The 3D model could not be loaded (" + err.message + ").";
     });
 
+    /* per-element colours for "state" mode: a 2048-wide RGBA texture indexed by element number */
+    var pendingStates = null;
+    function setStates(map) {
+      if (!stTex) { pendingStates = map; return; }
+      var n = Math.max(1, idx.elements || 1), rows = Math.ceil(n / 2048), data = new Uint8Array(2048 * rows * 4);
+      Object.keys(map || {}).forEach(function (k) {
+        var i = +k, c = hex(map[k]);
+        if (i >= 0 && i < n) { data[i * 4] = c[0] * 255; data[i * 4 + 1] = c[1] * 255; data[i * 4 + 2] = c[2] * 255; data[i * 4 + 3] = 255; }
+      });
+      gl.bindTexture(gl.TEXTURE_2D, stTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 2048, rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      draw();
+    }
+
     return {
+      setMode: function (m) { mode = m === "state" ? 1 : 0; draw(); },
+      setStates: setStates,
+      select: function (i) { selected = i == null || i < 0 ? 0xffffffff : i; draw(); },
       setPins: function (list) {
         pinsBox.innerHTML = "";
         pins = (list || []).filter(function (p) { return p.at; }).map(function (p) {

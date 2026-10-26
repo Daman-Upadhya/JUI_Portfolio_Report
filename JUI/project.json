@@ -377,8 +377,8 @@
         }
       ],
       "ifc": {
-        "_comment": "The 3D model view: python -m build.ifc_model JUI turns this IFC into model/site-model.bin + .json (needs ifcopenshell; run it again when the IFC changes; the IFC is never committed). Groups: first match wins (classes AND name AND storey); skip leaves elements out. Anchors: storey-name regexes that place each building's progress ring.",
-        "source": "JUI1A-STRC_UG SERVICES (2)_detached.ifc",
+        "_comment": "The 3D model view: python -m build.ifc_model JUI turns this IFC into model/site-model.bin + .json (needs ifcopenshell; run it again when the IFC changes; the IFC is never committed). Groups: first match wins (classes AND name AND storey); skip leaves elements out. Anchors: storey-name regexes that place each building's progress ring. propertySet: the IFC property set whose values (Workset, Comments, Mark) are kept per element for the element panel and the task links.",
+        "source": "JUI1-STRC_UG SERVICES_VL.ifc",
         "out": "site-model",
         "cell": 0.25,
         "heavy": 200,
@@ -521,7 +521,8 @@
           "yaw": -0.95,
           "pitch": 0.72,
           "zoom": 1.95
-        }
+        },
+        "propertySet": "VisiLean"
       }
     }
   },

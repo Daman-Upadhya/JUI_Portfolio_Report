@@ -95,9 +95,29 @@ the S-curve tab says so and the Quantities page is unaffected.
   (green on or ahead, amber up to 5 points behind, red further behind), with the baseline share
   as the faint arc. Hover or focus a ring for its storeys and dates; select it to open the
   building in the list. `dx` / `dy` nudge a ring in pixels, `tag` moves its name beside it.
+  **Click an element** for its panel: name (Revit family : type), category, IFC type, level, and
+  the IFC's **VisiLean** property set (Workset, Comments, Mark), with the JUI tasks linked to it
+  (status, % complete, subtrade, planned and actual dates, location). **Task status** colours the
+  linked elements: green complete, amber in progress, red overdue (an open task past its planned
+  finish), slate not started; unlinked elements turn pale.
 - **Structure progress** (`structure-progress.png`): the DC Building structural render.
 
-The model files `JUI/model/site-model.bin` and `.json` are made **on this PC** from the IFC
+**Task links** (`calculation.bim_links`, at every refresh, so the colours follow the latest
+status): a task links to the model elements whose **Mark** it names, in the same building.
+`DC3B-C39-FT-CW` → element C39 of the DC building (footing tasks take the foundation-level
+element), `DC2-SF-C52` → C52 on the second floor, `DG-2-SW4-FT-SC` → wall SW4 of the DG building.
+The task's building comes from its name or location; the element's from its Comments, else its
+storey, else its Workset. A mark found in one building only links even when the element's
+Comments are missing or wrong. Patterns can be changed in `display.bim` (see `BIM_DEFAULTS` in
+`Template/calculation.py`). Today 854 of 1,679 tasks that name a mark are linked; 820 of the
+rest are plinth-beam tasks (`DC3A-PB393-PCC`, `GIS-GB44-PB-RCC`) whose beams have no Mark in the
+model: give them their PB / GB marks in Revit, re-export and run `python -m build.ifc_model JUI`.
+
+The IFC must carry the **VisiLean** property set (`propertySet` in `display.model3d.ifc`). In
+Revit: File → Export → IFC → Modify setup → Property Sets → Export user defined property sets,
+with `VisiLean_PropertySets.txt` (Workset, Comments, Mark).
+
+The model files `JUI/model/site-model.bin` and `.json` and `.meta.json` (the element table) are made **on this PC** from the IFC
 and committed; the refresh only copies them. To update them after the model changes, put the
 new IFC in the repository folder (`*.ifc` is gitignored, it is never committed) and run:
 
