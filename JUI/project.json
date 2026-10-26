@@ -524,6 +524,83 @@
         },
         "propertySet": "VisiLean"
       }
+    },
+    "bim": {
+      "_comment": "3D model task links beyond element marks (Template/calculation.py bim_links). groups: elements (class, Comments, storey, name patterns) linked as one set to tasks (subtrade, location). pours: the DC GF / 1F slab pour plan; zones are [x0, x1, y0, y1] in model metres from the grid lines (pour plan image x -> model y: grid 13 = 2108144.27, grid 1 = 2108266.10; image y -> model x: grid A' = 292007.66, grid H = 292069.80); a slab point takes the state of the pour task (location SS_<zone>, subtrade Slab-RCC-<level>) whose zone it lies in.",
+      "groups": [
+        {
+          "label": "DC Building plinth beams",
+          "elements": {
+            "class": [
+              "IfcBeam"
+            ],
+            "comments": "\\bDC",
+            "storey": "^FGL EL 0\\.000M$"
+          },
+          "tasks": {
+            "name": "^DC\\d[AB]?-PB\\d",
+            "location": "^DC Building"
+          }
+        }
+      ],
+      "pours": {
+        "levels": {
+          "GF": [
+            8.5,
+            10.0
+          ],
+          "1F": [
+            16.5,
+            17.6
+          ]
+        },
+        "taskLevel": "Slab-RCC-(GF|1F)\\b",
+        "taskLocation": "^SS_(DC-\\w+)$",
+        "elements": {
+          "class": [
+            "IfcSlab"
+          ],
+          "name": "SLAB"
+        },
+        "zones": {
+          "DC-1": [
+            292007.0,
+            292050.04,
+            2108142.0,
+            2108174.1
+          ],
+          "DC-2": [
+            292007.0,
+            292050.04,
+            2108174.1,
+            2108201.33
+          ],
+          "DC-3": [
+            292007.0,
+            292050.04,
+            2108201.33,
+            2108244.65
+          ],
+          "DC-4": [
+            292007.0,
+            292050.04,
+            2108244.65,
+            2108268.0
+          ],
+          "DC-2A": [
+            292050.04,
+            292073.0,
+            2108142.0,
+            2108201.33
+          ],
+          "DC-4A": [
+            292050.04,
+            292073.0,
+            2108201.33,
+            2108268.0
+          ]
+        }
+      }
     }
   },
   "progressDeck": "DPR PPT - Formatted.pptx",

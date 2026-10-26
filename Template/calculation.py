@@ -860,8 +860,18 @@ def workforce_invariants(tables: dict, metrics: dict) -> list[str]:
 #             (data.bim.foundation); when that leaves none, every candidate stays
 #   fallback  a mark found in one building only links whatever the element's Comments say
 #
-# An element's state comes from all its tasks: complete when every one is, overdue when any open
-# one is past its planned finish, started when any has started, else not started.
+# Two more link kinds, from data.bim (project.json display.bim), for elements without a usable mark:
+#   groups  elements chosen by class / Comments / storey, linked as one set to the tasks chosen by
+#           subtrade / location (e.g. the DC plinth beams and the DC plinth-beam tasks)
+#   pours   areas of a floor in model coordinates (from the grid lines of a pour plan); every slab
+#           element of that level inside the building takes, point by point, the state of the pour
+#           task (by location and level) whose area it lies in; the page colours it per pour
+#
+# An element's state is a VisiLean status taken from all its tasks (element_status): their common
+# status when they agree; Complete when all are Complete / Quality checked; else Stopped,
+# Rejected at quality check, Warning or Started when any task has it; Started when some are done
+# and the rest wait (work under way); else the least ready of Not Committed, Not Ready, Ready,
+# Forced Ready. The page colours it with data.statusColors.
 
 BIM_DEFAULTS = {
     "buildings": [["GIS", r"GIS"], ["DG", r"\bDG\b|DG BLDG|DG FOUNDATION|DG-\d"], ["DC", r"\bDC"]],
@@ -874,7 +884,32 @@ BIM_DEFAULTS = {
 }
 
 
-def bim_links(meta: dict, tasks: list[dict], data: dict, today: date) -> dict:
+DONE_STATUSES = ("Complete", "Quality checked")
+
+
+def element_status(statuses: list[str]) -> str | None:
+    st = [s for s in statuses if s]
+    if not st:
+        return None
+    u = set(st)
+    if len(u) == 1:
+        return st[0]
+    if u <= set(DONE_STATUSES):
+        return "Complete"
+    for k in ("Stopped", "Rejected at quality check", "Warning", "Started"):
+        if k in u:
+            return k
+    if u & set(DONE_STATUSES):
+        return "Started"  # some done, the rest waiting: the element is under way
+    for k in ("Not Committed", "Not Ready", "Ready", "Forced Ready"):
+        if k in u:
+            return k
+    return sorted(u)[0]
+
+
+def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: list | None = None) -> dict:
+    """boxes: per element [minx, miny, minz, maxx, maxy, maxz] in model metres (from the model
+    binary), needed for pours and for groups with a z range."""
     cfg = {**BIM_DEFAULTS, **(data.get("bim") or {})}
     S, F = meta["strings"], meta["fields"]
     col = {k: F.index(k) for k in F}
@@ -903,6 +938,14 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date) -> dict:
     levels = {k.upper(): re.compile(v, re.I) for k, v in cfg["levels"].items()}
     out_tasks, el_tasks = [], {}
     stats = Counter()
+
+    def compact(t):
+        g = status_group(t.get("status"), data)
+        overdue = g != "complete" and bool(t.get("plannedEndDate")) and t["plannedEndDate"] < today.isoformat()
+        out_tasks.append({"n": (t.get("taskName") or "").strip(), "id": t.get("taskId"), "st": t.get("status"), "g": g, "od": overdue,
+                          "pc": round(num(t.get("percentComplete")), 1), "sub": t.get("subtrade"), "loc": t.get("location"),
+                          "ps": t.get("plannedStartDate"), "pe": t.get("plannedEndDate"), "as": t.get("actualStartDate"), "ae": t.get("actualEndDate")})
+        return len(out_tasks) - 1
     for t in tasks:
         name = (t.get("taskName") or "").strip()
         n = re.sub(r"\s*-\s*", "-", name.upper())
@@ -929,22 +972,99 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date) -> dict:
         else:
             keep = []
         cands = keep or cands
-        ti = len(out_tasks)
-        g = status_group(t.get("status"), data)
-        overdue = g != "complete" and bool(t.get("plannedEndDate")) and t["plannedEndDate"] < today.isoformat()
-        out_tasks.append({"n": name, "id": t.get("taskId"), "st": t.get("status"), "g": g, "od": overdue,
-                          "pc": round(num(t.get("percentComplete")), 1), "sub": t.get("subtrade"), "loc": t.get("location"),
-                          "ps": t.get("plannedStartDate"), "pe": t.get("plannedEndDate"), "as": t.get("actualStartDate"), "ae": t.get("actualEndDate")})
+        ti = compact(t)
         for i in cands:
             el_tasks.setdefault(i, []).append(ti)
         stats["linked"] += 1
+    def rx(p):
+        return re.compile(p, re.I) if p else None
+
+    def el_match(i, f):
+        row = meta["rows"][i]
+        if f.get("class") and get(row, "class") not in f["class"]:
+            return False
+        for k, fld in (("comments", "Comments"), ("storey", "storey"), ("name", "name"), ("workset", "Workset")):
+            if f.get(k) and not re.search(f[k], get(row, fld), re.I):
+                return False
+        if f.get("z") and boxes:
+            z = boxes[i][5]
+            if not (f["z"][0] <= z <= f["z"][1]):
+                return False
+        return True
+
+    def task_match(t, f):
+        for k, fld in (("subtrade", "subtrade"), ("location", "location"), ("name", "taskName")):
+            if f.get(k) and not re.search(f[k], str(t.get(fld) or ""), re.I):
+                return False
+        return True
+
+    # groups: a set of elements linked to a set of tasks (summarised in the panel, not listed)
+    groups_out, el_group = [], {}
+    for gcfg in cfg.get("groups") or []:
+        els = [i for i in range(len(meta["rows"])) if el_match(i, gcfg.get("elements") or {})]
+        tl = [t for t in tasks if task_match(t, gcfg.get("tasks") or {})]
+        if not els or not tl:
+            stats["group without elements or tasks: " + gcfg.get("label", "?")] += 1
+            continue
+        # a group can hold hundreds of tasks: the page gets their counts and a few of them (open ones first)
+        sts = [str(t.get("status") or "") for t in tl]
+        order = sorted(range(len(tl)), key=lambda k: (sts[k] in DONE_STATUSES, str(tl[k].get("plannedEndDate") or "")))
+        gi = len(groups_out)
+        groups_out.append({"label": gcfg.get("label"), "tasks": [compact(tl[k]) for k in order[:8]], "total": len(tl),
+                           "state": element_status(sts), "elements": len(els), "count": dict(Counter(sts))})
+        for i in els:
+            el_group.setdefault(i, gi)
+        stats["group " + gcfg.get("label", "?")] = len(els)
+
+    # pours: floor areas of the pour plan, coloured point by point
+    zones, el_zone = [], {}
+    pc = cfg.get("pours") or {}
+    if pc and boxes:
+        levels = pc.get("levels") or {}
+        lvl_names = list(levels)
+        lrx, locrx = rx(pc.get("taskLevel")), rx(pc.get("taskLocation"))
+        for name, rect in (pc.get("zones") or {}).items():
+            for li, lv in enumerate(lvl_names):
+                tl = []
+                for t in tasks:
+                    lm = lrx.search(str(t.get("subtrade") or "")) if lrx else None
+                    lo = locrx.search(str(t.get("location") or "")) if locrx else None
+                    if lm and lo and lm.group(1).upper() == lv.upper() and lo.group(1).upper() == name.upper():
+                        tl.append(t)
+                tis = [compact(t) for t in tl]
+                zones.append({"name": name, "level": lv, "li": li, "rect": rect, "tasks": tis,
+                              "state": element_status([out_tasks[k]["st"] for k in tis])})
+        x0 = min(z["rect"][0] for z in zones) - 1
+        x1 = max(z["rect"][1] for z in zones) + 1
+        y0 = min(z["rect"][2] for z in zones) - 1
+        y1 = max(z["rect"][3] for z in zones) + 1
+        ef = pc.get("elements") or {}
+        for i in range(len(meta["rows"])):
+            if not el_match(i, ef):
+                continue
+            b = boxes[i]
+            cx, cy = (b[0] + b[3]) / 2, (b[1] + b[4]) / 2
+            if not (x0 <= cx <= x1 and y0 <= cy <= y1):
+                continue
+            for li, lv in enumerate(lvl_names):
+                if levels[lv][0] <= b[5] <= levels[lv][1]:
+                    el_zone[i] = li
+                    break
+        stats["slab elements in pours"] = len(el_zone)
+        stats["pour tasks"] = sum(len(z["tasks"]) for z in zones)
+
     state = {}
     for i, ts in el_tasks.items():
-        gs = [out_tasks[k] for k in ts]
-        state[i] = ("complete" if all(x["g"] == "complete" for x in gs) else "overdue" if any(x["od"] for x in gs)
-                    else "started" if any(x["g"] in ("started", "complete") for x in gs) else "notStarted")
+        state[i] = element_status([out_tasks[k]["st"] for k in ts])
+    for i, gi in el_group.items():
+        if i not in state:
+            state[i] = groups_out[gi]["state"]
     stats["elements linked"] = len(el_tasks)
     for k, v in Counter(state.values()).items():
         stats["elements " + k] = v
     return {"tasks": out_tasks, "elements": {str(i): ts for i, ts in sorted(el_tasks.items())},
-            "state": {str(i): s for i, s in sorted(state.items())}, "stats": dict(stats)}
+            "state": {str(i): s for i, s in sorted(state.items())},
+            "groups": groups_out, "elGroup": {str(i): g for i, g in sorted(el_group.items())},
+            "zones": zones, "elZone": {str(i): z for i, z in sorted(el_zone.items())},
+            "levels": list((pc.get("levels") or {}).keys()) if pc else [],
+            "levelZ": dict(pc.get("levels") or {}) if pc else {}, "stats": dict(stats)}

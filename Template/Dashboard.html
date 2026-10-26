@@ -517,7 +517,7 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .legend i.m3-k { background: var(--bc); border-radius: 50%; }
 .legend i.m3-k-due, .m3-due { background: color-mix(in srgb, var(--s-rej) 40%, var(--card)); }
 /* the model image is shown near its native width (about 690px) so it stays sharp; the list takes the rest */
-.m3d-wrap { display: grid; grid-template-columns: minmax(0, 720px) minmax(260px, 1fr); gap: 20px; align-items: start; }
+.m3d-wrap { display: block; }
 @media (max-width: 960px) { .m3d-wrap { grid-template-columns: minmax(0, 1fr); } }
 .lay-fig { margin: 0; }
 .lay-img { position: relative; width: 100%; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line-soft); background: #ffffff; }
@@ -530,7 +530,7 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .lay-name.is-right { top: 50%; left: calc(100% + 4px); transform: translateY(-50%); }
 @media (max-width: 760px) { .lay-name { font-size: 9.5px; padding: 1px 5px; } }
 /* the 3D model (ifcview.js) */
-.mdl { position: relative; width: 100%; aspect-ratio: 16 / 11; min-height: 300px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line-soft); background: radial-gradient(120% 95% at 50% 35%, var(--card) 0%, var(--inset) 100%); touch-action: none; }
+.mdl { position: relative; width: 100%; height: clamp(360px, 58vw, 680px); min-height: 300px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line-soft); background: radial-gradient(120% 95% at 50% 35%, var(--card) 0%, var(--inset) 100%); touch-action: none; }
 .mdl-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
 .mdl-cv:active { cursor: grabbing; }
 .mdl-cv:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
@@ -543,19 +543,21 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .mdl-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
 .mdl-btn { appearance: none; border: 1px solid var(--line); background: color-mix(in srgb, var(--card) 88%, transparent); color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 4px 11px; cursor: pointer; box-shadow: var(--shadow-xs); }
 .mdl-btn:hover { border-color: var(--brand); }
-.mdl-cats { position: absolute; left: 10px; top: 10px; right: 290px; display: flex; flex-wrap: wrap; gap: 5px; pointer-events: none; }
+.mdl-cats { position: absolute; left: 10px; top: 10px; right: 440px; display: flex; flex-wrap: wrap; gap: 5px; pointer-events: none; }
 .mdl-cat { pointer-events: auto; appearance: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: color-mix(in srgb, var(--card) 88%, transparent); color: var(--ink); font: inherit; font-size: 11.5px; font-weight: 500; border-radius: 999px; padding: 3px 9px; cursor: pointer; }
 .mdl-cat i { width: 9px; height: 9px; border-radius: 2px; }
 .mdl-cat[aria-pressed="false"] { color: var(--faint); text-decoration: line-through; }
 .mdl-cat[aria-pressed="false"] i { opacity: .3; }
 .mdl-cat:hover { border-color: var(--brand); }
-.mdl-mode { box-shadow: var(--shadow-xs); }
-.mdl-mode button { padding: 3px 9px; font-size: 12px; }
+.mdl-mode, .mdl-cut { box-shadow: var(--shadow-xs); }
+.mdl-mode button, .mdl-cut button { padding: 3px 9px; font-size: 12px; }
 .mdl-leg { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 5px 10px; border-radius: 10px; background: color-mix(in srgb, var(--card) 88%, transparent); border: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
 .mdl-leg[hidden] { display: none; }
 .mdl-leg i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .st-complete { --st: var(--s-app); } .st-started { --st: var(--s-reop); } .st-overdue { --st: var(--s-rej); } .st-notStarted { --st: var(--s-draft); } .st-none { --st: #dfe3e8; }
 .mdl-leg i, .mdl-st::before { background: var(--st); }
+.mdl-leg i.mdl-ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--faint); opacity: .7; }
+.mdl-od { color: var(--bad); font-weight: 600; font-size: 11px; }
 /* the element panel (a click on the model) */
 .mdl-info { position: absolute; top: 48px; right: 10px; bottom: 54px; width: min(290px, calc(100% - 20px)); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--tipsh, var(--shadow)); padding: 10px 12px; font-size: 12.5px; z-index: 3; }
 .mdl-info[hidden] { display: none; }
@@ -573,8 +575,10 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .mdl-tm, .mdl-td { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 .mdl-st { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--ink); font-size: 11.5px; }
 .mdl-st::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
-.mdl-none { margin: 0; color: var(--muted); font-size: 12px; }
-@media (max-width: 760px) { .mdl { aspect-ratio: 4 / 3; } .mdl-cat { font-size: 10.5px; padding: 2px 7px; } .mdl-info { top: auto; height: 60%; } }
+.mdl-none, .mdl-sum { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
+.mdl-tasks + .mdl-tasks-h, .mdl-tasks + .mdl-sum + .mdl-tasks-h, .mdl-sum + .mdl-tasks-h { margin-top: 10px; }
+.lay-fig .lay-img { max-width: 1000px; margin: 0 auto; }
+@media (max-width: 760px) { .mdl { height: 420px; } .mdl-cat { font-size: 10.5px; padding: 2px 7px; } .mdl-info { top: auto; height: 60%; } }
 .lay-fig figcaption { margin-top: 8px; font-size: 12px; color: var(--muted); }
 /* a ring pinned on the image's own marker; dx / dy nudge it off a neighbour */
 .lay-pin { position: absolute; width: 40px; height: 40px; margin: 0; padding: 0; transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))); appearance: none; border: 0; background: none; cursor: pointer; display: grid; place-items: center; z-index: 2; transition: transform .12s var(--ease); }
@@ -795,13 +799,12 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
   <section class="card" id="m3d-card" aria-labelledby="h-m3d">
     <div class="card-head">
       <h2 id="h-m3d">Progress on the site model</h2>
-      <span class="desc">3D model: the site built from the BIM model (IFC), simplified for the web; drag to turn, scroll to zoom, right-drag to pan, and use the chips to show or hide a category. Each building carries a ring of its earned weightage in the master schedule; the ring's colour compares it with what the baseline says is due by today (green on or ahead, amber up to 5 points behind, red further behind) and the faint arc behind shows that baseline share. Hover or focus a ring for the building's storeys and dates; select it to open the building in the list. Structure progress: the structural model render</span>
+      <span class="desc">3D model: the site built from the BIM model (IFC), simplified for the web; drag to turn, scroll to zoom, right-drag to pan, and use the chips to show or hide a category. Each building carries a ring of its earned weightage in the master schedule; the ring's colour compares it with what the baseline says is due by today (green on or ahead, amber up to 5 points behind, red further behind) and the faint arc behind shows that baseline share. Hover or focus a ring for the building's storeys and dates; Structure progress: the structural model render</span>
       <div class="tools"><div class="seg" id="m3d-views" role="group" aria-label="View"></div></div>
     </div>
     <div class="legend" id="m3d-legend"><span><i class="bc-good m3-k"></i>On or ahead of the baseline</span><span><i class="bc-warn m3-k"></i>Up to 5 points behind</span><span><i class="bc-bad m3-k"></i>Further behind</span><span><i class="m3-k-due"></i>Baseline due by today</span></div>
     <div class="m3d-wrap">
       <div id="m3d"></div>
-      <div class="m3d-list" id="m3d-list" aria-label="Buildings and storeys"></div>
     </div>
   </section>
 

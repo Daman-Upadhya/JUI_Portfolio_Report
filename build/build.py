@@ -22,6 +22,7 @@ import importlib.util
 import json
 import os
 import re
+import sys
 from datetime import date, datetime, timedelta, timezone
 
 from . import DATA_DIR, DEFAULTS_FILE, DIST_DIR, ROOT, TEMPLATE_DIR
@@ -228,6 +229,42 @@ class Assets:
         self.calc = load_calculation()
 
 
+def element_boxes(base: str) -> list | None:
+    """Per element of a web model (python -m build.ifc_model): [minx, miny, minz, maxx, maxy, maxz]
+    in metres, read from <base>.bin with the standard library."""
+    from array import array
+    try:
+        idx = read_json(base + ".json")
+        with open(base + ".bin", "rb") as fh:
+            raw = fh.read()
+    except OSError:
+        return None
+    if not idx.get("elementOffset"):
+        return None
+    nv, n = idx["vertices"], idx["elements"]
+    pos = array("H"); pos.frombytes(raw[:nv * 6])
+    ids = array("H" if idx["elementType"] == "u16" else "I")
+    w = ids.itemsize
+    ids.frombytes(raw[idx["elementOffset"]:idx["elementOffset"] + nv * w])
+    if sys.byteorder != "little":
+        pos.byteswap(); ids.byteswap()
+    lo, hi = idx["bbox"]
+    sc = [(hi[k] - lo[k]) / 65535.0 for k in range(3)]
+    inf = float("inf")
+    mn = [[inf, inf, inf] for _ in range(n)]
+    mx = [[-inf, -inf, -inf] for _ in range(n)]
+    for v in range(nv):
+        e = ids[v]
+        a, b = mn[e], mx[e]
+        for k in range(3):
+            c = lo[k] + pos[v * 3 + k] * sc[k]
+            if c < a[k]:
+                a[k] = c
+            if c > b[k]:
+                b[k] = c
+    return [a + b for a, b in zip(mn, mx)]
+
+
 def png_data_uri(path: str) -> str:
     with open(path, "rb") as f:
         raw = f.read()
@@ -297,7 +334,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         if not path or not os.path.isfile(path):
             return None
         meta = read_json(path)
-        links = assets.calc.bim_links(meta, tasks, data, today)
+        links = assets.calc.bim_links(meta, tasks, data, today, element_boxes(os.path.join(cfg["_dir"], "model", mv["model"])))
         st = links["stats"]
         log("%s: 3D model links: %d of %d tasks with an element mark linked to %d elements (%s)"
             % (key, st.get("linked", 0), st.get("tasks with a mark", 0), st.get("elements linked", 0),

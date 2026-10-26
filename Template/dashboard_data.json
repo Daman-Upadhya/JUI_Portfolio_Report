@@ -53,5 +53,18 @@
     "Started": "started",
     "Not Ready": "notStarted",
     "Not Committed": "notStarted"
+  },
+  "statusColors": {
+    "_comment": "VisiLean task status colours; the 3D model's Task status view colours elements with them",
+    "Not Committed": "#EEDC1D",
+    "Not Ready": "#FF7261",
+    "Ready": "#05E344",
+    "Forced Ready": "#AFD127",
+    "Started": "#541B60",
+    "Warning": "#F7BF3F",
+    "Stopped": "#E40000",
+    "Complete": "#04962E",
+    "Rejected at quality check": "#5A55B5",
+    "Quality checked": "#024009"
   }
 }

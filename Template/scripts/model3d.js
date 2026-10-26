@@ -86,9 +86,11 @@
   /* the 3D model view: the rings sit on each building's anchor point and follow the model; a click
      on an element opens its panel (the IFC's VisiLean properties and the JUI tasks linked to it by
      its mark, metrics.bim), and "Task status" colours the linked elements by their tasks */
-  var viewer = null, modelIdx = {}, modelMeta = {}, colourBy = "category";
+  var viewer = null, modelIdx = {}, modelMeta = {}, colourBy = "category", cutAt = "";
   var BIM = P.metrics && P.metrics.bim;
-  var STATE = { complete: ["Complete", "--s-app", "#2e9b4f"], started: ["In progress", "--s-reop", "#e0a100"], overdue: ["Overdue", "--s-rej", "#d84b4b"], notStarted: ["Not started", "--s-draft", "#7f8fa3"] };
+  /* VisiLean's status colours (dashboard_data.json statusColors); an element's state is a status */
+  var SC = (P.data && P.data.statusColors) || {};
+  function scol(st) { return /^#[0-9a-f]{6}$/i.test(SC[st] || "") ? SC[st] : "#9aa5b1"; }
   function cssHex(v, dflt) {
     var c = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
     if (/^#[0-9a-f]{6}$/i.test(c)) return c;
@@ -96,30 +98,62 @@
     return m ? "#" + [m[1], m[2], m[3]].map(function (x) { return (+x).toString(16).padStart(2, "0"); }).join("") : dflt;
   }
   function stateColours() {
-    var out = {}, col = {};
-    Object.keys(STATE).forEach(function (k) { col[k] = cssHex(STATE[k][1], STATE[k][2]); });
-    Object.keys((BIM && BIM.state) || {}).forEach(function (i) { out[i] = col[BIM.state[i]]; });
+    var out = {};
+    Object.keys((BIM && BIM.state) || {}).forEach(function (i) { out[i] = scol(BIM.state[i]); });
     return out;
   }
+  function statesInUse() {  // the statuses on the model, in the palette's order
+    var u = {};
+    Object.keys((BIM && BIM.state) || {}).forEach(function (i) { u[BIM.state[i]] = 1; });
+    ((BIM && BIM.zones) || []).forEach(function (z) { if (z.state) u[z.state] = 1; });
+    var order = Object.keys(SC).filter(function (k) { return k.charAt(0) !== "_"; });
+    return Object.keys(u).sort(function (x, y) { return (order.indexOf(x) + 99 * (order.indexOf(x) < 0)) - (order.indexOf(y) + 99 * (order.indexOf(y) < 0)); });
+  }
+  /* pours: every zone with a task, coloured by its state (the slab elements take them point by point) */
+  function zoneList() {
+    return ((BIM && BIM.zones) || []).filter(function (z) { return z.state; }).map(function (z) { return { rect: z.rect, level: z.li, color: scol(z.state) }; });
+  }
   function prettyClass(c) { return String(c || "").replace(/^Ifc/, "").replace(/StandardCase$/, "").replace(/([a-z])([A-Z])/g, "$1 $2"); }
-  function elementPanel(box, meta, i) {
+  function taskList(ts) {
+    return '<ul class="mdl-tasks">' + ts.map(function (t) {
+      return '<li style="border-left-color:' + scol(t.st) + '"><div class="mdl-tn">' + esc(t.n) + '</div><div class="mdl-tm"><span class="mdl-st" style="--st:' + scol(t.st) + '">' + esc(t.st || DASH) + "</span>" +
+        (t.od ? ' <span class="mdl-od">overdue</span>' : "") + " " +
+        fmtP(t.pc) + (t.sub ? " · " + esc(t.sub) : "") + '</div><div class="mdl-td">Plan ' + fmtD(t.ps) + " → " + fmtD(t.pe) +
+        (t.as ? " · actual " + fmtD(t.as) + (t.ae ? " → " + fmtD(t.ae) : " →") : "") + (t.loc ? " · " + esc(t.loc) : "") + "</div></li>";
+    }).join("") + "</ul>";
+  }
+  function stPill(st) { return st ? ' <span class="mdl-st" style="--st:' + scol(st) + '">' + esc(st) + "</span>" : ""; }
+  function elementPanel(box, meta, i, at) {
     var pane = box.querySelector(".mdl-info");
     if (i < 0 || !meta) { pane.hidden = true; return; }
     var row = meta.rows[i], f = {};
     meta.fields.forEach(function (k, j) { f[k] = meta.strings[row[j]]; });
-    var ts = ((BIM && BIM.elements[String(i)]) || []).map(function (k) { return BIM.tasks[k]; });
     var props = [["Category", f.category], ["Type", prettyClass(f["class"])], ["Level", f.storey]].concat(
       meta.fields.filter(function (k) { return ["name", "class", "storey", "category"].indexOf(k) < 0; }).map(function (k) { return [k, f[k]]; }));
-    var st = BIM && BIM.state[String(i)];
+    var key = String(i), parts = [];
+    /* tasks that name this element's mark */
+    var ts = ((BIM && BIM.elements[key]) || []).map(function (k) { return BIM.tasks[k]; });
+    if (ts.length) parts.push('<div class="mdl-tasks-h">' + ts.length + " linked task" + (ts.length > 1 ? "s" : "") + stPill(BIM.state[key]) + "</div>" + taskList(ts));
+    /* a group of elements linked to a group of tasks */
+    var gi = BIM && BIM.elGroup ? BIM.elGroup[key] : undefined;
+    if (gi != null) {
+      var G = BIM.groups[gi], cnt = Object.keys(G.count).map(function (k) { return nf0.format(G.count[k]) + " " + esc(k || "no status"); }).join(" · ");
+      parts.push('<div class="mdl-tasks-h">' + esc(G.label) + stPill(G.state) + '</div><p class="mdl-sum">' + nf0.format(G.total) + " tasks (" + cnt + ") for " + nf0.format(G.elements) +
+        " elements. These elements carry no mark, so they follow the tasks as a set." + (G.state !== "Complete" ? " Open ones first:" : " For example:") + "</p>" +
+        taskList(G.tasks.map(function (k) { return BIM.tasks[k]; })) + (G.total > G.tasks.length ? '<p class="mdl-sum">… and ' + nf0.format(G.total - G.tasks.length) + " more.</p>" : ""));
+    }
+    /* a slab in the pour plan: the pour under the pointer */
+    var li = BIM && BIM.elZone ? BIM.elZone[key] : undefined;
+    if (li != null) {
+      var lvl = BIM.levels[li], hit = at && BIM.zones.filter(function (z) { return z.li === li && at[0] >= z.rect[0] && at[0] <= z.rect[1] && at[1] >= z.rect[2] && at[1] <= z.rect[3]; })[0];
+      parts.push(hit ? '<div class="mdl-tasks-h">Pour ' + esc(hit.name) + " · " + esc(lvl) + " slab" + stPill(hit.state) + "</div>" +
+        (hit.tasks.length ? taskList(hit.tasks.map(function (k) { return BIM.tasks[k]; })) : '<p class="mdl-none">No ' + esc(lvl) + " slab task for this pour.</p>")
+        : '<div class="mdl-tasks-h">' + esc(lvl) + ' slab</div><p class="mdl-none">This point is outside the pour plan.</p>');
+    }
     pane.innerHTML = '<div class="mdl-info-h"><b title="' + esc(f.name) + '">' + esc(f.name || "Element") + '</b><button type="button" class="mdl-x" aria-label="Close">&#215;</button></div>' +
       '<dl class="mdl-props">' + props.map(function (p) { return "<dt>" + esc(p[0]) + "</dt><dd>" + (p[1] ? esc(p[1]) : '<span class="faint">' + DASH + "</span>") + "</dd>"; }).join("") + "</dl>" +
-      '<div class="mdl-tasks-h">' + (ts.length ? ts.length + " linked task" + (ts.length > 1 ? "s" : "") : "No linked task") +
-      (st ? ' <span class="mdl-st st-' + st + '">' + STATE[st][0] + "</span>" : "") + "</div>" +
-      (ts.length ? '<ul class="mdl-tasks">' + ts.map(function (t) {
-        return '<li><div class="mdl-tn">' + esc(t.n) + '</div><div class="mdl-tm"><span class="mdl-st st-' + (t.od ? "overdue" : t.g) + '">' + esc(t.od ? "Overdue" : t.st || STATE[t.g][0]) + "</span> " +
-          fmtP(t.pc) + (t.sub ? " · " + esc(t.sub) : "") + '</div><div class="mdl-td">Plan ' + fmtD(t.ps) + " → " + fmtD(t.pe) +
-          (t.as ? " · actual " + fmtD(t.as) + (t.ae ? " → " + fmtD(t.ae) : " →") : "") + (t.loc ? " · " + esc(t.loc) : "") + "</div></li>";
-      }).join("") + "</ul>" : '<p class="mdl-none">' + (f.Mark ? "No JUI task names this element's mark (" + esc(f.Mark) + ") in its building." : "This element has no Mark, so no task can name it.") + "</p>");
+      (parts.length ? parts.join("") : '<div class="mdl-tasks-h">No linked task</div><p class="mdl-none">' +
+        (f.Mark ? "No JUI task names this element's mark (" + esc(f.Mark) + ") in its building." : "This element has no Mark, so no task can name it.") + "</p>");
     pane.hidden = false;
     pane.querySelector(".mdl-x").addEventListener("click", function () { pane.hidden = true; if (viewer) viewer.select(-1); });
   }
@@ -150,16 +184,20 @@
     function start(idx) {
       if (!box.isConnected || !window.JUIModelViewer) return;
       var meta = modelMeta[v.model];
-      var tools = BIM && idx.elementOffset ? '<div class="seg mdl-mode" role="group" aria-label="Colour by"><button type="button" data-m="category" aria-pressed="' + (colourBy === "category") + '">Category</button><button type="button" data-m="state" aria-pressed="' + (colourBy === "state") + '">Task status</button></div>' : "";
+      var LZ = (BIM && BIM.levelZ) || {}, cuts = Object.keys(LZ).sort(function (a, b) { return LZ[b][1] - LZ[a][1]; });
+      var cutSeg = cuts.length ? '<div class="seg mdl-cut" role="group" aria-label="Show up to"><button type="button" data-c="" aria-pressed="' + !cutAt + '" title="Every level">All</button>' +
+        cuts.map(function (c) { return '<button type="button" data-c="' + esc(c) + '" aria-pressed="' + (cutAt === c) + '" title="Hide everything above the ' + esc(c) + ' slab">' + esc(c) + "</button>"; }).join("") + "</div>" : "";
+      var tools = BIM && idx.elementOffset ? cutSeg + '<div class="seg mdl-mode" role="group" aria-label="Colour by"><button type="button" data-m="category" aria-pressed="' + (colourBy === "category") + '">Category</button><button type="button" data-m="state" aria-pressed="' + (colourBy === "state") + '">Task status</button></div>' : "";
       viewer = window.JUIModelViewer(box, "model/", idx, {
         pinHtml: function (p) { return pinButton(p.B, p.h); },
         tools: tools,
-        onPick: function (i) { viewer.select(i); elementPanel(box, meta, i); }
+        onPick: function (i, at) { viewer.select(i); elementPanel(box, meta, i, at); }
       });
-      box.insertAdjacentHTML("beforeend", '<div class="mdl-info" hidden></div>' + (tools ? '<div class="mdl-leg" hidden>' + Object.keys(STATE).map(function (k) {
-        return '<span><i class="st-' + k + '"></i>' + STATE[k][0] + "</span>"; }).join("") + '<span><i class="st-none"></i>Not linked</span></div>' : ""));
+      box.insertAdjacentHTML("beforeend", '<div class="mdl-info" hidden></div>' + (tools ? '<div class="mdl-leg" hidden>' + statesInUse().map(function (k) {
+        return '<span><i style="--st:' + scol(k) + '"></i>' + esc(k) + "</span>"; }).join("") + '<span><i class="mdl-ghost"></i>Not linked (see-through)</span></div>' : ""));
       if (tools) {
-        viewer.setStates(stateColours());
+        viewer.setStates(stateColours(), BIM.elZone || {});
+        viewer.setZones(zoneList());
         var setBy = function (m) {
           colourBy = m; viewer.setMode(m);
           box.querySelectorAll(".mdl-mode button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-m") === m)); });
@@ -167,6 +205,12 @@
         };
         box.querySelector(".mdl-mode").addEventListener("click", function (e) { var b = e.target.closest("button[data-m]"); if (b) setBy(b.getAttribute("data-m")); });
         setBy(colourBy);
+        var setCut = function (c) {
+          cutAt = c; viewer.setClip(c && LZ[c] ? LZ[c][1] + 0.4 : null);
+          box.querySelectorAll(".mdl-cut button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-c") === c)); });
+        };
+        if (box.querySelector(".mdl-cut")) box.querySelector(".mdl-cut").addEventListener("click", function (e) { var b = e.target.closest("button[data-c]"); if (b) setCut(b.getAttribute("data-c")); });
+        setCut(cutAt);
       }
       var lift = v.pinLift == null ? 4 : v.pinLift;
       viewer.setPins((v.anchors || []).map(function (h) {
@@ -220,6 +264,7 @@
     return '<span class="m3-bar"><i class="m3-done" style="width:' + c(q.a) + '%"></i>' + (q.b > q.a ? '<i class="m3-due" style="left:' + c(q.a) + "%;width:" + (c(q.b) - c(q.a)) + '%"></i>' : "") + "</span>";
   }
   function renderList() {
+    if (!$("m3d-list")) return;  // the list beside the model was removed; its figures stay in the ring tooltips
     $("m3d-list").innerHTML = buildings.map(function (B) {
       var q = B.pct;
       return '<details class="m3-b" data-b="' + B.i + '"><summary><span class="m3-name">' + esc(B.name) + '</span><span class="m3-pc">' + fmtP(q && q.a) + "<small> vs " + fmtP(q && q.b) + "</small></span>" + bar(q) + "</summary>" +
@@ -236,8 +281,9 @@
       });
     });
   }
-  function pinHot(i, on) { $("m3d").querySelectorAll('.lay-pin[data-b="' + i + '"]').forEach(function (p) { p.classList.toggle("is-hot", on); }); }
-  function openInList(i) { var d = $("m3d-list").querySelector('.m3-b[data-b="' + i + '"]'); if (d) { d.open = true; d.scrollIntoView({ block: "nearest" }); } }
+  function pinHot(i, on) {
+    if (!$("m3d")) return; $("m3d").querySelectorAll('.lay-pin[data-b="' + i + '"]').forEach(function (p) { p.classList.toggle("is-hot", on); }); }
+  function openInList(i) { if (!$("m3d-list")) return; var d = $("m3d-list").querySelector('.m3-b[data-b="' + i + '"]'); if (d) { d.open = true; d.scrollIntoView({ block: "nearest" }); } }
 
   renderList();
   render();

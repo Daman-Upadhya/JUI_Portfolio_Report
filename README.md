@@ -97,9 +97,15 @@ the S-curve tab says so and the Quantities page is unaffected.
   building in the list. `dx` / `dy` nudge a ring in pixels, `tag` moves its name beside it.
   **Click an element** for its panel: name (Revit family : type), category, IFC type, level, and
   the IFC's **VisiLean** property set (Workset, Comments, Mark), with the JUI tasks linked to it
-  (status, % complete, subtrade, planned and actual dates, location). **Task status** colours the
-  linked elements: green complete, amber in progress, red overdue (an open task past its planned
-  finish), slate not started; unlinked elements turn pale.
+  (status, % complete, subtrade, planned and actual dates, location; "overdue" when an open task
+  is past its planned finish). **Task status** colours each linked element with VisiLean's status
+  colours (`statusColors` in `Template/dashboard_data.json`: Not Committed #EEDC1D, Not Ready
+  #FF7261, Ready #05E344, Forced Ready #AFD127, Started #541B60, Warning #F7BF3F, Stopped #E40000,
+  Complete #04962E, Rejected at quality check #5A55B5, Quality checked #024009). An element with
+  several tasks shows their common status; Complete when all are done; Stopped, Rejected,
+  Warning or Started when any task has it; Started when some are done and the rest wait; else the
+  least ready status. Elements without a task are drawn see-through (12 % opacity) and clicks pass
+  through them to the linked elements behind.
 - **Structure progress** (`structure-progress.png`): the DC Building structural render.
 
 **Task links** (`calculation.bim_links`, at every refresh, so the colours follow the latest
@@ -112,6 +118,23 @@ Comments are missing or wrong. Patterns can be changed in `display.bim` (see `BI
 `Template/calculation.py`). Today 854 of 1,679 tasks that name a mark are linked; 820 of the
 rest are plinth-beam tasks (`DC3A-PB393-PCC`, `GIS-GB44-PB-RCC`) whose beams have no Mark in the
 model: give them their PB / GB marks in Revit, re-export and run `python -m build.ifc_model JUI`.
+
+**More links** (`display.bim` in `JUI/project.json`), for elements that carry no usable mark:
+
+- **groups**: a set of elements linked as one to a set of tasks. Today the 292 DC Building plinth
+  beams (beams on storey "FGL EL 0.000M" with Comments "DC …") follow the 592 DC plinth-beam
+  tasks, chosen by name (`DC1A-PB…`, as some have lost their subtrade in VisiLean); the panel
+  gives their counts and a few of them.
+- **pours**: the DC slab pour plan. Each zone (DC-1, DC-2, DC-3, DC-4, DC-2A, DC-4A) is a
+  rectangle in model metres read off the grid lines of the pour plan; each level (GF, 1F) a
+  height range. A DC slab point takes the state of the "Casting of slab" task of its zone and
+  level (location `SS_<zone>`, subtrade `Slab-RCC-<level>`), so one large slab element shows
+  every pour it spans, with the pour edges outlined. Clicking a slab shows the pour under the
+  pointer.
+
+**Show up to** (All / 1F / GF) hides everything above that slab level, so the lower pours and
+the plinth beams can be seen. The building list beside the model was removed; the model uses the
+whole card, and the rings' tooltips keep each building's figures.
 
 The IFC must carry the **VisiLean** property set (`propertySet` in `display.model3d.ifc`). In
 Revit: File → Export → IFC → Modify setup → Property Sets → Export user defined property sets,
