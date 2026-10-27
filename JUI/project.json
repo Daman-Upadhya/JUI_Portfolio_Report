@@ -526,65 +526,28 @@
       }
     },
     "bim": {
-      "_comment": "3D model task links beyond element marks (Template/calculation.py bim_links). groups: elements (class, Comments, storey, name patterns) linked as one set to tasks (subtrade, location). pours: the DC GF / 1F slab pour plan; zones are [x0, x1, y0, y1] in model metres from the grid lines (pour plan image x -> model y: grid 13 = 2108144.27, grid 1 = 2108266.10; image y -> model x: grid A' = 292007.66, grid H = 292069.80); levels: GF = the GF roof slab above the ground-floor columns (model FIRST FLOOR slab), 1F = the 1F roof slab (SECOND FLOOR); a slab point takes the state of the pour task (location SS_<zone>, subtrade Slab-RCC-<level>) whose zone it lies in. cuts: the 'Show up to' buttons (z in model metres).",
-      "groups": [
-        {
-          "label": "DC Building plinth beams",
-          "elements": {
-            "class": [
-              "IfcBeam"
-            ],
-            "comments": "\\bDC",
-            "storey": "^FGL EL 0\\.000M$"
-          },
-          "tasks": {
-            "name": "^DC\\d[AB]?-PB\\d",
-            "location": "^DC Building"
-          }
-        },
-        {
-          "label": "DC Building foundations and grade slab",
-          "elements": {
-            "class": [
-              "IfcFooting",
-              "IfcSlab",
-              "IfcColumn",
-              "IfcBeam",
-              "IfcWall",
-              "IfcWallStandardCase",
-              "IfcMember",
-              "IfcBuildingElementProxy"
-            ],
-            "z": [
-              -50,
-              10.3
-            ],
-            "inside": [
-              292007.0,
-              292073.0,
-              2108142.0,
-              2108268.0
-            ]
-          },
-          "tasks": {
-            "location": "^DC Building",
-            "subtrade": "^(Earthworks|Backfilling|Blasting|Drilling|Footing-|Plinth Beam|Plinth RCC|Filling in Plinth|Flooring-PCC)"
-          }
-        }
-      ],
+      "_comment": "3D model task links beyond element marks (Template/calculation.py bim_links). groups: elements (class, Comments, storey, name patterns) linked as one set to tasks (subtrade, location). pours: the DC GF / 1F slab pour plan; zones are [x0, x1, y0, y1] in model metres from the grid lines (pour plan image x -> model y: grid 13 = 2108144.27, grid 1 = 2108266.10; image y -> model x: grid A' = 292007.66, grid H = 292069.80); levels: GF = the GF roof slab above the ground-floor columns (model FIRST FLOOR slab), 1F = the 1F roof slab (SECOND FLOOR); a slab point takes the state of the pour task (location SS_<zone>, subtrade Slab-RCC-<level>) whose zone it lies in. cuts: the 'Show up to' buttons (z in model metres). levelBands: a task whose location ends with _FL / _GF / _1F / _2F ... links to the piece of its element mark whose mid-height (m) is in that band (DC columns: stub 6.8-9.7, GF 9.7-17.2, 1F 17.2-24.7, 2F 24.7-32.2). Pour tasks: location SS_DC-x or DC Building_DC-x[_level], level from the subtrade Slab-RCC-<level>, else from the location's ending.",
       "pours": {
         "levels": {
+          "FL": [
+            8.5,
+            10.3
+          ],
           "GF": [
-            16.5,
-            17.6
+            16.4,
+            17.8
           ],
           "1F": [
-            24.0,
-            25.1
+            23.9,
+            25.3
+          ],
+          "2F": [
+            31.4,
+            32.8
           ]
         },
         "taskLevel": "Slab-RCC-(GF|1F)\\b",
-        "taskLocation": "^SS_(DC-\\w+)$",
+        "taskLocation": "^(?:SS_|DC Building_)(DC-\\d+[A-Z]?)(?:_(?:FL|GF|\\d+F|TF))?$",
         "elements": {
           "class": [
             "IfcSlab"
@@ -627,14 +590,76 @@
             292073.0,
             2108201.33,
             2108268.0
+          ],
+          "DG-1": [
+            292074.5,
+            292101.5,
+            2108195.0,
+            2108252.5
+          ],
+          "DG-2": [
+            292074.5,
+            292101.5,
+            2108141.0,
+            2108195.0
           ]
         },
         "levelNames": {
+          "FL": "Grade slab (foundation level)",
           "GF": "GF roof slab",
-          "1F": "1F roof slab"
+          "1F": "1F roof slab",
+          "2F": "2F roof slab"
+        },
+        "taskLevelFromLocation": "_(GF|\\d+F)$",
+        "taskName": "slab",
+        "zonesByLevel": {
+          "FL": {
+            "DC-1": [
+              292005.0,
+              292075.0,
+              2108140.0,
+              2108175.1
+            ],
+            "DC-2": [
+              292005.0,
+              292075.0,
+              2108175.1,
+              2108207.5
+            ],
+            "DC-3": [
+              292005.0,
+              292075.0,
+              2108207.5,
+              2108234.8
+            ],
+            "DC-4": [
+              292005.0,
+              292075.0,
+              2108234.8,
+              2108270.0
+            ],
+            "DG-1": [
+              292074.5,
+              292101.5,
+              2108195.0,
+              2108252.5
+            ],
+            "DG-2": [
+              292074.5,
+              292101.5,
+              2108141.0,
+              2108195.0
+            ]
+          }
         }
       },
       "cuts": [
+        {
+          "key": "2F",
+          "label": "2F",
+          "z": 32.9,
+          "title": "Up to the 2F roof slab"
+        },
         {
           "key": "1F",
           "label": "1F",
@@ -649,11 +674,236 @@
         },
         {
           "key": "plinth",
-          "label": "Plinth",
+          "label": "FL",
           "z": 10.4,
-          "title": "Up to the grade slab: foundations, plinth beams and grade slab"
+          "title": "Foundation level: footings, stub columns, plinth beams and the grade slab"
         }
-      ]
+      ],
+      "levelBands": {
+        "FL": [
+          -50,
+          9.6
+        ],
+        "GF": [
+          9.6,
+          17.0
+        ],
+        "1F": [
+          17.0,
+          24.5
+        ],
+        "2F": [
+          24.5,
+          32.0
+        ],
+        "3F": [
+          32.0,
+          39.5
+        ],
+        "4F": [
+          39.5,
+          47.0
+        ],
+        "TF": [
+          47.0,
+          60.0
+        ]
+      },
+      "elementIds": {
+        "_comment": "Task custom field 'Element ID' = <zone>_<type>_<level>[_All | _<mark>]. zones: plan rectangles [x0, x1, y0, y1] (model m): DC from the pour plan grid lines, DG-1 / DG-2 from columns C101-C112 / C113-C122. types: IFC classes (+ name pattern); height 'mid' = the floor an element stands on (midBands), 'top' = the slab it makes (topBands); pour = colour the slab pour zones point by point. zonesByLevel.FL: the foundation zones DC-1..DC-4 run across the whole building width (task halves A / B), split along it at y 175.1 / 207.5 / 234.8 (from where the stub columns of each zone's tasks stand); above FL the pour plan zones apply.",
+        "pattern": "^(?P<zone>[A-Z]+-\\d+[A-Z]?)_(?P<type>[A-Za-z]+)_(?P<level>FL|GF|\\d+F|TF)(?:_(?P<which>.+))?$",
+        "exclusive": true,
+        "zones": {
+          "DC-1": [
+            292007.0,
+            292050.04,
+            2108142.0,
+            2108174.1
+          ],
+          "DC-2": [
+            292007.0,
+            292050.04,
+            2108174.1,
+            2108201.33
+          ],
+          "DC-3": [
+            292007.0,
+            292050.04,
+            2108201.33,
+            2108244.65
+          ],
+          "DC-4": [
+            292007.0,
+            292050.04,
+            2108244.65,
+            2108268.0
+          ],
+          "DC-2A": [
+            292050.04,
+            292073.0,
+            2108142.0,
+            2108201.33
+          ],
+          "DC-4A": [
+            292050.04,
+            292073.0,
+            2108201.33,
+            2108268.0
+          ],
+          "DG-1": [
+            292074.5,
+            292101.5,
+            2108195.0,
+            2108252.5
+          ],
+          "DG-2": [
+            292074.5,
+            292101.5,
+            2108141.0,
+            2108195.0
+          ]
+        },
+        "types": {
+          "stubcolumn": {
+            "class": [
+              "IfcColumn"
+            ],
+            "height": "mid"
+          },
+          "column": {
+            "class": [
+              "IfcColumn"
+            ],
+            "height": "mid"
+          },
+          "plinthbeam": {
+            "class": [
+              "IfcBeam"
+            ],
+            "height": "mid"
+          },
+          "beam": {
+            "class": [
+              "IfcBeam"
+            ],
+            "height": "top"
+          },
+          "footing": {
+            "class": [
+              "IfcFooting",
+              "IfcSlab"
+            ],
+            "name": "Footing|Foundation|SFO",
+            "height": "mid"
+          },
+          "wall": {
+            "class": [
+              "IfcWall",
+              "IfcWallStandardCase"
+            ],
+            "height": "mid"
+          },
+          "slab": {
+            "pour": true
+          }
+        },
+        "midBands": {
+          "FL": [
+            -50,
+            9.6
+          ],
+          "GF": [
+            9.6,
+            17.0
+          ],
+          "1F": [
+            17.0,
+            24.5
+          ],
+          "2F": [
+            24.5,
+            32.0
+          ],
+          "3F": [
+            32.0,
+            39.5
+          ],
+          "4F": [
+            39.5,
+            47.0
+          ],
+          "TF": [
+            47.0,
+            60.0
+          ]
+        },
+        "topBands": {
+          "FL": [
+            8.5,
+            10.3
+          ],
+          "GF": [
+            16.4,
+            17.8
+          ],
+          "1F": [
+            23.9,
+            25.3
+          ],
+          "2F": [
+            31.4,
+            32.8
+          ],
+          "3F": [
+            38.9,
+            40.3
+          ],
+          "4F": [
+            46.4,
+            47.8
+          ]
+        },
+        "zonesByLevel": {
+          "FL": {
+            "DC-1": [
+              292005.0,
+              292075.0,
+              2108140.0,
+              2108175.1
+            ],
+            "DC-2": [
+              292005.0,
+              292075.0,
+              2108175.1,
+              2108207.5
+            ],
+            "DC-3": [
+              292005.0,
+              292075.0,
+              2108207.5,
+              2108234.8
+            ],
+            "DC-4": [
+              292005.0,
+              292075.0,
+              2108234.8,
+              2108270.0
+            ],
+            "DG-1": [
+              292074.5,
+              292101.5,
+              2108195.0,
+              2108252.5
+            ],
+            "DG-2": [
+              292074.5,
+              292101.5,
+              2108141.0,
+              2108195.0
+            ]
+          }
+        }
+      }
     }
   },
   "progressDeck": "DPR PPT - Formatted.pptx",

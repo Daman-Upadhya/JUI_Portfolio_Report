@@ -134,14 +134,16 @@
     /* tasks that name this element's mark */
     var ts = ((BIM && BIM.elements[key]) || []).map(function (k) { return BIM.tasks[k]; });
     if (ts.length) parts.push('<div class="mdl-tasks-h">' + ts.length + " linked task" + (ts.length > 1 ? "s" : "") + stPill(BIM.state[key]) + "</div>" + taskList(ts));
-    /* a group of elements linked to a group of tasks */
-    var gi = BIM && BIM.elGroup ? BIM.elGroup[key] : undefined;
-    if (gi != null) {
+    /* the element-ID sets (and groups) this element belongs to: their tasks, summarised */
+    var gl = BIM && BIM.elGroup ? BIM.elGroup[key] : null;
+    (gl == null ? [] : [].concat(gl)).forEach(function (gi) {
       var G = BIM.groups[gi], cnt = Object.keys(G.count).map(function (k) { return nf0.format(G.count[k]) + " " + esc(k || "no status"); }).join(" · ");
-      parts.push('<div class="mdl-tasks-h">' + esc(G.label) + stPill(G.state) + '</div><p class="mdl-sum">' + nf0.format(G.total) + " tasks (" + cnt + ") for " + nf0.format(G.elements) +
-        " elements. These elements carry no mark, so they follow the tasks as a set." + (G.state !== "Complete" ? " Open ones first:" : " For example:") + "</p>" +
+      var why = G.kind === "elementId" ? " tasks with Element ID <b>" + esc(G.label) + "</b> (" + cnt + "), for " + nf0.format(G.elements) + " elements of that type, level and zone."
+        : " tasks (" + cnt + ") for " + nf0.format(G.elements) + " elements, which follow them as a set.";
+      parts.push('<div class="mdl-tasks-h">' + esc(G.kind === "elementId" ? "Element ID " + G.label : G.label) + stPill(G.state) + '</div><p class="mdl-sum">' + nf0.format(G.total) + why +
+        (G.state !== "Complete" ? " Open ones first:" : " For example:") + "</p>" +
         taskList(G.tasks.map(function (k) { return BIM.tasks[k]; })) + (G.total > G.tasks.length ? '<p class="mdl-sum">… and ' + nf0.format(G.total - G.tasks.length) + " more.</p>" : ""));
-    }
+    });
     /* a slab in the pour plan: the pour under the pointer */
     var li = BIM && BIM.elZone ? BIM.elZone[key] : undefined;
     if (li != null) {
@@ -175,9 +177,10 @@
   }
   function renderModel(v) {
     var st = BIM && BIM.stats, nf = function (x) { return nf0.format(x || 0); };
-    var links = st ? " Click an element for its Workset, Comments, Mark and linked tasks. Task links: " + nf(st.linked) + " of " + nf(st["tasks with a mark"]) +
-      " JUI tasks that name an element mark are linked to " + nf(st["elements linked"]) + " elements" +
-      (st["not linked: plinth beam"] ? "; " + nf(st["not linked: plinth beam"]) + " plinth-beam tasks are not, as the model's plinth beams have no Mark yet" : "") + "." : "";
+    var links = st ? " Click an element for its Workset, Comments, Mark and linked tasks. Task links: " +
+      (st["element ID tasks linked"] ? nf(st["element ID tasks linked"]) + " tasks by their Element ID (" + nf(st["element ID groups"]) + " element sets)" +
+        (st["element ID tasks on pours"] ? " and " + nf(st["element ID tasks on pours"]) + " slab tasks on the pour plan" : "") + "; " : "") +
+      nf(st.linked) + " more by the element mark in the task name." : "";
     $("m3d").innerHTML = '<figure class="lay-fig"><div class="mdl"></div>' + (v.caption || links ? "<figcaption>" + esc((v.caption || "") + links) + "</figcaption>" : "") + "</figure>";
     $("m3d-legend").hidden = !(v.anchors || []).length;
     var box = $("m3d").querySelector(".mdl");

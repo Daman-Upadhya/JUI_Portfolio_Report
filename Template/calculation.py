@@ -41,7 +41,7 @@ MONTHS = {m: i + 1 for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "ju
 
 # Table 2 columns written to CSV, in order. Table 1 keeps every feed column.
 TASK_COLUMNS = [
-    "guid", "taskId", "taskName", "taskType", "status", "subtrade", "lapPlan", "joinKey", "trade", "location", "area",
+    "guid", "taskId", "taskName", "taskType", "status", "subtrade", "lapPlan", "elementId", "joinKey", "trade", "location", "area",
     "subLocation", "organisation", "owner", "emailID", "unit", "quantityUnits", "totalQuantity",
     "actualQuantity", "variance", "percentComplete", "plannedStartDate", "plannedEndDate",
     "actualStartDate", "actualEndDate", "scheduleStart", "scheduleFinish", "forecastFinish", "forecastSource", "plannedDuration", "plannedCompletionWeek",
@@ -209,6 +209,7 @@ def table_tasks(rows: list[dict], data: dict) -> list[dict]:
         t.update({
             "subtrade": subtrade or data.get("noSubtrade", "Unassigned"),
             "lapPlan": lap or None,
+            "elementId": re.sub(r"\s+", "", str(cf.get(data.get("elementIdField", "Element ID")) or "")) or None,
             "joinKey": join_key(area, sub, subtrade, lap),
             "unit": clean_label(r.get("quantityUnits"), unit_alias) or data.get("noUnit", "No unit"),
             "area": area, "subLocation": sub,
@@ -855,10 +856,23 @@ def workforce_invariants(tables: dict, metrics: dict) -> list[str]:
 #   building  task: name prefix or location (DC / DG / GIS); element: Comments, else storey, else
 #             Workset, by the patterns in data.bim.buildings (first match wins)
 #   mark      the first mark-like token of the task name (data.bim.markPattern)
-#   level     a floor code in the task name (1F, SF, ...) keeps the elements on that storey
-#             (data.bim.levels); footing / plinth tasks keep the foundation-level ones
+#   level     a level code at the end of the task's location (DC Building_DC-1_FL / _GF / _1F /
+#             _2F: data.bim.locationLevel) keeps the elements whose mid-height is in that band
+#             (data.bim.levelBands, metres: the stub column at FL, the ground-floor column at GF,
+#             ...); else a floor code in the task name (1F, SF, ...) keeps the elements on that
+#             storey (data.bim.levels); footing / plinth tasks keep the foundation-level ones
 #             (data.bim.foundation); when that leaves none, every candidate stays
 #   fallback  a mark found in one building only links whatever the element's Comments say
+#
+# Element ID (data.bim.elementIds; the task custom field "Element ID", e.g. DC-1_StubColumn_FL_All):
+#   <zone>_<type>_<level>[_All | _<mark>]. The zone is a plan rectangle (DC-1 ... from the pour plan,
+#   DG-1 / DG-2 from the DG columns), the type a set of IFC classes (StubColumn, Column, plinthbeam,
+#   Footing, Wall, Beam), the level a height band: for columns, walls, plinth beams and footings
+#   the floor they stand on (mid-height: FL foundation / ground level, GF, 1F, 2F ...), for slabs
+#   and beams the slab they make (top: FL the grade slab, GF the ground-floor roof slab, 1F the
+#   first-floor roof slab ...). "_All" takes every such element; anything else is a Mark. All the
+#   tasks with one ID give its status to its elements; Slab IDs colour the pour zones instead,
+#   point by point. Tasks without an Element ID fall back to the mark rules below.
 #
 # Two more link kinds, from data.bim (project.json display.bim), for elements without a usable mark:
 #   groups  elements chosen by class / Comments / storey, linked as one set to the tasks chosen by
@@ -881,6 +895,8 @@ BIM_DEFAULTS = {
     "levelPattern": r"-(\d+F|GF|SF|TF)-",
     "foundationTask": r"(^|-)(FT|PCC|PB|GB)(-|$)",
     "foundation": r"FOUNDATION|FGL|RAFT|BOF|GIS L0|PLINTH",
+    "locationLevel": r"_(FL|GF|\d+F|TF)$",
+    "levelBands": {},
 }
 
 
@@ -936,6 +952,8 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
     mrx, prx, lrx = re.compile(cfg["markPattern"]), re.compile(cfg["taskPrefix"], re.I), re.compile(cfg["levelPattern"], re.I)
     frx, fdn = re.compile(cfg["foundationTask"], re.I), re.compile(cfg["foundation"], re.I)
     levels = {k.upper(): re.compile(v, re.I) for k, v in cfg["levels"].items()}
+    llrx = re.compile(cfg["locationLevel"], re.I)
+    bands = {k.upper(): v for k, v in (cfg.get("levelBands") or {}).items()}
     out_tasks, el_tasks = [], {}
     stats = Counter()
 
@@ -947,6 +965,8 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
                           "ps": t.get("plannedStartDate"), "pe": t.get("plannedEndDate"), "as": t.get("actualStartDate"), "ae": t.get("actualEndDate")})
         return len(out_tasks) - 1
     for t in tasks:
+        if t.get("elementId") and (cfg.get("elementIds") or {}).get("exclusive", True):
+            continue  # linked by its Element ID
         name = (t.get("taskName") or "").strip()
         n = re.sub(r"\s*-\s*", "-", name.upper())
         m = mrx.search(prx.sub("", n))
@@ -965,7 +985,12 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
             stats["not linked: " + kind] += 1
             continue
         lv = lrx.search(n)
-        if lv and lv.group(1).upper() in levels:
+        ll = llrx.search(str(t.get("location") or "").strip())
+        band = bands.get(ll.group(1).upper()) if ll else None
+        if band and boxes:  # the level in the location: the element piece at that height
+            keep = [i for i in cands if band[0] <= (boxes[i][2] + boxes[i][5]) / 2 < band[1]]
+            stats["placed by location level"] += 1
+        elif lv and lv.group(1).upper() in levels:
             keep = [i for i in cands if levels[lv.group(1).upper()].search(get(meta["rows"][i], "storey"))]
         elif frx.search(n):
             keep = [i for i in cands if fdn.search(get(meta["rows"][i], "storey"))]
@@ -1003,22 +1028,76 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
                 return False
         return True
 
-    # groups: a set of elements linked to a set of tasks (summarised in the panel, not listed)
     groups_out, el_group = [], {}
+
+    def add_group(label, els, tl, kind):
+        sts = [str(t.get("status") or "") for t in tl]
+        order = sorted(range(len(tl)), key=lambda k: (sts[k] in DONE_STATUSES, str(tl[k].get("plannedEndDate") or "")))
+        gi = len(groups_out)
+        groups_out.append({"label": label, "kind": kind, "tasks": [compact(tl[k]) for k in order[:8]], "total": len(tl),
+                           "state": element_status(sts), "elements": len(els), "count": dict(Counter(sts))})
+        for i in els:
+            el_group.setdefault(i, []).append(gi)
+        return gi
+
+    # element IDs: the task's custom field names a set of elements
+    ec = cfg.get("elementIds") or {}
+    id_zone_tasks: dict[tuple, list] = {}
+    if ec and boxes:
+        idrx = re.compile(ec["pattern"], re.I)
+        zrect = {k.upper(): v for k, v in (ec.get("zones") or {}).items()}
+        zlev = {lv.upper(): {k.upper(): v for k, v in zs.items()} for lv, zs in (ec.get("zonesByLevel") or {}).items()}
+        types = {k.lower(): v for k, v in (ec.get("types") or {}).items()}
+        mid, top = ec.get("midBands") or {}, ec.get("topBands") or {}
+        by_id: dict[str, list] = {}
+        for t in tasks:
+            v = re.sub(r"\s+", "", str(t.get("elementId") or ""))
+            if v:
+                by_id.setdefault(v, []).append(t)
+        for v, tl in sorted(by_id.items()):
+            m = idrx.match(v)
+            if not m:
+                stats["element ID not understood"] += 1
+                continue
+            zone, typ, lvl, which = m.group("zone").upper(), m.group("type").lower(), m.group("level").upper(), (m.group("which") or "All")
+            ty = types.get(typ)
+            zr = zlev.get(lvl, {}).get(zone) or zrect.get(zone)  # a level may have its own zones (foundations)
+            if ty is None or zr is None:
+                stats["element ID with unknown " + ("type" if ty is None else "zone")] += len(tl)
+                continue
+            if ty.get("pour"):  # slabs: the pour zone of that level, coloured point by point
+                id_zone_tasks.setdefault((zone, lvl), []).extend(tl)
+                stats["element ID tasks on pours"] += len(tl)
+                continue
+            band = (top if ty.get("height") == "top" else mid).get(lvl)
+            r = zr
+            els = []
+            for i in range(len(meta["rows"])):
+                b = boxes[i]
+                if not (r[0] <= (b[0] + b[3]) / 2 <= r[1] and r[2] <= (b[1] + b[4]) / 2 <= r[3]):
+                    continue
+                if band and not (band[0] <= ((b[2] + b[5]) / 2 if ty.get("height") != "top" else b[5]) < band[1]):
+                    continue
+                if not el_match(i, ty):
+                    continue
+                if which.upper() != "ALL" and re.sub(r"\s+", "", get(meta["rows"][i], "Mark")).upper() != which.upper():
+                    continue
+                els.append(i)
+            if not els:
+                stats["element ID without elements"] += len(tl)
+                continue
+            add_group(v, els, tl, "elementId")
+            stats["element ID tasks linked"] += len(tl)
+            stats["element ID groups"] += 1
+
+    # groups: a set of elements linked to a set of tasks (summarised in the panel, not listed)
     for gcfg in cfg.get("groups") or []:
         els = [i for i in range(len(meta["rows"])) if el_match(i, gcfg.get("elements") or {})]
         tl = [t for t in tasks if task_match(t, gcfg.get("tasks") or {})]
         if not els or not tl:
             stats["group without elements or tasks: " + gcfg.get("label", "?")] += 1
             continue
-        # a group can hold hundreds of tasks: the page gets their counts and a few of them (open ones first)
-        sts = [str(t.get("status") or "") for t in tl]
-        order = sorted(range(len(tl)), key=lambda k: (sts[k] in DONE_STATUSES, str(tl[k].get("plannedEndDate") or "")))
-        gi = len(groups_out)
-        groups_out.append({"label": gcfg.get("label"), "tasks": [compact(tl[k]) for k in order[:8]], "total": len(tl),
-                           "state": element_status(sts), "elements": len(els), "count": dict(Counter(sts))})
-        for i in els:
-            el_group.setdefault(i, gi)
+        add_group(gcfg.get("label"), els, tl, "group")  # the page gets their counts and a few of them
         stats["group " + gcfg.get("label", "?")] = len(els)
 
     # pours: floor areas of the pour plan, coloured point by point
@@ -1027,15 +1106,22 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
     if pc and boxes:
         levels = pc.get("levels") or {}
         lvl_names = list(levels)
-        lrx, locrx = rx(pc.get("taskLevel")), rx(pc.get("taskLocation"))
-        for name, rect in (pc.get("zones") or {}).items():
-            for li, lv in enumerate(lvl_names):
+        lrx, locrx, lfl = rx(pc.get("taskLevel")), rx(pc.get("taskLocation")), rx(pc.get("taskLevelFromLocation"))
+        by_level = pc.get("zonesByLevel") or {}
+        for li, lv in enumerate(lvl_names):
+            for name, rect in (by_level.get(lv) or pc.get("zones") or {}).items():
                 tl = []
                 for t in tasks:
+                    if pc.get("taskName") and not re.search(pc["taskName"], str(t.get("taskName") or ""), re.I):
+                        continue
                     lm = lrx.search(str(t.get("subtrade") or "")) if lrx else None
-                    lo = locrx.search(str(t.get("location") or "")) if locrx else None
+                    if not lm and lfl:  # no slab subtrade: the level at the end of the location
+                        lm = lfl.search(str(t.get("location") or "").strip())
+                    lo = locrx.search(str(t.get("location") or "").strip()) if locrx else None
                     if lm and lo and lm.group(1).upper() == lv.upper() and lo.group(1).upper() == name.upper():
                         tl.append(t)
+                if (name.upper(), lv.upper()) in id_zone_tasks:
+                    tl = id_zone_tasks[(name.upper(), lv.upper())]
                 tis = [compact(t) for t in tl]
                 zones.append({"name": name, "level": lv, "li": li, "rect": rect, "tasks": tis,
                               "state": element_status([out_tasks[k]["st"] for k in tis])})
@@ -1056,14 +1142,14 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
                     el_zone[i] = li
                     break
         stats["slab elements in pours"] = len(el_zone)
+        missing = {k for k in id_zone_tasks if not any(z["name"].upper() == k[0] and z["level"].upper() == k[1] for z in zones)}
+        if missing:
+            stats["slab element IDs without a pour zone or level"] = len(missing)
         stats["pour tasks"] = sum(len(z["tasks"]) for z in zones)
 
     state = {}
-    for i, ts in el_tasks.items():
-        state[i] = element_status([out_tasks[k]["st"] for k in ts])
-    for i, gi in el_group.items():
-        if i not in state:
-            state[i] = groups_out[gi]["state"]
+    for i in set(el_tasks) | set(el_group):
+        state[i] = element_status([out_tasks[k]["st"] for k in el_tasks.get(i, [])] + [groups_out[g]["state"] for g in el_group.get(i, [])])
     stats["elements linked"] = len(el_tasks)
     for k, v in Counter(state.values()).items():
         stats["elements " + k] = v
