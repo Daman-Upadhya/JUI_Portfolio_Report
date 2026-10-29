@@ -559,7 +559,7 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .mdl-leg i.mdl-ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--faint); opacity: .7; }
 .mdl-od { color: var(--bad); font-weight: 600; font-size: 11px; }
 /* the element panel (a click on the model) */
-.mdl-info { position: absolute; top: 48px; right: 10px; bottom: 54px; width: min(290px, calc(100% - 20px)); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--tipsh, var(--shadow)); padding: 10px 12px; font-size: 12.5px; z-index: 3; }
+.mdl-info { position: absolute; top: 48px; right: 10px; bottom: 54px; width: min(380px, calc(100% - 20px)); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--tipsh, var(--shadow)); padding: 10px 12px; font-size: 12.5px; z-index: 3; }
 .mdl-info[hidden] { display: none; }
 .mdl-info-h { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; margin-bottom: 6px; }
 .mdl-info-h b { font-size: 13px; font-weight: 600; color: var(--brand-ink); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -575,6 +575,19 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .mdl-tm, .mdl-td { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 .mdl-st { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--ink); font-size: 11.5px; }
 .mdl-st::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+/* a ring's click: the building's quantity progress */
+.q-head { display: flex; align-items: center; gap: 12px; margin: 2px 0 10px; }
+.q-big { font-size: 30px; font-weight: 650; letter-spacing: -.03em; color: var(--brand-ink); font-variant-numeric: tabular-nums; }
+.q-sub { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.q-sub b { color: var(--ink); }
+.q-tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-bottom: 10px; table-layout: auto; }
+.q-tbl td:first-child { overflow-wrap: anywhere; }
+.q-tbl th { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--line-soft); position: static; background: none; }
+.q-tbl td { padding: 4px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; font-variant-numeric: tabular-nums; }
+.q-tbl .r { text-align: right; white-space: nowrap; }
+.q-pc { width: 1%; }
+.q-bar { display: inline-block; width: 26px; height: 6px; border-radius: 3px; background: var(--inset); margin-right: 6px; vertical-align: middle; overflow: hidden; }
+.q-bar i { display: block; height: 100%; background: var(--s-app); border-radius: 3px; }
 .mdl-none, .mdl-sum { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
 .mdl-tasks + .mdl-tasks-h, .mdl-tasks + .mdl-sum + .mdl-tasks-h, .mdl-sum + .mdl-tasks-h { margin-top: 10px; }
 .lay-fig .lay-img { max-width: 1000px; margin: 0 auto; }
@@ -799,7 +812,7 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
   <section class="card" id="m3d-card" aria-labelledby="h-m3d">
     <div class="card-head">
       <h2 id="h-m3d">Progress on the site model</h2>
-      <span class="desc">3D model: the site built from the BIM model (IFC), simplified for the web; drag to turn, scroll to zoom, right-drag to pan, and use the chips to show or hide a category. Each building carries a ring of its earned weightage in the master schedule; the ring's colour compares it with what the baseline says is due by today (green on or ahead, amber up to 5 points behind, red further behind) and the faint arc behind shows that baseline share. Hover or focus a ring for the building's storeys and dates; Structure progress: the structural model render</span>
+      <span class="desc">3D model: the site built from the BIM model (IFC), simplified for the web; drag to turn, scroll to zoom, right-drag to pan, and use the chips to show or hide a category. Each building carries a ring of its earned weightage in the master schedule; the ring's colour compares it with what the baseline says is due by today (green on or ahead, amber up to 5 points behind, red further behind) and the faint arc behind shows that baseline share. Hover or focus a ring for the building's storeys and dates;</span>
       <div class="tools"><div class="seg" id="m3d-views" role="group" aria-label="View"></div></div>
     </div>
     <div class="legend" id="m3d-legend"><span><i class="bc-good m3-k"></i>On or ahead of the baseline</span><span><i class="bc-warn m3-k"></i>Up to 5 points behind</span><span><i class="bc-bad m3-k"></i>Further behind</span><span><i class="m3-k-due"></i>Baseline due by today</span></div>

@@ -344,36 +344,55 @@
           "pinLift": 3,
           "anchors": [
             {
-              "building": "DC Building"
-            },
-            {
-              "building": "GIS Substation"
+              "building": "DC Building",
+              "at": [
+                292040.4,
+                2108205.0,
+                47.2
+              ]
             },
             {
               "building": "DG Building",
-              "tag": "left",
-              "dx": -26,
-              "dy": 18
+              "at": [
+                292088.0,
+                2108197.0,
+                47.2
+              ]
             },
             {
-              "building": "HSD Yard"
+              "building": "HSD Yard",
+              "at": [
+                292113.0,
+                2108211.4,
+                9.0
+              ]
             },
             {
-              "building": "Pump Room"
+              "building": "Pump Room",
+              "at": [
+                291899.5,
+                2108007.7,
+                9.0
+              ]
             },
             {
-              "building": "Water Tanks"
+              "building": "GIS Substation",
+              "at": [
+                292096.2,
+                2108005.5,
+                25.0
+              ]
+            },
+            {
+              "building": "STP",
+              "at": [
+                292109.9,
+                2108057.6,
+                13.6
+              ]
             }
-          ]
-        },
-        {
-          "key": "structure",
-          "label": "Structure progress",
-          "image": "structure-progress.png",
-          "w": 901,
-          "h": 538,
-          "alt": "Structural model of the DC Building coloured by construction progress",
-          "caption": "Structural progress model of the DC Building, as rendered from the BIM model: green elements are complete and salmon elements are in progress; other colours are as marked in the source model."
+          ],
+          "_anchorsComment": "Ring positions in model metres [x, y, top z], from the elements' Comments: DC BLDG block centre, DG BLDG / columns C101-C122 block, HSD TANK, PUMP ROOM, GIS Building, STP SHADE (next to the OWC). Checked against the site plan labels of 29 Oct 2026."
         }
       ],
       "ifc": {

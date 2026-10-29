@@ -581,7 +581,8 @@
     });
   }
   function renderProgress(R) {
-    var rows = pkRows(R), groups = new Map();
+    var noSub = (P.data && P.data.noSubtrade) || "Unassigned";
+    var rows = pkRows(R).filter(function (g) { return g.st !== noSub; }), groups = new Map();  // no chart for tasks without a subtrade
     rows.forEach(function (g) { if (!groups.has(g.loc)) groups.set(g.loc, []); groups.get(g.loc).push(g); });
     var att = rows.filter(function (g) { return g.attention; }).length;
     $("prog-desc").textContent = rows.length ? fmtI(rows.length) + " subtrade" + (rows.length === 1 ? "" : "s") + " in " + fmtI(groups.size) + (prog.by === "sub" ? " locations" : " areas") + " · " + fmtI(att) + " need attention" : "";

@@ -84,13 +84,15 @@ the S-curve tab says so and the Quantities page is unaffected.
 
 ### Progress on the site model (on the S-curve tab)
 
-`JUI/project.json` → `display.model3d.views` lists what the card toggles between:
+`JUI/project.json` → `display.model3d.views` lists what the card shows (a toggle appears when there are two or more):
 
 - **3D model** (`"model": "site-model"`): the site built from the BIM model, drawn in the page
   with WebGL (`Template/scripts/ifcview.js`, no library). Drag to turn, scroll or pinch to zoom,
   right-drag or shift-drag to pan, double-click or Reset view to go back; the chips show or hide
   each category (underground services, foundations, stairs and ramps, structural steel, columns,
-  beams, slabs and roofs, walls). Each building in `anchors` carries a ring of its earned
+  beams, slabs and roofs, walls). Each building in `anchors` (its position `at: [x, y, top z]` in
+  model metres, from the elements' Comments: DC BLDG, DG BLDG, HSD TANK, PUMP ROOM, GIS Building,
+  STP SHADE, checked against the site plan) carries a ring of its earned
   weightage in the master schedule, coloured against what the baseline says is due by today
   (green on or ahead, amber up to 5 points behind, red further behind), with the baseline share
   as the faint arc. Hover or focus a ring for its storeys and dates; select it to open the
@@ -106,7 +108,13 @@ the S-curve tab says so and the Quantities page is unaffected.
   Warning or Started when any task has it; Started when some are done and the rest wait; else the
   least ready status. Elements without a task are drawn see-through (12 % opacity) and clicks pass
   through them to the linked elements behind.
-- **Structure progress** (`structure-progress.png`): the DC Building structural render.
+
+**Click a building's ring** for its quantity progress, from the Quantity tracking data: the
+tasks of its area (DC Building, DG Building, GIS), or of its own sub-location (HSD Yard, Pump
+Room). The panel gives the overall quantity progress (the average of the subtrade figures, as
+units cannot be added) and how many activities are complete, then each subtrade (unit, total,
+actual, %) in construction order and each location (activities, done, %). Unassigned subtrades
+are left out. Hovering the ring still shows the schedule weightage by storey.
 
 **Task links** (`calculation.bim_links`, at every refresh, so the colours follow the latest
 status): a task links to the model elements whose **Mark** it names, in the same building.
@@ -175,7 +183,7 @@ new IFC in the repository folder (`*.ifc` is gitignored, it is never committed) 
 `display.model3d.ifc` says how: `source` (the IFC), `cell` and `heavy` (elements with more than
 `heavy` triangles are simplified by merging vertices on a `cell`-metre grid), `groups` (which
 IFC classes / names go in which category, first match wins; `skip` leaves elements out, such as
-the opening markers), `anchors` (storey-name patterns that place each building's ring) and
+the opening markers), `anchors` (storey-name patterns, used only for rings without an `at`) and
 `view` (the starting angle and zoom). Openings are not cut. A 465 MB IFC takes about 8 minutes
 and about 5 GB of memory.
 

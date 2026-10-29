@@ -165,6 +165,68 @@
       esc(B.name + ": " + fmtP(B.pct && B.pct.a) + " earned against " + fmtP(B.pct && B.pct.b) + " due on the baseline, " + BAND[bd]) + '">' + ring(B.pct) + "<b>" + (B.pct && B.pct.a != null ? Math.round(B.pct.a) + "%" : DASH) + "</b>" +
       '<span class="lay-name' + (h && h.tag ? " is-" + h.tag : "") + '" aria-hidden="true">' + esc((h && h.label) || B.name) + "</span></button>";
   }
+  /* a click on a building's ring: its quantity progress from the Quantity tracking page (all
+     tasks of its area, or of its own sub-location), by subtrade and by location. Units differ, so
+     a progress % is actual / total within one subtrade and unit, and the overall % is the plain
+     average of those (each subtrade counts once); "Unassigned" subtrades are left out. */
+  var QT = (P.metrics && P.metrics.facts && P.metrics.facts.tasks) || [];
+  var NOSUB = (P.data && P.data.noSubtrade) || "Unassigned";
+  var nf1 = new Intl.NumberFormat(LOC, { maximumFractionDigits: 1 });
+  function fq(v) { return v == null ? DASH : (Math.abs(v) >= 100 ? nf0 : nf1).format(v); }
+  function qtyTasks(B) {
+    var inArea = QT.filter(function (t) { return t.a === B.area; });
+    if (inArea.some(function (t) { return t.sl === B.name; })) return inArea.filter(function (t) { return t.sl === B.name; });
+    var others = {};  // sub-locations that are buildings of their own (GIS: the Transformer Yard)
+    buildings.forEach(function (o) { if (o !== B) others[o.name] = 1; });
+    return inArea.filter(function (t) { return !others[t.sl]; });
+  }
+  function subPct(ts) {  // per subtrade and unit: total, actual, %, activities
+    var m = new Map();
+    ts.forEach(function (t) {
+      if (t.st === NOSUB) return;
+      var k = t.st + "\u0001" + t.u, g = m.get(k) || { st: t.st, u: t.u, tq: 0, aq: 0, n: 0, c: 0, ps: null };
+      g.tq += t.tq || 0; g.aq += t.aq || 0; g.n++; if (t.g === "complete") g.c++;
+      if (t.ps && (!g.ps || t.ps < g.ps)) g.ps = t.ps;
+      m.set(k, g);
+    });
+    return Array.from(m.values()).map(function (g) {
+      g.pct = g.tq > 0 ? Math.min(100, 100 * g.aq / g.tq) : (g.n ? 100 * g.c / g.n : null);
+      return g;
+    });
+  }
+  function avgPct(rows) {
+    var v = rows.filter(function (g) { return g.pct != null; });
+    return v.length ? v.reduce(function (s, g) { return s + g.pct; }, 0) / v.length : null;
+  }
+  function qbar(p) { return '<span class="q-bar"><i style="width:' + Math.max(0, Math.min(100, p || 0)).toFixed(1) + '%"></i></span>'; }
+  function qtyPanel(B) {
+    var pane = $("m3d").querySelector(".mdl-info");
+    if (!pane) return false;
+    var ts = qtyTasks(B), subs = subPct(ts).sort(function (x, y) { return (x.ps || "9").localeCompare(y.ps || "9") || x.st.localeCompare(y.st); });
+    var done = ts.filter(function (t) { return t.g === "complete"; }).length, overall = avgPct(subs);
+    var whole = (P.data && P.data.location && P.data.location.wholeArea) || "Whole area";
+    var locs = new Map();
+    ts.forEach(function (t) { var l = t.sl === whole ? B.area : t.sl; if (!locs.has(l)) locs.set(l, []); locs.get(l).push(t); });
+    var locRows = Array.from(locs.entries()).sort(function (a, b) { return a[0].localeCompare(b[0], undefined, { numeric: true }); }).map(function (e) {
+      return { l: e[0], n: e[1].length, c: e[1].filter(function (t) { return t.g === "complete"; }).length, pct: avgPct(subPct(e[1])) };
+    });
+    var q = B.pct;
+    pane.innerHTML = '<div class="mdl-info-h"><b>' + esc(B.name) + ' · quantity progress</b><button type="button" class="mdl-x" aria-label="Close">&#215;</button></div>' +
+      (ts.length ? '<div class="q-head"><div class="q-big">' + fmtP(overall) + '</div><div class="q-sub">overall quantity progress<br><b>' + nf0.format(done) + "</b> of " + nf0.format(ts.length) + " activities complete" +
+        (q && q.a != null ? "<br>schedule weightage earned " + fmtP(q.a) + " vs " + fmtP(q.b) + " due" : "") + "</div></div>" +
+        '<div class="mdl-tasks-h">By subtrade</div><table class="q-tbl"><thead><tr><th>Subtrade</th><th class="r">Total</th><th class="r">Actual</th><th class="r">%</th></tr></thead><tbody>' +
+        subs.map(function (g) { return "<tr><td>" + esc(g.st) + ' <small class="faint">' + esc(g.u || "") + '</small></td><td class="r">' + fq(g.tq) + '</td><td class="r">' + fq(g.aq) + '</td><td class="r q-pc">' + qbar(g.pct) + fmtP(g.pct) + "</td></tr>"; }).join("") +
+        "</tbody></table>" +
+        (locRows.length > 1 || (locRows[0] && locRows[0].l !== B.area) ? '<div class="mdl-tasks-h">By location</div><table class="q-tbl"><thead><tr><th>Location</th><th class="r">Activities</th><th class="r">Done</th><th class="r">%</th></tr></thead><tbody>' +
+          locRows.map(function (r) { return "<tr><td>" + esc(r.l) + '</td><td class="r">' + nf0.format(r.n) + '</td><td class="r">' + nf0.format(r.c) + '</td><td class="r q-pc">' + qbar(r.pct) + fmtP(r.pct) + "</td></tr>"; }).join("") + "</tbody></table>" : "") +
+        '<p class="mdl-sum">From the Quantity tracking page (' + esc(B.area) + (ts.some(function (t) { return t.sl === B.name; }) ? " · " + esc(B.name) : "") + "). A subtrade's % is actual ÷ total quantity in its unit; the overall % is their average. Unassigned subtrades are left out.</p>"
+        : '<p class="mdl-none">No quantity activity for ' + esc(B.name) + " in the Quantity tracking data yet.</p>");
+    pane.hidden = false;
+    pane.scrollTop = 0;
+    pane.querySelector(".mdl-x").addEventListener("click", function () { pane.hidden = true; });
+    if (viewer) viewer.select(-1);
+    return true;
+  }
   function bindPins() {
     $("m3d").querySelectorAll(".lay-pin").forEach(function (el) {
       var B = buildings[+el.getAttribute("data-b")];
@@ -172,7 +234,7 @@
       el.addEventListener("focus", function () { showTip(buildingTip(B), el); });
       el.addEventListener("mouseleave", hideTip);
       el.addEventListener("blur", hideTip);
-      el.addEventListener("click", function () { openInList(B.i); });
+      el.addEventListener("click", function (e) { e.stopPropagation(); hideTip(); if (!qtyPanel(B)) openInList(B.i); });
     });
   }
   function renderModel(v) {
@@ -239,6 +301,7 @@
   function render() {
     var v = CFG.views[view];
     if (viewer) { viewer.destroy(); viewer = null; }
+    $("m3d-views").hidden = CFG.views.length < 2;  // one view: no toggle
     $("m3d-views").innerHTML = CFG.views.map(function (x, i) { return '<button type="button" data-v="' + i + '" aria-pressed="' + (i === view) + '">' + esc(x.label) + "</button>"; }).join("");
     $("m3d-views").querySelectorAll("button").forEach(function (b) { b.addEventListener("click", function () { view = +b.getAttribute("data-v"); hideTip(); render(); writeHash(); }); });
     if (v.model) { renderModel(v); return; }
