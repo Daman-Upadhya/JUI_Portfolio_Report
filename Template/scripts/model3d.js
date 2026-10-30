@@ -19,12 +19,13 @@
   var T = S.facts.tasks, TODAY = S.today, TN = dnum(TODAY);
 
   /* ---------- figures: earned, baseline due today and working plan due today, as % of weightage ---------- */
-  function figures(patterns) {
-    var res = patterns.filter(Boolean).map(function (p) { return new RegExp(p, "i"); });
+  function figures(patterns, match) {  // match: only the tasks whose sub-location or name it finds (a building's unit)
+    var res = patterns.filter(Boolean).map(function (p) { return new RegExp(p, "i"); }), mre = match ? new RegExp(match, "i") : null;
     var w = 0, e = 0, b = 0, p = 0, n = 0, bs = null, be = null, pe = null, as = null;
     if (!res.length) return null;
     T.forEach(function (t) {
       if (!res.some(function (re) { return re.test(t.grp); })) return;
+      if (mre && !mre.test((t.sl || "") + " " + (t.n || ""))) return;
       n++; w += t.w; e += t.e;
       if (t.bs && t.bs <= TODAY) b += t.br * (Math.min(dnum(t.be), TN) - dnum(t.bs) + 1);
       if (t.ps && t.ps <= TODAY) p += t.pr * (Math.min(dnum(t.pe), TN) - dnum(t.ps) + 1);
@@ -41,12 +42,17 @@
     return !q.a && !q.b ? "idle" : d >= -0.05 ? "good" : d >= -5 ? "warn" : "bad";
   }
   var BAND = { good: "on or ahead of the baseline", warn: "up to 5 points behind the baseline", bad: "more than 5 points behind the baseline", idle: "not started" };
-  var buildings = (CFG.buildings || []).map(function (b, i) {
+  /* a building with "units" (DC: DC01 ... DC4A) gets a ring per unit, each over the building's storeys */
+  var defs = [];
+  (CFG.buildings || []).forEach(function (b) {
+    if (b.units) b.units.forEach(function (u) { defs.push(Object.assign({}, b, u, { units: null })); }); else defs.push(b);
+  });
+  var buildings = defs.map(function (b, i) {
     var pats = [];
     (b.storeys || []).forEach(function (s) { if (pats.indexOf(s.group) < 0) pats.push(s.group); if (s.finish && pats.indexOf(s.finish) < 0) pats.push(s.finish); });
     return {
-      i: i, name: b.name, area: b.area, pct: figures(pats),
-      storeys: (b.storeys || []).map(function (s) { return { label: s.label, pct: figures([s.group]), fin: s.finish ? figures([s.finish]) : null }; }),
+      i: i, name: b.name, area: b.area, sl: b.subLocation || b.name, pct: figures(pats, b.match),
+      storeys: (b.storeys || []).map(function (s) { return { label: s.label, pct: figures([s.group], b.match), fin: s.finish ? figures([s.finish], b.match) : null }; }),
     };
   });
   if (CFG.wall) buildings.push({ i: buildings.length, name: CFG.wall.label || "Boundary wall", area: "External Development", pct: figures([CFG.wall.group]), storeys: [] });
@@ -165,19 +171,20 @@
       esc(B.name + ": " + fmtP(B.pct && B.pct.a) + " earned against " + fmtP(B.pct && B.pct.b) + " due on the baseline, " + BAND[bd]) + '">' + ring(B.pct) + "<b>" + (B.pct && B.pct.a != null ? Math.round(B.pct.a) + "%" : DASH) + "</b>" +
       '<span class="lay-name' + (h && h.tag ? " is-" + h.tag : "") + '" aria-hidden="true">' + esc((h && h.label) || B.name) + "</span></button>";
   }
-  /* a click on a building's ring: its quantity progress from the Quantity tracking page (all
-     tasks of its area, or of its own sub-location), by subtrade and by location. Units differ, so
-     a progress % is actual / total within one subtrade and unit, and the overall % is the plain
-     average of those (each subtrade counts once); "Unassigned" subtrades are left out. */
+  /* a click on a building's ring: the weightage earned in the master schedule (the ring's own
+     figure), then its quantities from the Quantity tracking page (all tasks of its area, or of its
+     own sub-location) by subtrade and by location. Units differ, so a progress % is actual / total
+     within one subtrade and unit; a location's % is the plain average of its subtrades; "Unassigned"
+     subtrades are left out. */
   var QT = (P.metrics && P.metrics.facts && P.metrics.facts.tasks) || [];
   var NOSUB = (P.data && P.data.noSubtrade) || "Unassigned";
   var nf1 = new Intl.NumberFormat(LOC, { maximumFractionDigits: 1 });
   function fq(v) { return v == null ? DASH : (Math.abs(v) >= 100 ? nf0 : nf1).format(v); }
   function qtyTasks(B) {
-    var inArea = QT.filter(function (t) { return t.a === B.area; });
-    if (inArea.some(function (t) { return t.sl === B.name; })) return inArea.filter(function (t) { return t.sl === B.name; });
+    var inArea = QT.filter(function (t) { return t.a === B.area; }), sl = B.sl || B.name;
+    if (inArea.some(function (t) { return t.sl === sl; })) return inArea.filter(function (t) { return t.sl === sl; });
     var others = {};  // sub-locations that are buildings of their own (GIS: the Transformer Yard)
-    buildings.forEach(function (o) { if (o !== B) others[o.name] = 1; });
+    buildings.forEach(function (o) { if (o !== B) others[o.sl || o.name] = 1; });
     return inArea.filter(function (t) { return !others[t.sl]; });
   }
   function subPct(ts) {  // per subtrade and unit: total, actual, %, activities
@@ -203,23 +210,24 @@
     var pane = $("m3d").querySelector(".mdl-info");
     if (!pane) return false;
     var ts = qtyTasks(B), subs = subPct(ts).sort(function (x, y) { return (x.ps || "9").localeCompare(y.ps || "9") || x.st.localeCompare(y.st); });
-    var done = ts.filter(function (t) { return t.g === "complete"; }).length, overall = avgPct(subs);
+    var done = ts.filter(function (t) { return t.g === "complete"; }).length;
     var whole = (P.data && P.data.location && P.data.location.wholeArea) || "Whole area";
     var locs = new Map();
     ts.forEach(function (t) { var l = t.sl === whole ? B.area : t.sl; if (!locs.has(l)) locs.set(l, []); locs.get(l).push(t); });
     var locRows = Array.from(locs.entries()).sort(function (a, b) { return a[0].localeCompare(b[0], undefined, { numeric: true }); }).map(function (e) {
       return { l: e[0], n: e[1].length, c: e[1].filter(function (t) { return t.g === "complete"; }).length, pct: avgPct(subPct(e[1])) };
     });
-    var q = B.pct;
-    pane.innerHTML = '<div class="mdl-info-h"><b>' + esc(B.name) + ' · quantity progress</b><button type="button" class="mdl-x" aria-label="Close">&#215;</button></div>' +
-      (ts.length ? '<div class="q-head"><div class="q-big">' + fmtP(overall) + '</div><div class="q-sub">overall quantity progress<br><b>' + nf0.format(done) + "</b> of " + nf0.format(ts.length) + " activities complete" +
-        (q && q.a != null ? "<br>schedule weightage earned " + fmtP(q.a) + " vs " + fmtP(q.b) + " due" : "") + "</div></div>" +
+    var q = B.pct, src = (S.source && S.source.title) || "the master schedule";
+    pane.innerHTML = '<div class="mdl-info-h"><b>' + esc(B.name) + ' · progress</b><button type="button" class="mdl-x" aria-label="Close">&#215;</button></div>' +
+      (ts.length ? '<div class="q-head"><div class="q-big">' + fmtP(q && q.a) + '</div><div class="q-sub">' +
+        (q && q.a != null ? "weightage progress, " + esc(src) + "<br>" + fmtP(q.b) + " due on the baseline today" : "no weighted task in " + esc(src)) +
+        "<br><b>" + nf0.format(done) + "</b> of " + nf0.format(ts.length) + " activities complete</div></div>" +
         '<div class="mdl-tasks-h">By subtrade</div><table class="q-tbl"><thead><tr><th>Subtrade</th><th class="r">Total</th><th class="r">Actual</th><th class="r">%</th></tr></thead><tbody>' +
         subs.map(function (g) { return "<tr><td>" + esc(g.st) + ' <small class="faint">' + esc(g.u || "") + '</small></td><td class="r">' + fq(g.tq) + '</td><td class="r">' + fq(g.aq) + '</td><td class="r q-pc">' + qbar(g.pct) + fmtP(g.pct) + "</td></tr>"; }).join("") +
         "</tbody></table>" +
-        (locRows.length > 1 || (locRows[0] && locRows[0].l !== B.area) ? '<div class="mdl-tasks-h">By location</div><table class="q-tbl"><thead><tr><th>Location</th><th class="r">Activities</th><th class="r">Done</th><th class="r">%</th></tr></thead><tbody>' +
+        (locRows.length > 1 ? '<div class="mdl-tasks-h">By location</div><table class="q-tbl"><thead><tr><th>Location</th><th class="r">Activities</th><th class="r">Done</th><th class="r">%</th></tr></thead><tbody>' +
           locRows.map(function (r) { return "<tr><td>" + esc(r.l) + '</td><td class="r">' + nf0.format(r.n) + '</td><td class="r">' + nf0.format(r.c) + '</td><td class="r q-pc">' + qbar(r.pct) + fmtP(r.pct) + "</td></tr>"; }).join("") + "</tbody></table>" : "") +
-        '<p class="mdl-sum">From the Quantity tracking page (' + esc(B.area) + (ts.some(function (t) { return t.sl === B.name; }) ? " · " + esc(B.name) : "") + "). A subtrade's % is actual ÷ total quantity in its unit; the overall % is their average. Unassigned subtrades are left out.</p>"
+        '<p class="mdl-sum">The headline is the earned schedule weightage of ' + esc(src) + ". The tables are from the Quantity tracking page (" + esc(B.area) + (ts.some(function (t) { return t.sl === B.sl; }) ? " · " + esc(B.sl) : "") + "): a subtrade's % is actual ÷ total quantity in its unit. Unassigned subtrades are left out.</p>"
         : '<p class="mdl-none">No quantity activity for ' + esc(B.name) + " in the Quantity tracking data yet.</p>");
     pane.hidden = false;
     pane.scrollTop = 0;

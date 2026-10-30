@@ -91,12 +91,17 @@ the S-curve tab says so and the Quantities page is unaffected.
   right-drag or shift-drag to pan, double-click or Reset view to go back; the chips show or hide
   each category (underground services, foundations, stairs and ramps, structural steel, columns,
   beams, slabs and roofs, walls). Each building in `anchors` (its position `at: [x, y, top z]` in
-  model metres, from the elements' Comments: DC BLDG, DG BLDG, HSD TANK, PUMP ROOM, GIS Building,
+  model metres, from the elements' Comments: DG BLDG, HSD TANK, PUMP ROOM, GIS Building,
   STP SHADE, checked against the site plan) carries a ring of its earned
   weightage in the master schedule, coloured against what the baseline says is due by today
   (green on or ahead, amber up to 5 points behind, red further behind), with the baseline share
   as the faint arc. Hover or focus a ring for its storeys and dates; select it to open the
   building in the list. `dx` / `dy` nudge a ring in pixels, `tag` moves its name beside it.
+  **The DC building has a ring per unit** (DC01, DC02, DC03, DC04, DC2A, DC4A; `units` on its
+  entry in `display.model3d.buildings`), placed at the centre of the unit's pour plan zone. A
+  unit's ring counts the master schedule tasks of the DC storeys whose sub-location or name names
+  the unit (`DC Building_DC-1`, `DC1 - …`, `4F-DC2A - …`); DC-wide work that names no unit
+  (staircases, lobbies, east side rooms, about a fifth of the DC weightage) is in none of them.
   **Click an element** for its panel: name (Revit family : type), category, IFC type, level, and
   the IFC's **VisiLean** property set (Workset, Comments, Mark), with the JUI tasks linked to it
   (status, % complete, subtrade, planned and actual dates, location; "overdue" when an open task
@@ -109,12 +114,13 @@ the S-curve tab says so and the Quantities page is unaffected.
   least ready status. Elements without a task are drawn see-through (12 % opacity) and clicks pass
   through them to the linked elements behind.
 
-**Click a building's ring** for its quantity progress, from the Quantity tracking data: the
-tasks of its area (DC Building, DG Building, GIS), or of its own sub-location (HSD Yard, Pump
-Room). The panel gives the overall quantity progress (the average of the subtrade figures, as
-units cannot be added) and how many activities are complete, then each subtrade (unit, total,
-actual, %) in construction order and each location (activities, done, %). Unassigned subtrades
-are left out. Hovering the ring still shows the schedule weightage by storey.
+**Click a building's ring** for its progress: the headline is the ring's own figure, the
+weightage earned in the JUI-1A master schedule, with what the baseline says is due today. Under
+it come the quantities from the Quantity tracking data: the tasks of its area (DG Building,
+GIS), or of its own sub-location (DC-1 … DC-4A, HSD Yard, Pump Room): how many activities are
+complete, each subtrade (unit, total, actual, %) in construction order and, when there are
+several, each location (activities, done, %). Unassigned subtrades are left out. Hovering the
+ring still shows the schedule weightage by storey.
 
 **Task links** (`calculation.bim_links`, at every refresh, so the colours follow the latest
 status): a task links to the model elements whose **Mark** it names, in the same building.
@@ -193,6 +199,9 @@ earned, baseline and plan figures per building and storey. The open view is kept
 `sv=`.
 
 ## Site progress page (third tab)
+
+Turned off for JUI (30 Oct 2026): `progressDeck` was removed from `JUI/project.json`, so the
+tab stays hidden. Put it back to show the page again.
 
 `JUI/project.json` → `progressDeck` names a PowerPoint deck of marked-up drawings (today
 `DPR PPT - Formatted.pptx` in the repository root). Every build reads it with

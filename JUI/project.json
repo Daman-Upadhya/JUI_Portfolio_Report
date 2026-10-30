@@ -1,6 +1,6 @@
 {
   "key": "JUI",
-  "title": "JUI",
+  "title": "JUI01",
   "projectId": "5C57A386-D0F3-E63B-F076-8CD9CE218042",
   "facts": [],
   "scurve": {
@@ -17,6 +17,8 @@
     "tokenKey": "JUI"
   },
   "display": {
+    "_progressExclude": "Subtrade progress by location: subtrades matching this regular expression (case-insensitive) get no card",
+    "progressExclude": "PCC",
     "scurve": {
       "weightField": "VL-JUI-1A-Weightage",
       "groupField": "VL-JUI-1A-S Curve",
@@ -42,6 +44,39 @@
           "w": 92,
           "d": 62,
           "span": 9.2,
+          "_units": "One ring per DC unit: the storeys below, counting only the master schedule tasks whose sub-location or name names the unit (DC-1, DC1, DC 1, 4F-DC2A ...); DC-wide work (staircases, lobbies, east side rooms) names no unit and is in none. subLocation: the unit's sub-location on the Quantity tracking page.",
+          "units": [
+            {
+              "name": "DC01",
+              "subLocation": "DC-1",
+              "match": "(?<![A-Za-z])DC[\\s_-]?0?1(?![A-Za-z0-9])"
+            },
+            {
+              "name": "DC02",
+              "subLocation": "DC-2",
+              "match": "(?<![A-Za-z])DC[\\s_-]?0?2(?![A-Za-z0-9])"
+            },
+            {
+              "name": "DC03",
+              "subLocation": "DC-3",
+              "match": "(?<![A-Za-z])DC[\\s_-]?0?3(?![A-Za-z0-9])"
+            },
+            {
+              "name": "DC04",
+              "subLocation": "DC-4",
+              "match": "(?<![A-Za-z])DC[\\s_-]?0?4(?![A-Za-z0-9])"
+            },
+            {
+              "name": "DC2A",
+              "subLocation": "DC-2A",
+              "match": "(?<![A-Za-z])DC[\\s_-]?0?2A(?![A-Za-z0-9])"
+            },
+            {
+              "name": "DC4A",
+              "subLocation": "DC-4A",
+              "match": "(?<![A-Za-z])DC[\\s_-]?0?4A(?![A-Za-z0-9])"
+            }
+          ],
           "storeys": [
             {
               "type": "pads",
@@ -344,10 +379,50 @@
           "pinLift": 3,
           "anchors": [
             {
-              "building": "DC Building",
+              "building": "DC01",
               "at": [
-                292040.4,
-                2108205.0,
+                292028.52,
+                2108158.05,
+                47.2
+              ]
+            },
+            {
+              "building": "DC02",
+              "at": [
+                292028.52,
+                2108187.71,
+                47.2
+              ]
+            },
+            {
+              "building": "DC03",
+              "at": [
+                292028.52,
+                2108222.99,
+                47.2
+              ]
+            },
+            {
+              "building": "DC04",
+              "at": [
+                292028.52,
+                2108256.33,
+                47.2
+              ]
+            },
+            {
+              "building": "DC2A",
+              "at": [
+                292061.52,
+                2108171.67,
+                47.2
+              ]
+            },
+            {
+              "building": "DC4A",
+              "at": [
+                292061.52,
+                2108234.67,
                 47.2
               ]
             },
@@ -392,7 +467,7 @@
               ]
             }
           ],
-          "_anchorsComment": "Ring positions in model metres [x, y, top z], from the elements' Comments: DC BLDG block centre, DG BLDG / columns C101-C122 block, HSD TANK, PUMP ROOM, GIS Building, STP SHADE (next to the OWC). Checked against the site plan labels of 29 Oct 2026."
+          "_anchorsComment": "Ring positions in model metres [x, y, top z], DC01-DC4A at the centres of the DC pour plan zones (bim.pours.zones), the rest from the elements' Comments: DG BLDG / columns C101-C122 block, HSD TANK, PUMP ROOM, GIS Building, STP SHADE (next to the OWC). Checked against the site plan labels of 29 Oct 2026."
         }
       ],
       "ifc": {
@@ -924,7 +999,5 @@
         }
       }
     }
-  },
-  "progressDeck": "DPR PPT - Formatted.pptx",
-  "_progressDeck": "Site progress page: a .pptx whose slides are titled '<Area> – <work item> – <level>', each holding one marked-up drawing. Replace the file to update the page."
+  }
 }
