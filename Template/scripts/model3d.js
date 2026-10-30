@@ -292,6 +292,7 @@
         return B && at ? { B: B, h: h, at: [at[0], at[1], at[2] + lift] } : null;
       }).filter(Boolean));
       bindPins();
+      applyFocus();
     }
     if (modelIdx[v.model]) { start(modelIdx[v.model]); return; }
     fetch("model/" + v.model + ".json").then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
@@ -325,7 +326,38 @@
       (v.caption ? "<figcaption>" + esc(v.caption) + "</figcaption>" : "") + "</figure>";
     $("m3d-legend").hidden = !(v.hotspots || []).length;
     bindPins();
+    applyFocus();
   }
+
+  /* ---------- the page's area slicer (scurve.js, window.JUIScurveFilter) ----------
+     The chosen area (or sub-location) stays in the 3D model and the rest fades: an element belongs
+     to it when its plan centre lies in one of its rectangles (model3d.areas, [x0, x1, y0, y1] model
+     metres; "rest" = every element outside the other areas). A sub-location uses
+     model3d.subLocations, else its Element ID zone (bim.elementIds.zones: DC-1 ... DG-2), else
+     its area. Rings of other areas fade too. An area without rectangles leaves the model whole. */
+  function inRects(rs, x, y) { return rs.some(function (r) { return x >= r[0] && x <= r[1] && y >= r[2] && y <= r[3]; }); }
+  function focusTest(f) {
+    var A = CFG.areas || {}, SUB = CFG.subLocations || {}, Z = (P.data && P.data.bim && P.data.bim.elementIds && P.data.bim.elementIds.zones) || {};
+    if (!f || !f.a) return null;
+    var rs = (f.sl && (SUB[f.sl] || (Z[f.sl] && [Z[f.sl]]))) || A[f.a];
+    if (rs === "rest") {
+      var other = [];
+      Object.keys(A).forEach(function (k) { if (k.charAt(0) !== "_" && Array.isArray(A[k])) other = other.concat(A[k]); });
+      return function (x, y) { return !inRects(other, x, y); };
+    }
+    return Array.isArray(rs) && rs.length ? function (x, y) { return inRects(rs, x, y); } : null;
+  }
+  function applyFocus() {
+    var f = window.JUIScurveFilter || {};
+    if (viewer) viewer.setFocus(focusTest(f));
+    var inArea = buildings.filter(function (B) { return B.area === f.a; });
+    var bySub = f.sl && inArea.some(function (B) { return B.sl === f.sl; });
+    $("m3d").querySelectorAll(".lay-pin").forEach(function (el) {
+      var B = buildings[+el.getAttribute("data-b")];
+      el.classList.toggle("is-off", !!f.a && (B.area !== f.a || (bySub && B.sl !== f.sl)));
+    });
+  }
+  document.addEventListener("jui:scurve-filter", applyFocus);
   function writeHash() {
     var h = new URLSearchParams(location.hash.slice(1));
     if (view) h.set("sv", CFG.views[view].key); else h.delete("sv");

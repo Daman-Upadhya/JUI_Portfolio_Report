@@ -5,13 +5,15 @@
 
    window.JUIModelViewer(container, base, index, opts)
      -> { setPins(pins), setMode("category" | "state"), setStates({element: "#rrggbb"}, {element: level}),
-          setZones([{rect: [x0, x1, y0, y1], level, color}]), select(element), destroy() }
+          setZones([{rect: [x0, x1, y0, y1], level, color}]), setFocus(test or null), select(element), destroy() }
      base   folder of the files ("model/"), index the parsed JSON
      opts   { pinHtml(pin), onPick(element or -1, [x, y] model metres), tools: extra HTML for the top-right tool row }
    When the index has an element number per vertex, a click picks the element under the pointer
    (drawn once into an off-screen buffer with the number as its colour), and "state" mode colours
    each element from setStates (unlisted elements turn pale). An element given a level in setStates
-   is coloured point by point instead: by the zone of that level it lies in (a pour of a slab). */
+   is coloured point by point instead: by the zone of that level it lies in (a pour of a slab).
+   setFocus(test(x, y)) keeps the elements whose plan centre (model metres) passes the test and
+   draws the rest at 5 % opacity, out of reach of clicks; null shows everything again. */
 (function () {
   "use strict";
 
@@ -48,9 +50,12 @@
      or per zone of its level (alpha half), or not linked (alpha 0); 2 / 3: picking, the element
      number + 1, or the model point (x, y), as bytes. In the state view the linked elements are
      drawn solid first (pass 1), then the unlinked ones see-through (pass 2), and picking skips the
-     unlinked ones (ghost 1) so a click reaches the linked elements behind them. */
+     unlinked ones (ghost 1) so a click reaches the linked elements behind them. With a focus
+     (setFocus) the elements outside it go to the see-through pass too, in every mode, and picking
+     skips them. */
   var FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n" +
     "in vec3 wp;\nflat in uint ve;\nuniform vec3 col;\nuniform vec3 eye;\nuniform int mode;\nuniform int pass;\nuniform int ghost;\nuniform float galpha;\nuniform uint sel;\nuniform sampler2D st;\n" +
+    "uniform int focus;\nuniform float falpha;\nuniform sampler2D fx;\n" +
     "uniform vec3 bmin, bsize;\nuniform float clipz;\nuniform vec4 zr[24];\nuniform vec3 zc[24];\nuniform int zl[24];\nuniform int nz;\nout vec4 o;\n" +
     "bool zoned = false;\n" +
     "bool stateCol(out vec3 c) {\n" +
@@ -68,12 +73,14 @@
     "}\n" +
     "void main(){\n" +
     "  if (wp.z > clipz) discard;\n" +
+    "  bool dim = focus == 1 && texelFetch(fx, ivec2(int(ve % 2048u), int(ve / 2048u)), 0).r < 0.5;\n" +
     "  vec3 sc = col; bool pale = false;\n" +
     "  if (mode == 1 || ghost == 1) pale = stateCol(sc);\n" +
-    "  if (mode == 2) { if (ghost == 1 && pale) discard; uint k = ve + 1u; o = vec4(float(k & 255u), float((k >> 8) & 255u), float((k >> 16) & 255u), 255.0) / 255.0; return; }\n" +
-    "  if (mode == 3) { if (ghost == 1 && pale) discard; vec2 q = clamp((wp.xy - bmin.xy) / bsize.xy, 0.0, 1.0) * 65535.0; uvec2 u = uvec2(q + 0.5);\n" +
+    "  if (mode == 2) { if (dim || (ghost == 1 && pale)) discard; uint k = ve + 1u; o = vec4(float(k & 255u), float((k >> 8) & 255u), float((k >> 16) & 255u), 255.0) / 255.0; return; }\n" +
+    "  if (mode == 3) { if (dim || (ghost == 1 && pale)) discard; vec2 q = clamp((wp.xy - bmin.xy) / bsize.xy, 0.0, 1.0) * 65535.0; uvec2 u = uvec2(q + 0.5);\n" +
     "    o = vec4(float(u.x >> 8), float(u.x & 255u), float(u.y >> 8), float(u.y & 255u)) / 255.0; return; }\n" +
-    "  if (mode == 1) { if (pass == 1 && pale) discard; if (pass == 2 && !pale) discard; }\n" +
+    "  bool faint = dim || (mode == 1 && pale);\n" +
+    "  if (pass == 1 && faint) discard; if (pass == 2 && !faint) discard;\n" +
     "  vec3 n = normalize(cross(dFdx(wp), dFdy(wp)));\n" +
     "  if (dot(n, eye - wp) < 0.0) n = -n;\n" +
     "  float k1 = max(dot(n, normalize(vec3(0.45, -0.35, 0.82))), 0.0);\n" +
@@ -82,7 +89,7 @@
     "  vec3 base = mode == 1 ? sc : col;\n" +
     "  if (ve == sel && !(mode == 1 && zoned)) base = vec3(0.09, 0.58, 0.9);\n" +  // a slab in the pour plan keeps its pour colours
     "  vec3 c = base * (0.34 + 0.22 * sky + 0.52 * k1 + 0.16 * k2);\n" +
-    "  float a = (mode == 1 && pale && ve != sel) ? galpha : 1.0;\n" +
+    "  float a = dim ? falpha : (mode == 1 && pale && ve != sel) ? galpha : 1.0;\n" +
     "  o = vec4(c * a, a);\n" +
     "}";
 
@@ -93,7 +100,8 @@
     return s;
   }
   var GHOST = 0.12;  // opacity of unlinked elements in the state view
-  var NOOP = { setPins: function () {}, setMode: function () {}, setStates: function () {}, setZones: function () {}, setClip: function () {}, select: function () {}, destroy: function () {} };
+  var FADE = 0.05;   // opacity of the elements outside the focus (setFocus)
+  var NOOP = { setPins: function () {}, setMode: function () {}, setStates: function () {}, setZones: function () {}, setClip: function () {}, setFocus: function () {}, select: function () {}, destroy: function () {} };
 
   window.JUIModelViewer = function (box, base, idx, opts) {
     opts = opts || {};
@@ -117,6 +125,7 @@
     var prog, vao, loc = {}, ready = false, dirty = true, raf = 0, pins = [], destroyed = false;
     var mode = 0, selected = 0xffffffff, stTex = null, hasIds = !!idx.elementOffset, pickFb = null, pickW = 0, pickH = 0;
     var zones = { r: new Float32Array(96), c: new Float32Array(72), l: new Int32Array(24), n: 0 }, clipZ = 1e9;
+    var fxTex = null, focusOn = false, centres = null;  // focus: per element 1 / 0 in a texture, from its plan centre
 
     /* categories: a chip per category, coloured like the model */
     var cats = box.querySelector(".mdl-cats");
@@ -169,6 +178,8 @@
       gl.uniform1i(loc.mode, m); gl.uniform1ui(loc.sel, selected);
       gl.uniform1i(loc.ghost, mode === 1 ? 1 : 0); gl.uniform1f(loc.galpha, GHOST);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, stTex); gl.uniform1i(loc.st, 0);
+      gl.uniform1i(loc.focus, focusOn ? 1 : 0); gl.uniform1f(loc.falpha, FADE);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, fxTex); gl.uniform1i(loc.fx, 1);
       gl.uniform1f(loc.clipz, clipZ);
       gl.uniform4fv(loc.zr, zones.r); gl.uniform3fv(loc.zc, zones.c); gl.uniform1iv(loc.zl, zones.l); gl.uniform1i(loc.nz, zones.n);
       function all() {
@@ -178,10 +189,10 @@
           gl.drawElements(gl.TRIANGLES, g.count, gl.UNSIGNED_INT, g.first * 4);
         });
       }
-      if (m !== 1) { gl.uniform1i(loc.pass, 0); all(); return; }
-      gl.uniform1i(loc.pass, 1); all();                      // linked: solid
+      if (m > 1 || (m === 0 && !focusOn)) { gl.uniform1i(loc.pass, 0); all(); return; }
+      gl.uniform1i(loc.pass, 1); all();                      // linked / in focus: solid
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-      gl.uniform1i(loc.pass, 2); all();                      // not linked: see-through over them
+      gl.uniform1i(loc.pass, 2); all();                      // not linked / outside the focus: see-through over them
       gl.depthMask(true); gl.disable(gl.BLEND);
     }
     /* the element under a pointer position: draw the numbers off-screen, read one pixel */
@@ -285,7 +296,7 @@
       gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FS));
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-      ["mvp", "bmin", "bsize", "col", "eye", "mode", "sel", "st", "nz", "clipz", "pass", "ghost", "galpha"].forEach(function (n) { loc[n] = gl.getUniformLocation(prog, n); });
+      ["mvp", "bmin", "bsize", "col", "eye", "mode", "sel", "st", "nz", "clipz", "pass", "ghost", "galpha", "focus", "falpha", "fx"].forEach(function (n) { loc[n] = gl.getUniformLocation(prog, n); });
       loc.zr = gl.getUniformLocation(prog, "zr[0]"); loc.zc = gl.getUniformLocation(prog, "zc[0]"); loc.zl = gl.getUniformLocation(prog, "zl[0]");
     } catch (err) { msg.textContent = "The 3D model could not start: " + err.message; return NOOP; }
     fetch(base + idx.file).then(function (r) {
@@ -304,8 +315,18 @@
         var u16 = idx.elementType === "u16", ids = u16 ? new Uint16Array(ab, idx.elementOffset, idx.vertices) : new Uint32Array(ab, idx.elementOffset, idx.vertices);
         gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, ids, gl.STATIC_DRAW);
         gl.enableVertexAttribArray(ea); gl.vertexAttribIPointer(ea, 1, u16 ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT, 0, 0);
+        /* each element's plan centre (the middle of its x / y extent), in model metres, for setFocus */
+        var ne = idx.elements || 0, mn = new Float32Array(ne * 2).fill(Infinity), mx = new Float32Array(ne * 2).fill(-Infinity);
+        for (var v = 0; v < idx.vertices; v++) {
+          var el = ids[v];
+          if (el >= ne) continue;
+          for (var c = 0; c < 2; c++) { var q = pos[v * 3 + c]; if (q < mn[el * 2 + c]) mn[el * 2 + c] = q; if (q > mx[el * 2 + c]) mx[el * 2 + c] = q; }
+        }
+        centres = new Float64Array(ne * 2);
+        for (var j = 0; j < ne * 2; j++) { var ax = j % 2; centres[j] = B[0][ax] + (mn[j] + mx[j]) / 2 / 65535 * bsize[ax]; }
       } else gl.vertexAttribI4ui(ea, 0xffffffe, 0, 0, 0);
       stTex = gl.createTexture(); setStates(pendingStates || {}, pendingZoneEls || {});
+      fxTex = gl.createTexture(); setFocus(pendingFocus);
       gl.enable(gl.DEPTH_TEST);
       ready = true; msg.hidden = true; box.classList.add("is-ready");
       draw();
@@ -332,6 +353,18 @@
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
       draw();
     }
+    /* the focus: the elements whose plan centre passes test(x, y) stay, the rest fade (FADE) */
+    var pendingFocus = null;
+    function setFocus(test) {
+      if (!fxTex) { pendingFocus = test; return; }
+      var n = Math.max(1, idx.elements || 1), rows = Math.ceil(n / 2048), data = new Uint8Array(2048 * rows * 4);
+      focusOn = !!(test && centres);
+      if (focusOn) for (var i = 0; i < (idx.elements || 0); i++) if (test(centres[i * 2], centres[i * 2 + 1])) data[i * 4] = 255;
+      gl.bindTexture(gl.TEXTURE_2D, fxTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 2048, rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      draw();
+    }
 
     return {
       setMode: function (m) { mode = m === "state" ? 1 : 0; draw(); },
@@ -346,6 +379,7 @@
         draw();
       },
       setStates: setStates,
+      setFocus: setFocus,
       select: function (i) { selected = i == null || i < 0 ? 0xffffffff : i; draw(); },
       setPins: function (list) {
         pinsBox.innerHTML = "";

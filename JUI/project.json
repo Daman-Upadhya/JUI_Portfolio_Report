@@ -35,6 +35,77 @@
         "group": "External Development - Boundary Wall",
         "h": 2.6
       },
+      "areas": {
+        "_comment": "The page's area slicer keeps this area in the 3D model and fades the rest (5 % opacity): an element belongs to an area when its plan centre is in one of its rectangles [x0, x1, y0, y1] (model metres, read off the model's plan, 30 Oct 2026); \"rest\" takes every element outside the other areas. Sub-locations: subLocations below, else the Element ID zones (bim.elementIds.zones: DC-1 ... DG-2), else the area.",
+        "DC Building": [
+          [
+            292003.0,
+            292074.0,
+            2108136.0,
+            2108272.0
+          ]
+        ],
+        "DG Building": [
+          [
+            292074.0,
+            292102.5,
+            2108136.0,
+            2108257.0
+          ]
+        ],
+        "GIS": [
+          [
+            292066.0,
+            292127.0,
+            2107989.0,
+            2108026.0
+          ]
+        ],
+        "Ancillary Structures": [
+          [
+            292102.5,
+            292131.0,
+            2108180.0,
+            2108284.0
+          ],
+          [
+            291878.0,
+            291934.0,
+            2107975.0,
+            2108020.0
+          ],
+          [
+            292090.0,
+            292118.0,
+            2108048.0,
+            2108066.0
+          ],
+          [
+            292008.0,
+            292036.0,
+            2107990.0,
+            2108014.0
+          ],
+          [
+            291990.0,
+            292007.0,
+            2107975.0,
+            2107997.0
+          ]
+        ],
+        "External Development": "rest"
+      },
+      "subLocations": {
+        "_comment": "Sub-locations that are not Element ID zones: their rectangles, as in areas.",
+        "HSD Yard": [
+          [
+            292102.5,
+            292131.0,
+            2108180.0,
+            2108284.0
+          ]
+        ]
+      },
       "buildings": [
         {
           "name": "DC Building",

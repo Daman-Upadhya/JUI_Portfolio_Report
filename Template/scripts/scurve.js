@@ -440,6 +440,8 @@
     renderSplit($("s-areas"), current, "a", "a");
     renderJoin();
     writeHash();
+    window.JUIScurveFilter = { a: F.a, sl: F.sl };  // the 3D model on this page follows the area slicer
+    document.dispatchEvent(new CustomEvent("jui:scurve-filter", { detail: window.JUIScurveFilter }));
   }
   var lastW = 0;
   window.addEventListener("resize", function () { var w = $("s-curve").clientWidth; if (w && Math.abs(w - lastW) > 40) { lastW = w; renderCurve(current, curS); } });

@@ -113,6 +113,14 @@ the S-curve tab says so and the Quantities page is unaffected.
   Warning or Started when any task has it; Started when some are done and the rest wait; else the
   least ready status. Elements without a task are drawn see-through (12 % opacity) and clicks pass
   through them to the linked elements behind.
+  **The page's area slicer drives the model**: choosing an area (the chips, or a bar of By area)
+  keeps that area's elements and fades everything else to 5 % opacity, out of reach of clicks;
+  the rings of other areas fade too. An element belongs to the area its plan centre lies in:
+  `display.model3d.areas` gives each area's rectangles in model metres (DC Building, DG Building,
+  GIS, Ancillary Structures = HSD Yard, pump room and tanks, STP and OWC, security building, Nano
+  Entry; External Development = everything else). A sub-location narrows it to its Element ID
+  zone (DC-1 … DC-4A, DG-1, DG-2) or to `display.model3d.subLocations` (HSD Yard). Unassigned
+  (the MEP work) has no place in the model, so the model stays whole.
 
 **Click a building's ring** for its progress: the headline is the ring's own figure, the
 weightage earned in the JUI-1A master schedule, with what the baseline says is due today. Under
