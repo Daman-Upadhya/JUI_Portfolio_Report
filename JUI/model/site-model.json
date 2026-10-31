@@ -1,0 +1,138 @@
+{
+ "file": "site-model.bin",
+ "unit": "m",
+ "bbox": [
+  [
+   291856.281,
+   2107961.5,
+   -0.45
+  ],
+  [
+   292149.312,
+   2108295.75,
+   60.25
+  ]
+ ],
+ "vertices": 458753,
+ "indices": 2644932,
+ "indexOffset": 2752520,
+ "groups": [
+  {
+   "key": "ug",
+   "label": "Underground services",
+   "color": "#d4a27a",
+   "first": 0,
+   "count": 1126974,
+   "elements": 2169
+  },
+  {
+   "key": "fdn",
+   "label": "Foundations",
+   "color": "#9c8468",
+   "first": 1126974,
+   "count": 75903,
+   "elements": 1260
+  },
+  {
+   "key": "stair",
+   "label": "Stairs & ramps",
+   "color": "#7fb28a",
+   "first": 1202877,
+   "count": 99978,
+   "elements": 425
+  },
+  {
+   "key": "steel",
+   "label": "Structural steel",
+   "color": "#7d63c4",
+   "first": 1302855,
+   "count": 467463,
+   "elements": 2341
+  },
+  {
+   "key": "col",
+   "label": "Columns",
+   "color": "#e2a93b",
+   "first": 1770318,
+   "count": 92544,
+   "elements": 1959
+  },
+  {
+   "key": "beam",
+   "label": "Beams",
+   "color": "#4f8fdc",
+   "first": 1862862,
+   "count": 404361,
+   "elements": 7248
+  },
+  {
+   "key": "slab",
+   "label": "Slabs & roofs",
+   "color": "#b7c0ca",
+   "first": 2267223,
+   "count": 237099,
+   "elements": 3270
+  },
+  {
+   "key": "wall",
+   "label": "Walls",
+   "color": "#e6dfd2",
+   "first": 2504322,
+   "count": 84576,
+   "elements": 1727
+  },
+  {
+   "key": "other",
+   "label": "Other",
+   "color": "#98a3ae",
+   "first": 2588898,
+   "count": 56034,
+   "elements": 177
+  }
+ ],
+ "elements": 20576,
+ "elementOffset": 13332248,
+ "elementType": "u16",
+ "meta": "site-model.meta.json",
+ "anchors": {
+  "Water Tanks": [
+   291899.45,
+   2108014.91,
+   12.3
+  ],
+  "DG Building": [
+   292046.75,
+   2108203.9,
+   9.7
+  ],
+  "DC Building": [
+   292056.23,
+   2108203.92,
+   47.2
+  ],
+  "GIS Substation": [
+   292078.5,
+   2108025.53,
+   25.05
+  ],
+  "HSD Yard": [
+   291947.01,
+   2108143.1,
+   8.65
+  ],
+  "Pump Room": [
+   292110.72,
+   2108202.47,
+   9.15
+  ]
+ },
+ "view": {
+  "yaw": -0.95,
+  "pitch": 0.72,
+  "zoom": 1.95
+ },
+ "source": {
+  "name": "JUI1-STRC_UG SERVICES_VL.ifc",
+  "modified": "2026-10-26T16:54"
+ }
+}

@@ -1,0 +1,175 @@
+﻿match,area,subLocation,subtrade,lapPlan,joinKey,masterTasks,weightage,earnedWeightage,masterPctEarned,baselineStart,baselineEnd,masterActualStart,masterActualEnd,linkedActivities,linkedComplete,linkedPctComplete,linkedUnit,linkedTotalQty,linkedActualQty,linkedPctQty,linkedActualStart,linkedActualEnd
+both,Ancillary Structures,HSD Yard,Earthworks,Excavation-Rock Excavation 2A,ancillary structures | hsd yard | earthworks | excavation-rock excavation 2a,1,28.0,28.0,100.0,2026-03-31,2026-04-14,2026-02-18,2026-06-10,1,1,100.0,Cum,2639.0,2639.0,100.0,2026-02-18,2026-06-10
+both,Ancillary Structures,HSD Yard,Earthworks,Excavation-Rock Excavation 2B,ancillary structures | hsd yard | earthworks | excavation-rock excavation 2b,1,28.0,28.0,100.0,2026-04-15,2026-04-28,2026-02-18,2026-06-10,1,1,100.0,Cum,3067.0,3067.0,100.0,2026-04-10,2026-06-10
+both,Ancillary Structures,HSD Yard,Earthworks,Excavation-Rock Excavation-1A,ancillary structures | hsd yard | earthworks | excavation-rock excavation-1a,1,28.0,28.0,100.0,2026-03-06,2026-03-17,2026-02-16,2026-06-06,1,1,100.0,Cum,2760.0,2760.0,100.0,2026-02-16,2026-06-06
+both,Ancillary Structures,HSD Yard,Earthworks,Excavation-Rock Excavation-1B,ancillary structures | hsd yard | earthworks | excavation-rock excavation-1b,1,28.0,28.0,100.0,2026-03-18,2026-03-30,2026-02-16,2026-06-06,1,1,100.0,Cum,2884.0,2884.0,100.0,2026-04-23,2026-06-06
+linked only,Ancillary Structures,HSD Yard,PCC,HSD- PCC,ancillary structures | hsd yard | pcc | hsd-pcc,,,,,,,,,1,1,100.0,Cum,390.0,390.0,100.0,2026-07-11,2026-07-29
+linked only,Ancillary Structures,HSD Yard,Raft RCC,HSD- Raft RCC,ancillary structures | hsd yard | raft rcc | hsd-raft rcc,,,,,,,,,2,2,100.0,Cum,2116.0,2116.0,100.0,2026-09-28,2026-09-30
+linked only,Ancillary Structures,HSD Yard,Waterproofing,HSD- Waterproofing,ancillary structures | hsd yard | waterproofing | hsd-waterproofing,,,,,,,,,2,0,0.0,Sqm,1331.6,0.0,0.0,,
+linked only,Ancillary Structures,Pump Room,Earthworks,Pump house- Excavation,ancillary structures | pump room | earthworks | pump house-excavation,,,,,,,,,1,1,100.0,Cum,3636.0,3636.0,100.0,2026-02-08,2026-04-02
+linked only,Ancillary Structures,Pump Room,PCC,Pump house- PCC,ancillary structures | pump room | pcc | pump house-pcc,,,,,,,,,1,1,100.0,Cum,146.0,146.0,100.0,2026-04-04,2026-04-18
+linked only,Ancillary Structures,Pump Room,Raft RCC,Pump house- Raft RCC,ancillary structures | pump room | raft rcc | pump house-raft rcc,,,,,,,,,1,1,100.0,Cum,640.0,640.0,100.0,2026-05-28,2026-06-09
+linked only,Ancillary Structures,Pump Room,RCC Slab,Pump House-Slab,ancillary structures | pump room | rcc slab | pump house-slab,,,,,,,,,1,0,0.0,Cum,178.0,0.0,0.0,,
+linked only,Ancillary Structures,Pump Room,RCC Wall,Pump House-Columns and Walls,ancillary structures | pump room | rcc wall | pump house-columns and walls,,,,,,,,,1,0,0.0,Cum,596.0,326.0,54.697987,2026-05-11,
+linked only,Ancillary Structures,Pump Room,Waterproofing,Pump house- Waterproofing,ancillary structures | pump room | waterproofing | pump house-waterproofing,,,,,,,,,1,1,100.0,Sqm,1004.0,1004.0,100.0,2026-04-29,2026-05-22
+master only,Ancillary Structures,Whole area,Earthworks,Pump house- Excavation,ancillary structures | whole area | earthworks | pump house-excavation,2,56.0,56.0,100.0,2026-01-27,2026-03-17,2026-01-12,2026-04-02,,,,,,,,,
+master only,Ancillary Structures,Whole area,PCC,Pump house- PCC,ancillary structures | whole area | pcc | pump house-pcc,1,4.0,4.0,100.0,2026-03-18,2026-03-19,2026-04-04,2026-04-18,,,,,,,,,
+master only,Ancillary Structures,Whole area,Raft RCC,Pump house- Raft RCC,ancillary structures | whole area | raft rcc | pump house-raft rcc,1,22.0,22.0,100.0,2026-04-21,2026-04-21,2026-05-28,2026-06-14,,,,,,,,,
+master only,Ancillary Structures,Whole area,Waterproofing,Pump house- Waterproofing,ancillary structures | whole area | waterproofing | pump house-waterproofing,1,0.0,0.0,,2026-03-21,2026-04-01,2026-04-20,2026-05-23,,,,,,,,,
+both,DC Building,DC-1,Backfilling,DC backfilling upto plinth bottom-1A,dc building | dc-1 | backfilling | dc backfilling upto plinth bottom-1a,1,24.0,24.0,100.0,2026-03-12,2026-03-21,2026-04-01,2026-04-16,1,1,100.0,Cum,2810.0,2810.0,100.0,2026-04-10,2026-05-29
+both,DC Building,DC-1,Backfilling,DC backfilling upto plinth bottom-1B,dc building | dc-1 | backfilling | dc backfilling upto plinth bottom-1b,1,24.0,24.0,100.0,2026-03-12,2026-03-21,2026-04-18,2026-06-06,1,1,100.0,Cum,3050.0,3050.0,100.0,2026-04-10,2026-05-30
+linked only,DC Building,DC-1,Column-RCC-1F,Column RCC 1F-2F-1,dc building | dc-1 | column-rcc-1f | column rcc 1f-2f-1,,,,,,,,,1,0,0.0,Nos,22.0,17.0,77.272727,2026-10-03,
+linked only,DC Building,DC-1,Column-RCC-GF,Column RCC GF-1F-1,dc building | dc-1 | column-rcc-gf | column rcc gf-1f-1,,,,,,,,,1,1,100.0,Nos,22.0,22.0,100.0,2026-07-27,2026-09-19
+linked only,DC Building,DC-1,Filling in Plinth,DC Filling In Plinth-1A,dc building | dc-1 | filling in plinth | dc filling in plinth-1a,,,,,,,,,1,1,100.0,Cum,720.0,720.0,100.0,2026-07-17,2026-10-03
+linked only,DC Building,DC-1,Filling in Plinth,DC Filling In Plinth-1B,dc building | dc-1 | filling in plinth | dc filling in plinth-1b,,,,,,,,,1,1,100.0,Cum,780.0,780.0,100.0,2026-07-14,2026-07-20
+linked only,DC Building,DC-1,Flooring-PCC,DC Floor PCC-1A,dc building | dc-1 | flooring-pcc | dc floor pcc-1a,,,,,,,,,1,1,100.0,Sqm,1099.0,1099.0,100.0,2026-08-14,2026-10-09
+linked only,DC Building,DC-1,Flooring-PCC,DC Floor PCC-1B,dc building | dc-1 | flooring-pcc | dc floor pcc-1b,,,,,,,,,1,1,100.0,Sqm,925.0,925.0,100.0,2026-06-21,2026-08-18
+both,DC Building,DC-1,Footing-Concreting,DC Footing RCC-1A,dc building | dc-1 | footing-concreting | dc footing rcc-1a,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-02-28,2026-04-15,8,8,100.0,Nos,8.0,8.0,100.0,2026-03-02,2026-04-08
+both,DC Building,DC-1,Footing-Concreting,DC Footing RCC-1B,dc building | dc-1 | footing-concreting | dc footing rcc-1b,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-03-02,2026-04-15,13,13,100.0,Nos,13.0,13.0,100.0,2026-03-02,2026-04-02
+linked only,DC Building,DC-1,Footing-Stub Column,DC Stub Column-1A,dc building | dc-1 | footing-stub column | dc stub column-1a,,,,,,,,,20,20,100.0,Nos,20.0,20.0,100.0,2026-03-21,2026-04-20
+linked only,DC Building,DC-1,Footing-Stub Column,DC Stub Column-1B,dc building | dc-1 | footing-stub column | dc stub column-1b,,,,,,,,,18,18,100.0,Nos,18.0,18.0,100.0,2026-03-21,2026-04-10
+both,DC Building,DC-1,Plinth Beam-RCC,DC Plinth RCC-1A,dc building | dc-1 | plinth beam-rcc | dc plinth rcc-1a,1,10.0,10.0,100.0,2026-04-07,2026-04-07,2026-04-29,2026-08-19,40,40,100.0,Nos,40.0,40.0,100.0,2026-06-04,2026-08-17
+linked only,DC Building,DC-1,Plinth Beam-RCC,DC Plinth RCC-1B,dc building | dc-1 | plinth beam-rcc | dc plinth rcc-1b,,,,,,,,,34,34,100.0,Nos,34.0,34.0,100.0,2026-05-30,2026-07-11
+master only,DC Building,DC-1,Plinth Beams,DC Plinth RCC-1B,dc building | dc-1 | plinth beams | dc plinth rcc-1b,1,10.0,10.0,100.0,2026-04-07,2026-04-07,2026-04-25,2026-08-19,,,,,,,,,
+linked only,DC Building,DC-1,Plinth RCC,Plinth RCC - 1A,dc building | dc-1 | plinth rcc | plinth rcc-1a,,,,,,,,,1,1,100.0,Rmt,236.0,236.0,100.0,2026-07-04,2026-08-19
+linked only,DC Building,DC-1,Plinth RCC,Plinth RCC - 1B,dc building | dc-1 | plinth rcc | plinth rcc-1b,,,,,,,,,1,1,100.0,Rmt,193.0,193.0,100.0,2026-05-30,2026-08-17
+linked only,DC Building,DC-1,Plinth Utility,Below PB UG services-1A,dc building | dc-1 | plinth utility | below pb ug services-1a,,,,,,,,,1,0,0.0,Rmt,120.0,0.0,0.0,,
+linked only,DC Building,DC-1,Plinth Utility,Below PB UG services-1B,dc building | dc-1 | plinth utility | below pb ug services-1b,,,,,,,,,1,0,0.0,Rmt,120.0,0.0,0.0,,
+linked only,DC Building,DC-1,Slab-RCC-1F,Casting of slab,dc building | dc-1 | slab-rcc-1f | casting of slab,,,,,,,,,1,0,0.0,Sqm,1212.0,0.0,0.0,,
+linked only,DC Building,DC-1,Slab-RCC-GF,Casting of slab,dc building | dc-1 | slab-rcc-gf | casting of slab,,,,,,,,,1,1,100.0,Sqm,1212.0,1212.0,100.0,2026-09-26,2026-09-26
+both,DC Building,DC-2,Backfilling,DC backfilling upto plinth bottom-2A,dc building | dc-2 | backfilling | dc backfilling upto plinth bottom-2a,1,24.0,24.0,100.0,2026-03-12,2026-03-21,2026-04-20,2026-05-29,1,1,100.0,Cum,2450.0,2450.0,100.0,2026-04-13,2026-05-29
+both,DC Building,DC-2,Backfilling,DC backfilling upto plinth bottom-2B,dc building | dc-2 | backfilling | dc backfilling upto plinth bottom-2b,1,24.0,24.0,100.0,2026-03-12,2026-03-21,2026-04-22,2026-05-05,1,1,100.0,Cum,2450.0,2450.0,100.0,2026-04-13,2026-05-04
+linked only,DC Building,DC-2,Column-RCC-1F,Column RCC 1F-2F-2,dc building | dc-2 | column-rcc-1f | column rcc 1f-2f-2,,,,,,,,,1,0,0.0,Nos,13.0,11.0,84.615385,2026-09-04,
+linked only,DC Building,DC-2,Column-RCC-GF,Column RCC GF-1F-2,dc building | dc-2 | column-rcc-gf | column rcc gf-1f-2,,,,,,,,,1,1,100.0,Nos,13.0,13.0,100.0,2026-06-27,2026-07-26
+linked only,DC Building,DC-2,Filling in Plinth,DC Filling In Plinth-2A,dc building | dc-2 | filling in plinth | dc filling in plinth-2a,,,,,,,,,1,1,100.0,Cum,672.0,672.0,100.0,2026-06-06,2026-08-22
+linked only,DC Building,DC-2,Filling in Plinth,DC Filling In Plinth-2B,dc building | dc-2 | filling in plinth | dc filling in plinth-2b,,,,,,,,,1,1,100.0,Cum,672.0,672.0,100.0,2026-05-20,2026-08-22
+linked only,DC Building,DC-2,Flooring-PCC,DC Floor PCC-2A,dc building | dc-2 | flooring-pcc | dc floor pcc-2a,,,,,,,,,1,1,100.0,Sqm,1029.0,1029.0,100.0,2026-06-11,2026-09-16
+linked only,DC Building,DC-2,Flooring-PCC,DC Floor PCC-2B,dc building | dc-2 | flooring-pcc | dc floor pcc-2b,,,,,,,,,1,1,100.0,Sqm,909.0,909.0,100.0,2026-05-27,2026-09-16
+both,DC Building,DC-2,Footing-Concreting,DC Footing RCC-2A,dc building | dc-2 | footing-concreting | dc footing rcc-2a,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-03-02,2026-04-22,10,10,100.0,Nos,10.0,10.0,100.0,2026-03-02,2026-04-13
+both,DC Building,DC-2,Footing-Concreting,DC Footing RCC-2B,dc building | dc-2 | footing-concreting | dc footing rcc-2b,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-03-23,2026-04-21,15,15,100.0,Nos,15.0,15.0,100.0,2026-03-20,2026-04-06
+linked only,DC Building,DC-2,Footing-Stub Column,DC Stub Column-2A,dc building | dc-2 | footing-stub column | dc stub column-2a,,,,,,,,,11,11,100.0,Nos,11.0,11.0,100.0,2026-03-30,2026-04-28
+linked only,DC Building,DC-2,Footing-Stub Column,DC Stub Column-2B,dc building | dc-2 | footing-stub column | dc stub column-2b,,,,,,,,,15,15,100.0,Nos,15.0,15.0,100.0,2026-03-21,2026-04-21
+both,DC Building,DC-2,Plinth Beam-RCC,DC Plinth RCC-2A,dc building | dc-2 | plinth beam-rcc | dc plinth rcc-2a,1,10.0,10.0,100.0,2026-04-06,2026-04-07,2026-05-26,2026-08-10,35,35,100.0,Nos,35.0,35.0,100.0,2026-05-26,2026-08-17
+both,DC Building,DC-2,Plinth Beam-RCC,DC Plinth RCC-2B,dc building | dc-2 | plinth beam-rcc | dc plinth rcc-2b,1,10.0,10.0,100.0,2026-04-06,2026-04-07,2026-05-05,2026-06-06,31,31,100.0,Nos,31.0,31.0,100.0,2026-04-30,2026-07-07
+linked only,DC Building,DC-2,Plinth RCC,Plinth RCC - 2A,dc building | dc-2 | plinth rcc | plinth rcc-2a,,,,,,,,,1,1,100.0,Rmt,220.0,220.0,100.0,2026-05-26,2026-08-10
+linked only,DC Building,DC-2,Plinth RCC,Plinth RCC - 2B,dc building | dc-2 | plinth rcc | plinth rcc-2b,,,,,,,,,1,1,100.0,Rmt,207.0,207.0,100.0,2026-05-05,2026-06-06
+linked only,DC Building,DC-2,Plinth Utility,Below PB UG services-2A,dc building | dc-2 | plinth utility | below pb ug services-2a,,,,,,,,,1,0,0.0,Rmt,120.0,40.0,33.333333,2026-05-20,
+linked only,DC Building,DC-2,Slab-RCC-1F,Casting of slab,dc building | dc-2 | slab-rcc-1f | casting of slab,,,,,,,,,1,0,0.0,Units,100.0,0.0,0.0,,
+linked only,DC Building,DC-2,Slab-RCC-GF,Casting of slab,dc building | dc-2 | slab-rcc-gf | casting of slab,,,,,,,,,1,1,100.0,Sqm,1081.0,1081.0,100.0,2026-08-25,2026-08-25
+linked only,DC Building,DC-2A,Column-RCC-GF,Column RCC GF-1F-2A,dc building | dc-2a | column-rcc-gf | column rcc gf-1f-2a,,,,,,,,,1,1,100.0,Nos,18.0,18.0,100.0,2026-08-08,2026-10-09
+linked only,DC Building,DC-2A,Slab-RCC-GF,Casting of slab,dc building | dc-2a | slab-rcc-gf | casting of slab,,,,,,,,,1,1,100.0,Sqm,1242.0,1242.0,100.0,2026-10-28,2026-10-28
+both,DC Building,DC-3,Backfilling,DC backfilling upto plinth bottom-3A,dc building | dc-3 | backfilling | dc backfilling upto plinth bottom-3a,1,10.0,10.0,100.0,2026-03-12,2026-03-21,2026-04-14,2026-06-09,1,1,100.0,Cum,2450.0,2450.0,100.0,2026-04-13,2026-05-29
+both,DC Building,DC-3,Backfilling,DC backfilling upto plinth bottom-3B,dc building | dc-3 | backfilling | dc backfilling upto plinth bottom-3b,1,10.0,10.0,100.0,2026-03-12,2026-03-21,2026-04-16,2026-05-24,1,1,100.0,Cum,2450.0,2450.0,100.0,2026-04-13,2026-05-24
+linked only,DC Building,DC-3,Column-RCC-1F,Column RCC 1F-2F-3,dc building | dc-3 | column-rcc-1f | column rcc 1f-2f-3,,,,,,,,,1,1,100.0,Nos,20.0,20.0,100.0,2026-09-19,2026-09-26
+linked only,DC Building,DC-3,Column-RCC-GF,Column RCC GF-1F-3,dc building | dc-3 | column-rcc-gf | column rcc gf-1f-3,,,,,,,,,1,1,100.0,Nos,20.0,20.0,100.0,2026-07-04,2026-08-14
+linked only,DC Building,DC-3,Filling in Plinth,DC Filling In Plinth-3A,dc building | dc-3 | filling in plinth | dc filling in plinth-3a,,,,,,,,,1,1,100.0,Cum,672.0,672.0,100.0,2026-05-29,2026-08-22
+linked only,DC Building,DC-3,Filling in Plinth,DC Filling In Plinth-3B,dc building | dc-3 | filling in plinth | dc filling in plinth-3b,,,,,,,,,1,1,100.0,Cum,672.0,672.0,100.0,2026-05-25,2026-05-29
+linked only,DC Building,DC-3,Flooring-PCC,DC Floor PCC-3A,dc building | dc-3 | flooring-pcc | dc floor pcc-3a,,,,,,,,,1,1,100.0,Sqm,1029.0,1029.0,100.0,2026-06-03,2026-08-31
+linked only,DC Building,DC-3,Flooring-PCC,DC Floor PCC-3B,dc building | dc-3 | flooring-pcc | dc floor pcc-3b,,,,,,,,,1,1,100.0,Sqm,901.0,901.0,100.0,2026-06-03,2026-07-10
+both,DC Building,DC-3,Footing-Concreting,DC Footing RCC-3A,dc building | dc-3 | footing-concreting | dc footing rcc-3a,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-03-16,2026-04-25,8,8,100.0,mixed,,,,2026-03-13,2026-04-25
+both,DC Building,DC-3,Footing-Concreting,DC Footing RCC-3B,dc building | dc-3 | footing-concreting | dc footing rcc-3b,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-03-21,2026-04-15,8,8,100.0,Nos,8.0,8.0,100.0,2026-03-26,2026-04-06
+linked only,DC Building,DC-3,Footing-Stub Column,DC Stub Column-3A,dc building | dc-3 | footing-stub column | dc stub column-3a,,,,,,,,,13,13,100.0,Nos,13.0,13.0,100.0,2026-04-10,2026-04-30
+linked only,DC Building,DC-3,Footing-Stub Column,DC Stub Column-3B,dc building | dc-3 | footing-stub column | dc stub column-3b,,,,,,,,,8,8,100.0,Nos,8.0,8.0,100.0,2026-04-07,2026-04-15
+both,DC Building,DC-3,Plinth Beam-RCC,DC Plinth RCC-3A,dc building | dc-3 | plinth beam-rcc | dc plinth rcc-3a,1,10.0,10.0,100.0,2026-04-06,2026-04-07,2026-05-12,2026-08-10,36,36,100.0,Nos,36.0,36.0,100.0,2026-05-20,2026-08-17
+both,DC Building,DC-3,Plinth Beam-RCC,DC Plinth RCC-3B,dc building | dc-3 | plinth beam-rcc | dc plinth rcc-3b,1,10.0,10.0,100.0,2026-04-06,2026-04-07,2026-05-08,2026-06-06,21,21,100.0,Nos,21.0,21.0,100.0,2026-04-30,2026-05-21
+linked only,DC Building,DC-3,Plinth RCC,Plinth RCC - 3A,dc building | dc-3 | plinth rcc | plinth rcc-3a,,,,,,,,,1,1,100.0,Rmt,171.0,171.0,100.0,2026-05-12,2026-08-17
+linked only,DC Building,DC-3,Plinth RCC,Plinth RCC - 3B,dc building | dc-3 | plinth rcc | plinth rcc-3b,,,,,,,,,1,1,100.0,Rmt,216.0,216.0,100.0,2026-05-08,2026-06-06
+linked only,DC Building,DC-3,Plinth Utility,Below PB UG services-3A,dc building | dc-3 | plinth utility | below pb ug services-3a,,,,,,,,,1,0,0.0,Rmt,120.0,30.0,25.0,2026-05-25,
+linked only,DC Building,DC-3,Plinth Utility,Below PB UG services-3B,dc building | dc-3 | plinth utility | below pb ug services-3b,,,,,,,,,1,0,0.0,Rmt,120.0,40.0,33.333333,2026-06-08,
+linked only,DC Building,DC-3,Slab-RCC-1F,Casting of slab,dc building | dc-3 | slab-rcc-1f | casting of slab,,,,,,,,,1,0,0.0,Sqm,1729.0,0.0,0.0,,
+linked only,DC Building,DC-3,Slab-RCC-GF,Casting of slab,dc building | dc-3 | slab-rcc-gf | casting of slab,,,,,,,,,1,1,100.0,Sqm,1729.0,1729.0,100.0,2026-09-07,2026-09-07
+both,DC Building,DC-4,Backfilling,DC backfilling upto plinth bottom-4A,dc building | dc-4 | backfilling | dc backfilling upto plinth bottom-4a,1,10.0,10.0,100.0,2026-03-12,2026-03-21,2026-04-24,2026-06-07,1,1,100.0,Cum,2450.0,2450.0,100.0,2026-04-18,2026-06-07
+both,DC Building,DC-4,Backfilling,DC backfilling upto plinth bottom-4B,dc building | dc-4 | backfilling | dc backfilling upto plinth bottom-4b,1,10.0,10.0,100.0,2026-03-12,2026-03-21,2026-04-20,2026-06-07,1,1,100.0,Cum,2810.0,2810.0,100.0,2026-04-20,2026-06-07
+linked only,DC Building,DC-4,Column-RCC-1F,Column RCC 1F-2F-4,dc building | dc-4 | column-rcc-1f | column rcc 1f-2f-4,,,,,,,,,1,0,0.0,Nos,22.0,19.0,86.363636,2026-09-23,
+linked only,DC Building,DC-4,Column-RCC-GF,Column RCC GF-1F-4,dc building | dc-4 | column-rcc-gf | column rcc gf-1f-4,,,,,,,,,1,1,100.0,Nos,22.0,22.0,100.0,2026-07-16,2026-08-29
+linked only,DC Building,DC-4,Filling in Plinth,DC Filling In Plinth-4A,dc building | dc-4 | filling in plinth | dc filling in plinth-4a,,,,,,,,,1,1,100.0,Cum,720.0,720.0,100.0,2026-06-15,2026-07-06
+linked only,DC Building,DC-4,Filling in Plinth,DC Filling In Plinth-4B,dc building | dc-4 | filling in plinth | dc filling in plinth-4b,,,,,,,,,1,1,100.0,Cum,780.0,780.0,100.0,2026-06-09,2026-07-01
+linked only,DC Building,DC-4,Flooring-PCC,DC Floor PCC-4A,dc building | dc-4 | flooring-pcc | dc floor pcc-4a,,,,,,,,,1,1,100.0,Sqm,999.0,999.0,100.0,2026-07-08,2026-07-27
+linked only,DC Building,DC-4,Flooring-PCC,DC Floor PCC-4B,dc building | dc-4 | flooring-pcc | dc floor pcc-4b,,,,,,,,,1,1,100.0,Sqm,936.0,936.0,100.0,2026-06-03,2026-07-27
+both,DC Building,DC-4,Footing-Concreting,DC Footing RCC-4A,dc building | dc-4 | footing-concreting | dc footing rcc-4a,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-03-02,2026-04-30,10,10,100.0,Nos,10.0,10.0,100.0,2026-03-02,2026-04-27
+both,DC Building,DC-4,Footing-Concreting,DC Footing RCC-4B,dc building | dc-4 | footing-concreting | dc footing rcc-4b,1,21.0,21.0,100.0,2026-03-10,2026-03-11,2026-04-27,2026-04-27,11,11,100.0,Nos,11.0,11.0,100.0,2026-03-25,2026-04-16
+linked only,DC Building,DC-4,Footing-Stub Column,DC Stub Column-4A,dc building | dc-4 | footing-stub column | dc stub column-4a,,,,,,,,,20,20,100.0,Nos,20.0,20.0,100.0,2026-04-10,2026-04-30
+linked only,DC Building,DC-4,Footing-Stub Column,DC Stub Column-4B,dc building | dc-4 | footing-stub column | dc stub column-4b,,,,,,,,,24,24,100.0,Nos,24.0,24.0,100.0,2026-03-25,2026-04-30
+both,DC Building,DC-4,Plinth Beam-RCC,DC Plinth RCC-4A,dc building | dc-4 | plinth beam-rcc | dc plinth rcc-4a,1,10.0,10.0,100.0,2026-04-06,2026-04-07,2026-05-28,2026-07-20,51,51,100.0,Nos,51.0,51.0,100.0,2026-06-04,2026-08-17
+both,DC Building,DC-4,Plinth Beam-RCC,DC Plinth RCC-4B,dc building | dc-4 | plinth beam-rcc | dc plinth rcc-4b,1,10.0,10.0,100.0,2026-04-04,2026-04-06,2026-05-11,2026-06-27,48,48,100.0,Nos,48.0,48.0,100.0,2026-05-07,2026-07-02
+linked only,DC Building,DC-4,Plinth RCC,Plinth RCC - 4A,dc building | dc-4 | plinth rcc | plinth rcc-4a,,,,,,,,,1,1,100.0,Rmt,279.0,279.0,100.0,2026-05-28,2026-07-20
+linked only,DC Building,DC-4,Plinth RCC,Plinth RCC - 4B,dc building | dc-4 | plinth rcc | plinth rcc-4b,,,,,,,,,1,1,100.0,Rmt,270.0,270.0,100.0,2026-05-24,2026-06-27
+linked only,DC Building,DC-4,Plinth Utility,Below PB UG services-4A,dc building | dc-4 | plinth utility | below pb ug services-4a,,,,,,,,,1,0,0.0,Rmt,120.0,0.0,0.0,,
+linked only,DC Building,DC-4,Plinth Utility,Below PB UG services-4B,dc building | dc-4 | plinth utility | below pb ug services-4b,,,,,,,,,1,0,0.0,Rmt,120.0,0.0,0.0,,
+linked only,DC Building,DC-4,Slab-RCC-1F,Casting of slab,dc building | dc-4 | slab-rcc-1f | casting of slab,,,,,,,,,1,0,0.0,Sqm,870.0,0.0,0.0,,
+linked only,DC Building,DC-4,Slab-RCC-GF,Casting of slab,dc building | dc-4 | slab-rcc-gf | casting of slab,,,,,,,,,1,1,100.0,Sqm,870.0,870.0,100.0,2026-09-18,2026-09-18
+linked only,DC Building,DC-4A,Column Reinforcement,Column Reinforcement,dc building | dc-4a | column reinforcement | column reinforcement,,,,,,,,,1,0,0.0,Units,25.0,8.0,32.0,2026-10-16,
+linked only,DC Building,DC-4A,Column-RCC-1F,Column RCC 1F-2F-4A,dc building | dc-4a | column-rcc-1f | column rcc 1f-2f-4a,,,,,,,,,1,0,0.0,Nos,25.0,7.0,28.0,2026-10-21,
+linked only,DC Building,DC-4A,Column-RCC-GF,Column RCC GF-1F-4A,dc building | dc-4a | column-rcc-gf | column rcc gf-1f-4a,,,,,,,,,1,1,100.0,Nos,25.0,25.0,100.0,2026-08-08,2026-09-29
+linked only,DC Building,DC-4A,Slab-RCC-1F,Casting of slab,dc building | dc-4a | slab-rcc-1f | casting of slab,,,,,,,,,1,0,0.0,Sqm,1424.0,0.0,0.0,,
+linked only,DC Building,DC-4A,Slab-RCC-GF,Casting of slab,dc building | dc-4a | slab-rcc-gf | casting of slab,,,,,,,,,1,1,100.0,Sqm,1424.0,1424.0,100.0,2026-10-13,2026-10-13
+master only,DG Building,DG-1,Backfilling,DG-1 backfilling upto footing top,dg building | dg-1 | backfilling | dg-1 backfilling upto footing top,1,20.0,12.0,60.0,2026-03-18,2026-03-27,2026-05-16,,,,,,,,,,
+both,DG Building,DG-1,Backfilling,DG-1 backfilling upto plinth bottom,dg building | dg-1 | backfilling | dg-1 backfilling upto plinth bottom,1,20.0,16.0,80.0,2026-03-18,2026-03-27,2026-05-16,,1,0,0.0,Cum,5245.0,1100.0,20.972355,2026-05-16,
+master only,DG Building,DG-1,Earthworks,DG Excavation-1,dg building | dg-1 | earthworks | dg excavation-1,4,104.0,104.0,100.0,2025-12-04,2026-02-24,2025-12-04,2026-04-16,,,,,,,,,
+both,DG Building,DG-1,Filling in Plinth,DG Filling In Plinth-1,dg building | dg-1 | filling in plinth | dg filling in plinth-1,1,12.0,0.0,0.0,2026-04-16,2026-04-22,,,1,0,0.0,Cum,720.0,0.0,0.0,,
+both,DG Building,DG-1,Flooring-PCC,DG Floor PCC-1,dg building | dg-1 | flooring-pcc | dg floor pcc-1,1,2.0,0.0,0.0,2026-04-23,2026-04-24,,,1,0,0.0,Sqm,1099.0,0.0,0.0,,
+both,DG Building,DG-1,Footing-Concreting,DG Footing RCC-1,dg building | dg-1 | footing-concreting | dg footing rcc-1,2,32.0,32.0,100.0,2026-03-13,2026-03-17,2026-04-15,2026-07-18,13,13,100.0,Nos,13.0,13.0,100.0,2026-04-12,2026-06-20
+both,DG Building,DG-1,Footing-PCC,DG PCC-1,dg building | dg-1 | footing-pcc | dg pcc-1,2,2.0,2.0,100.0,2026-02-25,2026-02-25,2026-03-21,2026-06-11,13,13,100.0,Nos,13.0,13.0,100.0,2026-03-27,2026-06-14
+linked only,DG Building,DG-1,Footing-Stub Column,DG Stub Column-1,dg building | dg-1 | footing-stub column | dg stub column-1,,,,,,,,,17,17,100.0,Nos,17.0,17.0,100.0,2026-04-16,2026-07-21
+linked only,DG Building,DG-1,Plinth Beam-RCC,DG-1 Plinth RCC,dg building | dg-1 | plinth beam-rcc | dg-1 plinth rcc,,,,,,,,,1,0,0.0,Cum,254.0,144.0,56.692913,2026-10-16,
+master only,DG Building,DG-1,Plinth Beams,DG-1 Plinth RCC,dg building | dg-1 | plinth beams | dg-1 plinth rcc,1,4.0,2.8,70.0,2026-04-14,2026-04-15,2026-09-22,,,,,,,,,,
+master only,DG Building,DG-2,Backfilling,DG-2 backfilling upto footing top,dg building | dg-2 | backfilling | dg-2 backfilling upto footing top,1,21.0,16.8,80.0,2026-03-17,2026-03-25,2026-05-16,,,,,,,,,,
+both,DG Building,DG-2,Backfilling,DG-2 backfilling upto plinth bottom,dg building | dg-2 | backfilling | dg-2 backfilling upto plinth bottom,1,21.0,16.8,80.0,2026-03-17,2026-03-25,2026-05-16,,1,0,0.0,Cum,5245.0,2579.0,49.170639,2026-05-16,
+both,DG Building,DG-2,Filling in Plinth,DG Filling In Plinth-2,dg building | dg-2 | filling in plinth | dg filling in plinth-2,1,12.0,0.0,0.0,2026-04-14,2026-04-20,,,1,0,0.0,Cum,672.0,0.0,0.0,,
+both,DG Building,DG-2,Flooring-PCC,DG Floor PCC-2,dg building | dg-2 | flooring-pcc | dg floor pcc-2,1,6.0,0.0,0.0,2026-04-21,2026-04-22,,,1,0,0.0,Sqm,1029.0,0.0,0.0,,
+both,DG Building,DG-2,Footing-Concreting,DG Footing RCC-2,dg building | dg-2 | footing-concreting | dg footing rcc-2,2,32.0,32.0,100.0,2026-03-12,2026-03-16,2026-04-21,2026-07-18,11,11,100.0,Nos,11.0,11.0,100.0,2026-04-22,2026-06-19
+both,DG Building,DG-2,Footing-PCC,DG PCC-2,dg building | dg-2 | footing-pcc | dg pcc-2,2,2.0,2.0,100.0,2026-02-24,2026-02-24,2026-03-23,2026-05-11,11,11,100.0,Nos,11.0,11.0,100.0,2026-03-27,2026-05-13
+linked only,DG Building,DG-2,Footing-Stub Column,DG Stub Column-2,dg building | dg-2 | footing-stub column | dg stub column-2,,,,,,,,,11,11,100.0,Nos,11.0,11.0,100.0,2026-04-18,2026-08-03
+linked only,DG Building,DG-2,Plinth Beam-RCC,DG-2 Plinth RCC,dg building | dg-2 | plinth beam-rcc | dg-2 plinth rcc,,,,,,,,,1,1,100.0,Cum,254.0,254.0,100.0,2026-10-10,2026-10-16
+master only,DG Building,DG-2,Plinth Beams,DG-2 Plinth RCC,dg building | dg-2 | plinth beams | dg-2 plinth rcc,1,4.0,3.6,90.0,2026-04-11,2026-04-13,2026-09-22,,,,,,,,,,
+both,External Development,Zone 1,Earthworks,Zone 1 - Excavation works,external development | zone 1 | earthworks | zone 1-excavation works,1,32.0,0.0,0.0,2026-03-31,2026-04-18,,,1,0,0.0,Cum,3497.0,0.0,0.0,,
+linked only,External Development,Zone 1,PCC,Zone-1 PCC,external development | zone 1 | pcc | zone-1 pcc,,,,,,,,,1,0,0.0,Rmt,145.0,0.0,0.0,,
+both,External Development,Zone 1,Raft RCC,Zone-1 RCC,external development | zone 1 | raft rcc | zone-1 rcc,1,32.0,0.0,0.0,2026-04-22,2026-05-11,,,1,0,0.0,Rmt,145.0,0.0,0.0,,
+master only,External Development,Zone 1,Retaining Wall,Zone-1 Retaining Wall,external development | zone 1 | retaining wall | zone-1 retaining wall,1,32.0,0.0,0.0,2026-05-12,2026-05-29,,,,,,,,,,,
+both,External Development,Zone 10,Earthworks,Zone 10 - Excavation works,external development | zone 10 | earthworks | zone 10-excavation works,1,16.0,0.0,0.0,2026-10-13,2026-10-30,,,1,0,0.0,Cum,756.0,0.0,0.0,,
+linked only,External Development,Zone 10,PCC,Zone-10 PCC,external development | zone 10 | pcc | zone-10 pcc,,,,,,,,,1,0,0.0,Cum,756.0,0.0,0.0,,
+both,External Development,Zone 10,Raft RCC,Zone-10 RCC,external development | zone 10 | raft rcc | zone-10 rcc,1,16.0,0.0,0.0,2026-10-23,2026-11-11,,,1,0,0.0,Cum,100.0,0.0,0.0,,
+both,External Development,Zone 11,Earthworks,Zone 11 - Excavation works,external development | zone 11 | earthworks | zone 11-excavation works,1,16.0,0.0,0.0,2026-11-02,2026-11-20,,,1,0,0.0,Cum,882.0,0.0,0.0,,
+linked only,External Development,Zone 11,PCC,Zone-11 PCC,external development | zone 11 | pcc | zone-11 pcc,,,,,,,,,1,0,0.0,Cum,882.0,0.0,0.0,,
+both,External Development,Zone 11,Raft RCC,Zone-11 RCC,external development | zone 11 | raft rcc | zone-11 rcc,1,16.0,0.0,0.0,2026-11-12,2026-11-30,,,1,0,0.0,Cum,214.72,0.0,0.0,,
+master only,External Development,Zone 12,Earthworks,Zone 12 - Excavation works,external development | zone 12 | earthworks | zone 12-excavation works,1,16.0,0.0,0.0,2026-11-23,2026-12-10,,,,,,,,,,,
+master only,External Development,Zone 12,Raft RCC,Zone-12 RCC,external development | zone 12 | raft rcc | zone-12 rcc,1,16.0,0.0,0.0,2026-12-01,2026-12-18,,,,,,,,,,,
+both,External Development,Zone 2,Earthworks,Zone 2 - Excavation works,external development | zone 2 | earthworks | zone 2-excavation works,1,16.0,0.0,0.0,2026-04-21,2026-05-09,,,1,0,0.0,Cum,864.0,0.0,0.0,,
+linked only,External Development,Zone 2,PCC,Zone-2 PCC,external development | zone 2 | pcc | zone-2 pcc,,,,,,,,,1,0,0.0,Cum,864.0,0.0,0.0,,
+both,External Development,Zone 2,Raft RCC,Zone-2 RCC,external development | zone 2 | raft rcc | zone-2 rcc,1,16.0,0.0,0.0,2026-05-12,2026-05-30,,,1,0,0.0,Cum,124.25,0.0,0.0,,
+both,External Development,Zone 3,Earthworks,Zone 3 - Excavation works,external development | zone 3 | earthworks | zone 3-excavation works,1,16.0,0.0,0.0,2026-05-12,2026-05-30,,,1,0,0.0,Cum,864.0,0.0,0.0,,
+linked only,External Development,Zone 3,PCC,Zone-3 PCC,external development | zone 3 | pcc | zone-3 pcc,,,,,,,,,1,0,0.0,Cum,670.0,0.0,0.0,,
+linked only,External Development,Zone 3,Raft RCC,Zone-3 RCC,external development | zone 3 | raft rcc | zone-3 rcc,,,,,,,,,1,0,0.0,Cum,124.25,0.0,0.0,,
+both,External Development,Zone 4,Earthworks,Zone 4 - Excavation works,external development | zone 4 | earthworks | zone 4-excavation works,1,16.0,8.0,50.0,2026-06-02,2026-06-19,2026-04-03,,1,0,0.0,Cum,5750.0,500.0,8.695652,2026-04-03,
+linked only,External Development,Zone 4,PCC,Zone-4 PCC,external development | zone 4 | pcc | zone-4 pcc,,,,,,,,,1,0,0.0,Rmt,145.0,0.0,0.0,,
+both,External Development,Zone 4,Raft RCC,Zone-4 RCC,external development | zone 4 | raft rcc | zone-4 rcc,1,32.0,0.0,0.0,2026-06-19,2026-07-09,,,1,0,0.0,Cum,269.54,0.0,0.0,,
+both,External Development,Zone 5,Earthworks,Zone 5 - Excavation works,external development | zone 5 | earthworks | zone 5-excavation works,1,16.0,0.0,0.0,2026-06-22,2026-07-11,,,1,0,0.0,Cum,882.0,0.0,0.0,,
+linked only,External Development,Zone 5,PCC,Zone-5 PCC,external development | zone 5 | pcc | zone-5 pcc,,,,,,,,,1,0,0.0,Cum,712.0,0.0,0.0,,
+both,External Development,Zone 5,Raft RCC,Zone-5 RCC,external development | zone 5 | raft rcc | zone-5 rcc,1,16.0,0.0,0.0,2026-07-10,2026-07-31,,,1,0,0.0,Cum,135.9,0.0,0.0,,
+linked only,External Development,Zone 6,Earthworks,UG Service Zone 6-Excavation,external development | zone 6 | earthworks | ug service zone 6-excavation,,,,,,,,,1,0,0.0,Cum,783.0,200.0,25.542784,2026-04-07,
+both,External Development,Zone 6,Earthworks,Zone 6 - Excavation works,external development | zone 6 | earthworks | zone 6-excavation works,1,16.0,0.0,0.0,2026-07-14,2026-08-06,,,1,0,0.0,Cum,756.0,0.0,0.0,,
+linked only,External Development,Zone 6,PCC,Zone-6 PCC,external development | zone 6 | pcc | zone-6 pcc,,,,,,,,,1,0,0.0,Cum,481.0,0.0,0.0,,
+both,External Development,Zone 6,Raft RCC,Zone-6 RCC,external development | zone 6 | raft rcc | zone-6 rcc,1,32.0,0.0,0.0,2026-08-01,2026-08-25,,,1,0,0.0,Cum,269.54,0.0,0.0,,
+both,External Development,Zone 7,Earthworks,Zone 7 - Excavation works,external development | zone 7 | earthworks | zone 7-excavation works,1,16.0,16.0,100.0,2026-08-10,2026-08-29,2025-12-22,2026-04-23,1,1,100.0,Cum,2187.0,2187.0,100.0,2026-03-05,2026-04-02
+linked only,External Development,Zone 7,PCC,Zone-7 PCC,external development | zone 7 | pcc | zone-7 pcc,,,,,,,,,1,0,0.0,Cum,76.0,75.0,98.684211,2026-04-07,
+both,External Development,Zone 7,Raft RCC,Zone-7 RCC,external development | zone 7 | raft rcc | zone-7 rcc,1,32.0,32.0,100.0,2026-08-26,2026-09-12,2026-04-28,2026-12-16,1,0,0.0,Rmt,135.0,127.0,94.074074,2026-04-28,
+linked only,External Development,Zone 7,RCC Work,Compound Wall - Zone 7 - Wall RCC,external development | zone 7 | rcc work | compound wall-zone 7-wall rcc,,,,,,,,,1,0,0.0,Rmt,135.0,85.0,62.962963,2026-05-25,
+both,External Development,Zone 8,Earthworks,Zone 8 - Excavation works,external development | zone 8 | earthworks | zone 8-excavation works,1,16.0,16.0,100.0,2026-09-01,2026-09-19,2026-04-24,2026-06-26,1,1,100.0,Cum,3686.0,3686.0,100.0,2026-04-14,2026-06-26
+linked only,External Development,Zone 8,PCC,Zone-8 PCC,external development | zone 8 | pcc | zone-8 pcc,,,,,,,,,1,0,0.0,Cum,63.0,62.0,98.412698,2026-04-22,
+both,External Development,Zone 8,Raft RCC,Zone-8 RCC,external development | zone 8 | raft rcc | zone-8 rcc,1,32.0,30.08,94.0,2026-09-15,2026-10-03,2026-04-22,,1,1,100.0,Cum,270.0,270.0,100.0,2026-05-03,2026-10-21
+both,External Development,Zone 9,Earthworks,Zone 9 - Excavation works,external development | zone 9 | earthworks | zone 9-excavation works,1,16.0,0.0,0.0,2026-09-22,2026-10-10,2026-05-18,,1,0,0.0,Cum,3686.0,3127.0,84.834509,2026-05-18,
+linked only,External Development,Zone 9,PCC,Zone-9 PCC,external development | zone 9 | pcc | zone-9 pcc,,,,,,,,,1,1,100.0,Cum,63.0,63.0,100.0,2026-05-26,2026-09-28
+both,External Development,Zone 9,Raft RCC,Zone-9 RCC,external development | zone 9 | raft rcc | zone-9 rcc,1,32.0,0.0,0.0,2026-10-05,2026-10-22,2026-05-26,,1,0,0.0,Rmt,145.0,135.0,93.103448,2026-05-26,
+linked only,GIS,Transformer Yard,Transformer Yard-Excavation,Transformer Yard-Excavation,gis | transformer yard | transformer yard-excavation | transformer yard-excavation,,,,,,,,,1,1,100.0,Cum,1600.0,1600.0,100.0,2026-05-02,2026-06-15
+master only,GIS,Whole area,Backfilling,GIS backfilling up to footing top,gis | whole area | backfilling | gis backfilling up to footing top,1,24.0,24.0,100.0,2026-02-28,2026-03-05,2026-04-07,2026-08-27,,,,,,,,,
+both,GIS,Whole area,Backfilling,GIS backfilling up to plinth,gis | whole area | backfilling | gis backfilling up to plinth,1,24.0,0.0,0.0,2026-03-06,2026-03-10,2026-04-16,,1,0,0.0,Cum,3000.0,2645.0,88.166667,2026-05-08,
+both,GIS,Whole area,Filling in Plinth,GIS Filling In Plinth,gis | whole area | filling in plinth | gis filling in plinth,1,14.0,5.6,40.0,2026-03-31,2026-04-07,2026-05-08,,1,0,0.0,Cum,720.0,286.0,39.722222,2026-07-15,
+both,GIS,Whole area,Flooring-PCC,GIS Floor PCC,gis | whole area | flooring-pcc | gis floor pcc,1,8.0,5.36,67.0,2026-04-08,2026-04-09,2026-08-31,,1,0,0.0,Sqm,1099.0,134.0,12.192903,2026-08-31,
+both,GIS,Whole area,Footing-Concreting,GIS-Footing RCC,gis | whole area | footing-concreting | gis-footing rcc,1,12.0,12.0,100.0,2026-02-26,2026-02-27,2026-03-19,2026-04-24,46,46,100.0,Nos,46.0,46.0,100.0,2026-03-19,2026-04-15
+both,GIS,Whole area,Footing-PCC,GIS PCC,gis | whole area | footing-pcc | gis pcc,1,6.0,6.0,100.0,2026-02-07,2026-02-13,2026-03-11,2026-03-27,46,46,100.0,Nos,46.0,46.0,100.0,2026-03-11,2026-03-28
+linked only,GIS,Whole area,Footing-Stub Column,GIS Stub Column,gis | whole area | footing-stub column | gis stub column,,,,,,,,,46,46,100.0,Nos,46.0,46.0,100.0,2026-04-12,2026-04-24
+linked only,GIS,Whole area,GIS Column RCC GF,GIS Column RCC GF-1F,gis | whole area | gis column rcc gf | gis column rcc gf-1f,,,,,,,,,1,1,100.0,Units,46.0,46.0,100.0,2026-08-20,2026-10-19
+linked only,GIS,Whole area,Plinth Beam-PCC,GIS Plinth PCC,gis | whole area | plinth beam-pcc | gis plinth pcc,,,,,,,,,78,45,57.692308,Nos,78.0,45.0,57.692308,2026-06-26,
+linked only,GIS,Whole area,Plinth Beam-RCC,GIS Plinth RCC,gis | whole area | plinth beam-rcc | gis plinth rcc,,,,,,,,,9,1,11.111111,Nos,9.0,1.0,11.111111,2026-06-29,
+master only,GIS,Whole area,Plinth Beams,GIS Plinth RCC,gis | whole area | plinth beams | gis plinth rcc,1,16.0,16.0,100.0,2026-03-26,2026-03-30,2026-06-29,2026-08-07,,,,,,,,,
+linked only,GIS,Whole area,Plinth RCC,GIS Plinth RCC,gis | whole area | plinth rcc | gis plinth rcc,,,,,,,,,1,1,100.0,Rmt,370.0,370.0,100.0,2026-06-29,2026-08-07
