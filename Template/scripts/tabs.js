@@ -9,11 +9,11 @@
   function available() {
     return Array.prototype.filter.call(tabs.querySelectorAll("[data-p]"), function (b) { return !b.hidden; }).map(function (b) { return b.getAttribute("data-p"); });
   }
-  var page = "qty";
-  try { page = new URLSearchParams(location.hash.slice(1)).get("p") || "qty"; } catch (e) { /* bad hash */ }
+  var page = "";  // no p= in the URL: the first tab (Overview, or Quantity where there is no master schedule)
+  try { page = new URLSearchParams(location.hash.slice(1)).get("p") || ""; } catch (e) { /* bad hash */ }
   function show(p, focusTab) {
     var ps = available();
-    page = ps.indexOf(p) >= 0 ? p : "qty";
+    page = ps.indexOf(p) >= 0 ? p : ps[0];
     tabs.querySelectorAll("[data-p]").forEach(function (b) {
       var k = b.getAttribute("data-p"), on = k === page, pg = $("pg-" + k);
       b.setAttribute("aria-selected", String(on));
@@ -25,7 +25,7 @@
     if (focusTab) $("tab-" + page).focus();
     if ($("tip")) $("tip").classList.remove("on");
     var h = new URLSearchParams(location.hash.slice(1));
-    if (page === "qty") h.delete("p"); else h.set("p", page);
+    if (page === ps[0]) h.delete("p"); else h.set("p", page);
     try { history.replaceState(null, "", h.toString() ? "#" + h.toString() : location.pathname + location.search); } catch (e) { /* file:// */ }
     document.dispatchEvent(new CustomEvent("jui:page", { detail: page }));
   }

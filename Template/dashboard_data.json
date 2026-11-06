@@ -8,6 +8,8 @@
   ],
   "excludeParents": true,
   "subtradeField": "Subtrade",
+  "_subtradeColumn": "Set to a task column (e.g. \"trade\") to take the subtrade from it instead of the subtradeField custom field; subtradeLabel is what the page calls it",
+  "subtradeLabel": "Subtrade",
   "scheduleFields": {
     "start": "Schedule Start",
     "finish": "Schedule Finish"

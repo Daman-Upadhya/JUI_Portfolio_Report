@@ -1,4 +1,4 @@
-/* Progress on the site model (Progress & S-curve page; data.model3d, the master schedule facts).
+/* Progress on the site model (Overview page; data.model3d, the master schedule facts).
    Views: the 3D model made from the IFC (build/ifc_model.py, drawn by ifcview.js), where each
    building carries a progress ring at its anchor (earned weightage, coloured against the baseline
    due by today), and images kept in the project folder, with rings at fixed spots. A building's figures come from the S-curve groups its storeys
@@ -246,12 +246,7 @@
     });
   }
   function renderModel(v) {
-    var st = BIM && BIM.stats, nf = function (x) { return nf0.format(x || 0); };
-    var links = st ? " Click an element for its Workset, Comments, Mark and linked tasks. Task links: " +
-      (st["element ID tasks linked"] ? nf(st["element ID tasks linked"]) + " tasks by their Element ID (" + nf(st["element ID groups"]) + " element sets)" +
-        (st["element ID tasks on pours"] ? " and " + nf(st["element ID tasks on pours"]) + " slab tasks on the pour plan" : "") + "; " : "") +
-      nf(st.linked) + " more by the element mark in the task name." : "";
-    $("m3d").innerHTML = '<figure class="lay-fig"><div class="mdl"></div>' + (v.caption || links ? "<figcaption>" + esc((v.caption || "") + links) + "</figcaption>" : "") + "</figure>";
+    $("m3d").innerHTML = '<figure class="lay-fig"><div class="mdl"></div></figure>';
     $("m3d-legend").hidden = !(v.anchors || []).length;
     var box = $("m3d").querySelector(".mdl");
     function start(idx) {
@@ -323,7 +318,7 @@
         '<span class="lay-name' + (h.tag ? " is-" + h.tag : "") + '" aria-hidden="true">' + esc(h.label || B.name) + "</span></button>";
     }).join("");
     $("m3d").innerHTML = '<figure class="lay-fig"><div class="lay-img' + (v.cutout ? " is-cut" : "") + '" style="aspect-ratio:' + (v.w || 16) + " / " + (v.h || 9) + '"><img src="model/' + encodeURIComponent(v.image) + '" alt="' + esc(v.alt || v.label) + '" loading="lazy">' + pins + "</div>" +
-      (v.caption ? "<figcaption>" + esc(v.caption) + "</figcaption>" : "") + "</figure>";
+      "</figure>";
     $("m3d-legend").hidden = !(v.hotspots || []).length;
     bindPins();
     applyFocus();

@@ -31,6 +31,7 @@ import csv
 import json
 import os
 import re
+from difflib import SequenceMatcher
 from collections import Counter
 from datetime import date, datetime, timedelta
 
@@ -173,12 +174,18 @@ def table_raw(rows: list[dict]) -> list[dict]:
     return out
 
 
+def subtrade_raw(r: dict, data: dict):
+    """The subtrade value: the task column data.subtradeColumn when set (e.g. "trade"), else the
+    custom field data.subtradeField."""
+    col = data.get("subtradeColumn")
+    return r.get(col) if col else (r.get("customField") or {}).get(data.get("subtradeField", "Subtrade"))
+
+
 def table_tasks(rows: list[dict], data: dict) -> list[dict]:
     """Table 2: parents and non-Construction tasks removed, de-duplicated by guid."""
     types = set(data.get("taskTypes") or ["Construction"])
     unit_alias = data.get("unitAliases") or {}
     sub_alias = data.get("subtradeAliases") or {}
-    field = data.get("subtradeField", "Subtrade")
     loc_cfg = data.get("location") or {}
     sched = data.get("scheduleFields") or {}
     lap_field = data.get("lapField", "LAP Plan")
@@ -204,7 +211,7 @@ def table_tasks(rows: list[dict], data: dict) -> list[dict]:
             d = parse_date(r.get(k))
             t[k] = d.isoformat() if d else None
         cf = r.get("customField") or {}
-        subtrade = clean_label(cf.get(field), sub_alias)
+        subtrade = clean_label(subtrade_raw(r, data), sub_alias)
         lap = re.sub(r"\s+", " ", str(cf.get(lap_field) or "")).strip()
         t.update({
             "subtrade": subtrade or data.get("noSubtrade", "Unassigned"),
@@ -423,7 +430,8 @@ def invariants(tables: dict, metrics: dict) -> list[str]:
 # A weightage project (project.json "kind": "scurve", e.g. JUI-1A) is the master schedule:
 #
 #   Master    parent != True, one row per guid (latest history event); area / sub-location split
-#             as above; weightage from the custom field data.scurve.weightField; earned weightage
+#             as above; weightage from the custom field data.scurve.weightField (or
+#             data.scurve.defaultWeight when a task has no value, e.g. 1 for JUI02); earned weightage
 #             = weightage x percentComplete / 100
 #   Baseline  each task's weightage spread evenly over baselineStartDate..baselineEndDate
 #   Planned   each task's weightage spread evenly over plannedStartDate..plannedEndDate (the
@@ -462,8 +470,9 @@ def scurve_master(rows: list[dict], data: dict) -> list[dict]:
     cfg = data.get("scurve") or {}
     wf = cfg.get("weightField", "Weightage")
     gf, pf = cfg.get("groupField", "S Curve"), cfg.get("phaseField", "Construction Phase")
+    dw = cfg.get("defaultWeight")  # weightage of a task with no weightage value (JUI02: 1); unset = 0
     sub_alias = data.get("subtradeAliases") or {}
-    st_field, lap_field = data.get("subtradeField", "Subtrade"), data.get("lapField", "LAP Plan")
+    lap_field = data.get("lapField", "LAP Plan")
     loc_cfg = data.get("location") or {}
     blank = data.get("noGroup", "Unassigned")
     latest: dict[str, dict] = {}
@@ -477,9 +486,9 @@ def scurve_master(rows: list[dict], data: dict) -> list[dict]:
     for r in latest.values():
         cf = r.get("customField") or {}
         area, sub = split_location(r.get("location"), loc_cfg)
-        subtrade = clean_label(cf.get(st_field), sub_alias)
+        subtrade = clean_label(subtrade_raw(r, data), sub_alias)
         lap = _clean(cf.get(lap_field))
-        w = num(cf.get(wf))
+        w = num(cf.get(wf)) if dw is None or str(cf.get(wf) or "").strip() else num(dw)
         pc = max(0.0, min(100.0, num(r.get("percentComplete"))))
         t = {k: r.get(k) for k in SCURVE_COLUMNS if k in r}
         for k in ("baselineStartDate", "baselineEndDate", "plannedStartDate", "plannedEndDate", "actualStartDate", "actualEndDate"):
@@ -611,6 +620,422 @@ def write_scurve_tables(tables: dict, out_dir: str, published_dir: str | None = 
         if d:
             for name, cols in specs:
                 _write_csv(os.path.join(d, SCURVE_FILES[name]), tables[name], cols)
+
+
+# ============================================================================= WBS page
+# The whole master schedule as a tree (project.json display.wbs): EVERY activity, parents
+# included, one row per guid (latest history event), hung under its immediate parent by
+# parentGUID. A row whose parentGUID is blank or not in the feed is a root. Siblings are ordered by
+# planned start (else baseline start), then WBS code, then name. The page rolls parents up itself
+# (child status counts, earliest start / latest finish).
+
+WBS_DATES = ("baselineStartDate", "baselineEndDate", "plannedStartDate", "plannedEndDate", "actualStartDate", "actualEndDate")
+WBS_EPOCH = date(2000, 1, 1)
+WBS_NODE = ["parentRow", "level", "isParent", "taskName", "wbsId", "taskId", "status", "percentComplete", "taskType",
+            *WBS_DATES, "location", "trade", "owner"]
+WBS_STRINGS = ("status", "taskType", "location", "trade", "owner")
+
+
+def _natural(s) -> list:
+    return [(0, int(x), "") if x.isdigit() else (1, 0, x.lower()) for x in re.split(r"(\d+)", str(s or "")) if x]
+
+
+def wbs_tree(rows: list[dict]) -> dict:
+    """{"nodes": [[...WBS_NODE]] in tree (depth-first) order, "strings": {field: [values]}}.
+    Dates are days since WBS_EPOCH; status, taskType, location, trade and owner are indexes into
+    strings (-1 = blank); parentRow is the parent's row index (-1 = root). No guid leaves here."""
+    latest: dict[str, dict] = {}
+    for r in rows:
+        g = r.get("guid")
+        if not g:
+            continue
+        seen = latest.get(g)
+        if seen is None or (parse_dt(r.get("historyDateTime")) or datetime.min) > (parse_dt(seen.get("historyDateTime")) or datetime.min):
+            latest[g] = r
+    kids: dict[str, list] = {}
+    roots = []
+    for g, r in latest.items():
+        p = r.get("parentGUID")
+        (kids.setdefault(p, []) if p and p != g and p in latest else roots).append(g)
+
+    def order(g):
+        r = latest[g]
+        d = parse_date(r.get("plannedStartDate")) or parse_date(r.get("baselineStartDate"))
+        return (d or date.max, _natural(r.get("wbsId")), _natural(r.get("taskName")))
+
+    strings = {k: [] for k in WBS_STRINGS}
+    index = {k: {} for k in WBS_STRINGS}
+
+    def ref(kind, v):
+        v = _clean(v)
+        if not v:
+            return -1
+        if v not in index[kind]:
+            index[kind][v] = len(strings[kind])
+            strings[kind].append(v)
+        return index[kind][v]
+
+    def day(v):
+        d = parse_date(v)
+        return (d - WBS_EPOCH).days if d else None
+
+    nodes, placed = [], set()
+    pending = sorted(roots, key=order)
+    # a parent loop (never seen in practice) leaves guids unreachable from a root: they become roots
+    while pending:
+        stack = [(g, -1, 0) for g in reversed(pending)]
+        while stack:
+            g, p, lv = stack.pop()
+            if g in placed:
+                continue
+            placed.add(g)
+            r, i = latest[g], len(nodes)
+            nodes.append([p, lv, 1 if (r.get("parent") is True or g in kids) else 0, _clean(r.get("taskName")),
+                          _clean(r.get("wbsId")), _clean(r.get("taskId")), ref("status", r.get("status")),
+                          round(max(0.0, min(100.0, num(r.get("percentComplete")))), 1), ref("taskType", r.get("taskType")),
+                          *[day(r.get(k)) for k in WBS_DATES],
+                          ref("location", r.get("location")), ref("trade", r.get("trade")), ref("owner", r.get("owner"))])
+            stack += [(c, i, lv + 1) for c in sorted(kids.get(g, []), key=order, reverse=True)]
+        pending = sorted((g for g in latest if g not in placed), key=order)[:1]
+    return {"epoch": WBS_EPOCH.isoformat(), "columns": WBS_NODE, "strings": strings, "nodes": nodes}
+
+
+def wbs_csv_rows(tree: dict) -> list[dict]:
+    """The tree as Table rows (data/<key>/scurve/wbs_tree.csv): strings and dates spelled out."""
+    cols, S = tree["columns"], tree["strings"]
+    out = []
+    for i, n in enumerate(tree["nodes"]):
+        r = dict(zip(cols, n))
+        r["row"] = i
+        for k in WBS_STRINGS:
+            r[k] = S[k][r[k]] if r[k] >= 0 else ""
+        for k in WBS_DATES:
+            r[k] = (WBS_EPOCH + timedelta(r[k])).isoformat() if r[k] is not None else ""
+        out.append(r)
+    return out
+
+
+
+def wbs_areas(tree: dict, names) -> dict:
+    """{taskId: area} for the Progress by area panel: an activity belongs to the area whose name its
+    nearest WBS ancestor carries (DC Building, DG Building, ...), whichever branch that ancestor sits in
+    (design, construction, facade); names are the areas to look for, matched ignoring case and spaces."""
+    want = {" ".join(str(n).split()).lower(): n for n in names if n}
+    N, out, area = tree["nodes"], {}, []
+    for i, n in enumerate(N):  # depth-first order: a parent comes before its children
+        p = n[0]
+        own = want.get(" ".join(str(n[3]).split()).lower()) if n[2] else None
+        area.append(own or (area[p] if p >= 0 else None))
+        if not n[2] and n[5] and area[i]:
+            out[str(n[5])] = area[i]
+    return out
+
+
+# ============================================================================= Procurement page
+# Stage-wise procurement tracking from one WBS branch (project.json display.procurement, e.g. Core
+# and Shell works > Procurement), using the WBS tree above:
+#
+#   Parts   the branch's child WBS nodes (Material, Specialised Agencies)
+#   Items   going down a part, the first WBS node with an activity directly under it is an item
+#           (a material or an agency); every activity below it belongs to it (e.g. Post Award)
+#   Stage   each activity's stage: the first of display.procurement.stages whose pattern matches
+#           its name (RFQ Floating, Pre-bid, ...); none matches = "Other"
+#   Finish  actual finish when complete, else the planned finish
+#   Overdue not complete and the planned finish is before today
+#   Delay   days late against the baseline finish: (actual finish when complete, else the planned
+#           finish, or today when that has passed) - baseline finish; negative = early
+#
+# A cell (item x stage) with several activities: finish = the latest, delay = the largest.
+
+def _proc_activity(tree: dict, i: int, item: int, stage: int, groups: dict, today: date) -> dict:
+    """One WBS-tree activity for the procurement pages: status group, dates as ISO, finish, overdue, delay."""
+    n, S = tree["nodes"][i], tree["strings"]
+
+    def iso(v):
+        return (WBS_EPOCH + timedelta(v)).isoformat() if v is not None else None
+
+    status = S["status"][n[6]] if n[6] >= 0 else ""
+    g = groups.get(status, "notStarted")
+    done = g == "complete"
+    bs, be, ps, pe, ast, ae = (iso(x) for x in n[9:15])
+    finish = ae if done and ae else pe
+    overdue = not done and bool(pe) and pe < today.isoformat()
+    end = max(pe, today.isoformat()) if overdue else finish
+    delay = (date.fromisoformat(end) - date.fromisoformat(be)).days if end and be else None
+    return {"item": item, "stage": stage, "name": n[3], "taskId": n[5], "status": status, "group": g,
+            "pct": n[7], "baselineStart": bs, "baselineFinish": be, "plannedStart": ps, "plannedFinish": pe,
+            "actualStart": ast, "actualFinish": ae, "finish": finish, "overdue": overdue, "delay": delay,
+            "wbs": n[4], **{k: (S[k][n[j]] if n[j] >= 0 else "") for k, j in (("location", 15), ("trade", 16), ("owner", 17))}}
+
+
+def _proc_cells(items: list[dict], acts: list[dict]) -> None:
+    """Each item's cells (one per stage: counts, latest finish and baseline finish, largest delay) and totals."""
+    by: dict[int, list] = {}
+    for a in acts:
+        by.setdefault(a["item"], []).append(a)
+    for k, it in enumerate(items):
+        mine = by.get(k, [])
+        cells = {}
+        for a in mine:
+            c = cells.setdefault(a["stage"], {"n": 0, "done": 0, "started": 0, "overdue": 0, "finish": None, "baseline": None, "delay": None})
+            c["n"] += 1
+            c["done"] += a["group"] == "complete"
+            c["started"] += a["group"] == "started"
+            c["overdue"] += a["overdue"]
+            c["finish"] = max(filter(None, (c["finish"], a["finish"])), default=None)
+            c["baseline"] = max(filter(None, (c["baseline"], a["baselineFinish"])), default=None)
+            c["delay"] = max(filter(lambda v: v is not None, (c["delay"], a["delay"])), default=None)
+        it["cells"] = {str(s): c for s, c in sorted(cells.items())}
+        it["n"], it["done"] = len(mine), sum(a["group"] == "complete" for a in mine)
+        it["overdue"] = sum(a["overdue"] for a in mine)
+        it["finish"] = max((a["finish"] for a in mine if a["finish"]), default=None)
+        it["delay"] = max((a["delay"] for a in mine if a["delay"] is not None), default=None)
+
+
+def procurement(tree: dict, data: dict, today: date) -> dict | None:
+    cfg = data.get("procurement") or {}
+    path = [re.compile(p, re.I) for p in cfg.get("path") or []]
+    if not path:
+        return None
+    N, S = tree["nodes"], tree["strings"]
+    kids: dict[int, list] = {}
+    for i, n in enumerate(N):
+        kids.setdefault(n[0], []).append(i)
+    # the branch: a node matching path[0] anywhere, then a child matching each next step
+    root = next((i for i, n in enumerate(N) if n[2] and path[0].search(n[3])), None)
+    for rx in path[1:]:
+        root = None if root is None else next((c for c in kids.get(root, []) if N[c][2] and rx.search(N[c][3])), None)
+    if root is None:
+        return None
+    for k in kids:  # this page follows WBS code order (Material 1.1 before Specialised Agencies 1.2)
+        kids[k] = sorted(kids[k], key=lambda c: _natural(N[c][4]))
+    stages = [(s[0], re.compile(s[1], re.I)) for s in cfg.get("stages") or []]
+    labels = [s[0] for s in stages] + ["Other"]
+    groups = data.get("statusGroups") or {}
+
+    def leaves(i):
+        out = []
+        for c in kids.get(i, []):
+            out += leaves(c) if N[c][2] else [c]
+        return out
+
+    acts, items = [], []
+
+    def activity(i, item):
+        st = next((k for k, (_, rx) in enumerate(stages) if rx.search(N[i][3])), len(stages))
+        acts.append(_proc_activity(tree, i, item, st, groups, today))
+
+    def walk(i, part, trail):
+        if any(not N[c][2] for c in kids.get(i, [])):
+            k = len(items)
+            items.append({"part": part, "group": " › ".join(trail[:-1]), "name": N[i][3], "wbs": N[i][4]})
+            for a in leaves(i):
+                activity(a, k)
+            return
+        for c in kids.get(i, []):
+            if N[c][2]:
+                walk(c, part, trail + [N[c][3]])
+
+    parts = [N[c][3] for c in kids.get(root, []) if N[c][2]]
+    for c in kids.get(root, []):
+        if N[c][2]:
+            walk(c, N[c][3], [])
+    _proc_cells(items, acts)
+    return {"title": cfg.get("title") or N[root][3], "branch": N[root][3], "parts": parts, "stages": labels,
+            "items": items, "activities": acts, "today": today.isoformat()}
+
+
+PROCUREMENT_COLUMNS = ["part", "group", "item", "stage", "wbs", "taskId", "name", "status", "pct", "baselineStart", "baselineFinish",
+                       "plannedStart", "plannedFinish", "actualStart", "actualFinish", "finish", "overdue", "delay", "location", "trade", "owner"]
+
+
+def procurement_csv_rows(p: dict) -> list[dict]:
+    return [{**a, "part": p["items"][a["item"]]["part"], "group": p["items"][a["item"]]["group"],
+             "item": p["items"][a["item"]]["name"], "stage": p["stages"][a["stage"]]} for a in p["activities"]]
+
+
+# ============================================================================= MEP procurement page
+# Material-wise tracking of a WBS branch whose activity NAMES carry the stage, scope, discipline and
+# material (project.json display.mepProcurement), e.g.
+#
+#   PROC- ORDER FIN - GIS - ELE - Busduct     stage ORDER FIN, scope GIS, discipline ELE, Busduct
+#   D&D - TDS - APR - HVAC - GI Ducts         stage TDS-APR (stage-step)
+#   PROC- DELV - PH2 - HVAC - Buffer Tanks    stage DELV-PH2 (stage-phase)
+#
+# Activities with the same scope + discipline + material name (case and punctuation ignored; a cut-off
+# name joins the one it is the start of) form one material, whatever WBS node they sit under. One whose
+# stages are all design documents (stages with a doc label: TDS items, shop drawings) is a document
+# instead, listed under its discipline's doc row (one per label), which sums its documents. Finish,
+# overdue and delay are as on the Procurement page.
+
+def mep_procurement(tree: dict, data: dict, today: date) -> dict | None:
+    cfg = data.get("mepProcurement") or {}
+    path = [re.compile(p, re.I) for p in cfg.get("path") or []]
+    rx = re.compile(cfg["pattern"], re.I) if cfg.get("pattern") else None
+    if not path or not rx:
+        return None
+    N = tree["nodes"]
+    kids: dict[int, list] = {}
+    for i, n in enumerate(N):
+        kids.setdefault(n[0], []).append(i)
+    root = next((i for i, n in enumerate(N) if n[2] and path[0].search(n[3])), None)
+    for step in path[1:]:
+        root = None if root is None else next((c for c in kids.get(root, []) if N[c][2] and step.search(N[c][3])), None)
+    if root is None:
+        return None
+    leaves, stack = [], [root]
+    while stack:
+        for c in kids.get(stack.pop(), []):
+            (stack if N[c][2] else leaves).append(c)
+
+    stages = cfg.get("stages") or []
+    skey = {s["key"].upper(): k for k, s in enumerate(stages)}
+    other = len(stages)
+    scopes = {k.upper(): v for k, v in (cfg.get("scopes") or {}).items()}
+    discs = {k.upper(): v for k, v in (cfg.get("disciplines") or {}).items()}
+    o_sc = {v: k for k, v in reversed(list(enumerate((cfg.get("scopes") or {}).values())))}
+    o_d = {v: k for k, v in reversed(list(enumerate((cfg.get("disciplines") or {}).values())))}
+    groups = data.get("statusGroups") or {}
+
+    def norm(s):
+        return re.sub(r"[^a-z0-9]", "", s.lower())
+
+    keyed: dict[tuple, list] = {}  # (scope, discipline, normalised name) -> [(leaf, name, stage)]
+    for i in leaves:
+        name = N[i][3].strip()
+        m = rx.match(name)
+        g = {k: re.sub(r"\s+", " ", v or "").strip() for k, v in m.groupdict().items()} if m else {}
+        key = "-".join(x for x in (g.get("stage", "").upper(), g.get("step", "").upper(), g.get("phase", "").upper().replace(" ", "")) if x)
+        nm = g.get("name") or name
+        sc = scopes.get(g.get("scope", "").upper(), g.get("scope", ""))
+        d = discs.get(g.get("disc", "").upper(), g.get("disc", ""))
+        keyed.setdefault((sc, d, norm(nm)), []).append((i, nm, skey.get(key, other) if m else other))
+    for k in sorted(keyed, key=lambda k: len(k[2])):  # P6 cuts long names: a cut name joins its full one
+        longer = sorted((o for o in keyed if o != k and o[:2] == k[:2] and len(k[2]) >= 12 and o[2].startswith(k[2])), key=lambda o: len(o[2]))
+        if longer and all(longer[-1][2].startswith(o[2]) for o in longer):  # cut at several lengths: all join the full name
+            keyed[longer[-1]] += keyed.pop(k)
+    merged = _mep_fuzzy(keyed, stages, other, float(cfg.get("fuzzyMatch") or 0))
+
+    def doc_label(ps):
+        labels = {stages[p[2]].get("doc") if p[2] < other else None for p in ps}
+        return labels.pop() if len(labels) == 1 and None not in labels else None
+
+    def first_finish(ps):
+        return min((N[p[0]][12] for p in ps if N[p[0]][12] is not None), default=10 ** 9)  # planned finish
+
+    items, acts = [], []
+
+    def add(item, ps):
+        for p in sorted(ps, key=lambda p: (p[2], _natural(N[p[0]][4]))):
+            acts.append(_proc_activity(tree, p[0], item, p[2], groups, today))
+
+    rows = sorted(keyed.items(), key=lambda kp: (o_sc.get(kp[0][0], 99), kp[0][0], o_d.get(kp[0][1], 99), kp[0][1],
+                                                  doc_label(kp[1]) is not None, first_finish(kp[1]), kp[0][2]))
+    heads: dict[tuple, int] = {}
+    for (sc, d, _), ps in rows:
+        # the name: the longest one used by the procurement stages (order, delivery), else the longest
+        own = [p[1] for p in ps if p[2] == other or not stages[p[2]].get("doc")] or [p[1] for p in ps]
+        name = max(own, key=len)
+        # names joined by the approximate match (a cut-off name is not an alias)
+        aliases = sorted({p[1] for p in ps if not norm(name).startswith(norm(p[1]))}, key=str.lower)
+        label = doc_label(ps)
+        if label is None:
+            add(len(items), ps)
+            items.append({"part": sc, "disc": d, "name": name, "kind": "material", **({"aliases": aliases} if aliases else {})})
+            continue
+        h = heads.get((sc, d, label))
+        if h is None:
+            h = heads[(sc, d, label)] = len(items)
+            items.append({"part": sc, "disc": d, "name": label, "kind": "docs", "children": []})
+        items[h]["children"].append(len(items))
+        add(len(items), ps)
+        items.append({"part": sc, "disc": d, "name": name, "kind": "doc", "parent": h})
+    # doc rows come out in finish order of their first document; keep each discipline's rows as sorted above
+    rollup = [{**a, "item": items[a["item"]]["parent"]} for a in acts if items[a["item"]]["kind"] == "doc"]
+    _proc_cells(items, acts + rollup)
+    phases = list(cfg.get("phases") or [])
+    return {"title": cfg.get("title") or N[root][3], "branch": N[root][3],
+            "parts": list(dict.fromkeys(it["part"] for it in items)),
+            "disciplines": list(dict.fromkeys(it["disc"] for it in items)),
+            "phases": phases + ["Other"], "stages": [s["label"] for s in stages] + ["Other"],
+            "stagePhase": [int(s.get("phase", 0)) for s in stages] + [len(phases)],
+            "items": items, "activities": acts, "today": today.isoformat(), "merged": merged}
+
+
+_FUZZY_STOP = {"and", "with", "for", "of", "the", "including", "incl", "type", "works", "work"}
+_FUZZY_NUM = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6"}
+
+
+def _fuzzy_tokens(s: str) -> list[str]:
+    t = [_FUZZY_NUM.get(w, w) for w in re.split(r"[^a-z0-9]+", s.lower()) if w and w not in _FUZZY_STOP]
+    return [w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in t]  # Cables = Cable
+
+
+def name_similarity(a: str, b: str) -> float:
+    """0..1: how alike two material names are. Character similarity of the cleaned names (case,
+    punctuation, plurals, and/with/for, number words ignored), or 0.92 when every word of the shorter
+    name (two or more words) is in the longer one and it has just one word more (HT Cables, HT Power Cables)."""
+    ta, tb = _fuzzy_tokens(a), _fuzzy_tokens(b)
+    r = SequenceMatcher(None, " ".join(ta), " ".join(tb)).ratio()
+    sa, sb = set(ta), set(tb)
+    small, big = (sa, sb) if len(sa) <= len(sb) else (sb, sa)
+    if len(small) >= 2 and small <= big and len(big - small) <= 1:
+        r = max(r, 0.92)
+    return r
+
+
+def _mep_fuzzy(keyed: dict, stages: list, other: int, threshold: float) -> list[list[str]]:
+    """Join materials of one scope + discipline whose names match at least `threshold` (display.
+    mepProcurement.fuzzyMatch, e.g. 0.9), when the two never share a stage (one material has each stage
+    once; two drawing sheets of one series share theirs and stay apart). Best matches first, and a
+    design-only item (TDS) joins a material before two materials join each other. Returns [[kept, joined]]."""
+    if not threshold:
+        return []
+
+    def design_only(ps):
+        return all(p[2] < other and stages[p[2]].get("doc") for p in ps)
+
+    def label(ps):
+        own = [p[1] for p in ps if p[2] == other or not stages[p[2]].get("doc")] or [p[1] for p in ps]
+        return max(own, key=len)
+
+    keys = list(keyed)
+    pairs = []
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            if a[:2] != b[:2]:
+                continue
+            r = name_similarity(label(keyed[a]), label(keyed[b]))
+            if r >= threshold:
+                pairs.append((-r, not (design_only(keyed[a]) ^ design_only(keyed[b])), a, b))
+    merged, home = [], {k: k for k in keys}
+
+    def find(k):
+        while home[k] != k:
+            k = home[k]
+        return k
+
+    for _, _, a, b in sorted(pairs, key=lambda x: (x[0], x[1], x[2][2], x[3][2])):
+        a, b = find(a), find(b)
+        if a == b or {p[2] for p in keyed[a]} & {p[2] for p in keyed[b]}:
+            continue
+        if design_only(keyed[a]) and not design_only(keyed[b]):  # keep the material's key
+            a, b = b, a
+        merged.append([label(keyed[a]), label(keyed[b])])
+        keyed[a] += keyed.pop(b)
+        home[b] = a
+    return merged
+
+
+MEP_PROCUREMENT_COLUMNS = ["part", "disc", "item", "kind", "stage", "wbs", "taskId", "name", "status", "pct", "baselineStart",
+                           "baselineFinish", "plannedStart", "plannedFinish", "actualStart", "actualFinish", "finish", "overdue", "delay",
+                           "location", "trade", "owner"]
+
+
+def mep_procurement_csv_rows(p: dict) -> list[dict]:
+    I = p["items"]
+    return [{**a, "part": I[a["item"]]["part"], "disc": I[a["item"]]["disc"], "item": I[a["item"]]["name"],
+             "kind": I[a["item"]]["kind"], "stage": p["stages"][a["stage"]]} for a in p["activities"]]
 
 
 def _baseline_to(f: dict, day: date, s: str = "bs", e: str = "be", r: str = "br") -> float:

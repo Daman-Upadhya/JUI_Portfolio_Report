@@ -6,6 +6,15 @@
   "use strict";
   var P = JSON.parse(document.getElementById("data").textContent);
   var meta = P.meta || {}, M = P.metrics, LOC = meta.locale || "en-IN";
+  /* what the page calls the subtrade grouping (project.json display.subtradeLabel, e.g. "Trade") */
+  var STL = (P.data && P.data.subtradeLabel) || "Subtrade", stl = STL.toLowerCase();
+  if (STL !== "Subtrade") {
+    document.querySelectorAll("#h-prog, #h-sub, #h-sub + .desc, #h-loc, #f-subtrade, #s-join-q, #prog-show").forEach(function (el) {
+      var t = el.id === "f-subtrade" ? el.previousElementSibling : el;
+      if (t.firstChild && t.firstChild.nodeType === 3) t.firstChild.nodeValue = t.firstChild.nodeValue.replace("Subtrade", STL).replace("subtrade", stl);
+      ["placeholder", "aria-label"].forEach(function (a) { if (el.getAttribute(a)) el.setAttribute(a, el.getAttribute(a).replace("subtrade", stl)); });
+    });
+  }
   var root = document.documentElement;
   var DASH = "—";
   function $(id) { return document.getElementById(id); }
@@ -62,7 +71,7 @@
   }
   function fact(l, v) { return "<div><dt>" + esc(l) + "</dt><dd>" + v + "</dd></div>"; }
   $("facts").innerHTML = (when ? fact("Progress as of", fmtD(when)) : "") +
-    (M ? fact("Activities", fmtI(M.totals.tasks)) + fact("Subtrades", fmtI(M.totals.subtrades)) + fact("Areas", fmtI(M.totals.areas)) : "") +
+    (M ? fact("Activities", fmtI(M.totals.tasks)) + fact(STL + "s", fmtI(M.totals.subtrades)) + fact("Areas", fmtI(M.totals.areas)) : "") +
     facts.filter(function (f) { return f !== status; }).map(function (f) { return fact(f.label, esc(f.value)); }).join("") +
     (M ? fact("Today", fmtD(M.today)) : "");
   $("dl").innerHTML = (meta.tables || []).length ? "Download: " + meta.tables.map(function (t) {
@@ -111,7 +120,7 @@
 
   var EMPTY_ALL = '<div class="empty">No data yet for this project.</div>';
   if (!M) {
-    ["subtrade", "locations", "progress"].forEach(function (id) { $(id).innerHTML = EMPTY_ALL; });
+    ["subtrade", "locations", "progress", "q-kpis"].forEach(function (id) { $(id).innerHTML = EMPTY_ALL; });
     $("filters").hidden = true;
     return;
   }
@@ -237,7 +246,7 @@
     var subs = byCountDesc(countBy(F.a ? T.filter(function (t) { return t.a === F.a; }) : T, "sl"));
     F.sl = vals("sl").filter(function (v) { return subs.some(function (e) { return e[0] === v; }); }).join("|");
     multiSelect("sl", subs.map(function (e) { return [e[0], e[0], e[1]]; }), F.a ? "All in " + F.a : "All sub-locations");
-    multiSelect("st", Array.from(countBy(T, "st").entries()).sort(function (a, b) { return a[0].localeCompare(b[0]); }).map(function (e) { return [e[0], e[0], e[1]]; }), "All subtrades");
+    multiSelect("st", Array.from(countBy(T, "st").entries()).sort(function (a, b) { return a[0].localeCompare(b[0]); }).map(function (e) { return [e[0], e[0], e[1]]; }), "All " + stl + "s");
     options("f-unit", byCountDesc(countBy(T, "u")).map(function (e) { return [e[0], e[0] + " (" + e[1] + ")"]; }), "All units", F.u);
     options("f-status", [["complete", "Complete"], ["started", "Started"], ["notStarted", "Not started"], ["overdue", "Overdue"]], "All statuses", F.s);
     F.pc = vals("pc").filter(pcRange).join("|");
@@ -351,19 +360,12 @@
     var top = byCountDesc(countBy(rows, "u"))[0];
     return top ? top[0] : null;
   }
-  function slug() { var st = vals("st"); return (meta.key || "JUI") + (F.a ? "-" + F.a : "") + (st.length === 1 ? "-" + st[0] : st.length ? "-" + st.length + "-subtrades" : ""); }
-
-  /* ---------- filter hint ---------- */
-  function renderHint(R) {
-    var c = ctxSub();
-    $("q-hint").innerHTML = c ? "<span><b>" + fmtI(R.length) + "</b> of " + fmtI(T.length) + " activities in view · " + esc(c.replace(/^Within the page filters: /, "")) + "</span>"
-      : "<span>No filters — showing all <b>" + fmtI(T.length) + "</b> activities</span>";
-  }
+  function slug() { var st = vals("st"); return (meta.key || "JUI") + (F.a ? "-" + F.a : "") + (st.length === 1 ? "-" + st[0] : st.length ? "-" + st.length + "-" + stl + "s" : ""); }
 
   /* ---------- KPI 1: quantity by subtrade ---------- */
   var subSort = { k: "st", dir: "asc" }, subRows = [];
   var SUB_COLS = [
-    { k: "st", label: "Subtrade", cls: "wrap" },
+    { k: "st", label: STL, cls: "wrap" },
     { k: "u", label: "Unit" },
     { k: "n", label: "Activities", r: true, f: function (r) { return fmtI(r.n); } },
     { k: "tq", label: "Total qty", r: true, f: function (r) { return fmtN(r.tq); } },
@@ -425,18 +427,18 @@
     table($("subtrade"), SUB_COLS, sortRows(subRows, SUB_COLS, subSort), subSort, {
       foot: foot, rerender: function () { renderSubtrade(current); },
       onRow: function (r) {
-        drill({ eyebrow: "Subtrade", title: r.st + " (" + r.u + ")", sub: ctxSub(), rows: R.filter(function (t) { return t.st === r.st && t.u === r.u; }), filter: { st: r.st, u: r.u } });
+        drill({ eyebrow: STL, title: r.st + " (" + r.u + ")", sub: ctxSub(), rows: R.filter(function (t) { return t.st === r.st && t.u === r.u; }), filter: { st: r.st, u: r.u } });
       },
     });
   }
-  $("csv-sub").addEventListener("click", function () { downloadCSV(slug() + "-subtrade-quantities.csv", SUB_COLS, sortRows(subRows, SUB_COLS, subSort)); });
+  $("csv-sub").addEventListener("click", function () { downloadCSV(slug() + "-" + stl + "-quantities.csv", SUB_COLS, sortRows(subRows, SUB_COLS, subSort)); });
 
   /* ---------- KPI 2: location bifurcation ---------- */
   /* area > sub-location > subtrade tree. Area and sub-location quantities are in locUnit (the unit
      filter, or the most common unit); a subtrade row is one subtrade in one unit, in that unit. */
   var locRows = [], locUnit = null, locOpen = null;  // locOpen: expanded row keys; null = default (areas open)
   var LOC_COLS = [
-    { k: "name", label: "Area › sub-location › subtrade", cls: "wrap" },
+    { k: "name", label: "Area › sub-location › " + stl, cls: "wrap" },
     { k: "unit", label: "Unit", f: function (r) { return r.unit ? esc(r.unit) : DASH; } },
     /* the same quantity and date columns as "Quantity by subtrade"; quantities only count the row's unit */
     { k: "tq", label: "Total qty", r: true, f: function (r) { return r.qn ? fmtN(r.tq) : DASH; }, csv: function (r) { return r.qn ? r.tq : ""; } },
@@ -452,7 +454,7 @@
   ];
   function renderLocations(R, focusKey) {
     locUnit = qtyUnit(R);
-    $("loc-desc").textContent = locUnit ? "Area and sub-location quantities in " + locUnit + (F.u ? "" : " (the most common unit here; choose another in the Unit filter)") + "; subtrade rows in their own unit" : "";
+    $("loc-desc").textContent = locUnit ? "Area and sub-location quantities in " + locUnit + (F.u ? "" : " (the most common unit here; choose another in the Unit filter)") + "; " + stl + " rows in their own unit" : "";
     if (!R.length) { $("locations").innerHTML = '<div class="empty">No activities match the selected filters.</div>'; locRows = []; return; }
     /* dates over every activity in the row; quantities over the activities in the row's unit */
     function agg(rows, unit) {
@@ -492,10 +494,10 @@
         var sr = Object.assign({ name: sl, area: a, sub: sl, st: "", level: "Sub-location" }, agg(se[1], locUnit));
         locRows.push(sr);
         body += '<tr class="clickable lv2" data-a="' + esc(a) + '" data-sl="' + esc(sl) + '" tabindex="0"' + (aOpen ? "" : " hidden") + '><td class="lv lv2">' +
-          toggle(ks, sl, "subtrades") + esc(sl) + ' <span class="lv-n">' + fmtI(sts.size) + " subtrade" + (sts.size === 1 ? "" : "s") + "</span></td>" + cells(sr) + "</tr>";
+          toggle(ks, sl, stl + "s") + esc(sl) + ' <span class="lv-n">' + fmtI(sts.size) + " " + stl + (sts.size === 1 ? "" : "s") + "</span></td>" + cells(sr) + "</tr>";
         Array.from(sts.entries()).sort(function (x, y) { return y[1].length - x[1].length || x[0].localeCompare(y[0]); }).forEach(function (te) {
           var p = te[0].split("\u0001");
-          var tr = Object.assign({ name: p[0], area: a, sub: sl, st: p[0], level: "Subtrade" }, agg(te[1], p[1]));
+          var tr = Object.assign({ name: p[0], area: a, sub: sl, st: p[0], level: STL }, agg(te[1], p[1]));
           locRows.push(tr);
           body += '<tr class="clickable lv3" data-a="' + esc(a) + '" data-sl="' + esc(sl) + '" data-st="' + esc(p[0]) + '" data-u="' + esc(p[1]) + '" tabindex="0"' +
             (aOpen && locOpen.has(ks) ? "" : " hidden") + '><td class="lv lv3">' + esc(p[0]) + "</td>" + cells(tr) + "</tr>";
@@ -506,7 +508,7 @@
     $("locations").querySelectorAll("tr.clickable").forEach(function (tr) {
       function go() {
         var a = tr.getAttribute("data-a"), sl = tr.getAttribute("data-sl"), st = tr.getAttribute("data-st"), u = tr.getAttribute("data-u");
-        drill({ eyebrow: st ? "Subtrade" : sl ? "Sub-location" : "Area", title: [a, sl, st && st + " (" + u + ")"].filter(Boolean).join(" · "), sub: ctxSub(),
+        drill({ eyebrow: st ? STL : sl ? "Sub-location" : "Area", title: [a, sl, st && st + " (" + u + ")"].filter(Boolean).join(" · "), sub: ctxSub(),
           rows: R.filter(function (t) { return t.a === a && (!sl || t.sl === sl) && (!st || (t.st === st && t.u === u)); }),
           filter: st ? { a: a, sl: sl, st: st, u: u } : { a: a, sl: sl || "" } });
       }
@@ -538,7 +540,7 @@
   });
   $("loc-collapse").addEventListener("click", function () { locOpen = new Set(); renderLocations(current); });
   $("csv-loc").addEventListener("click", function () {
-    var cols = [{ k: "level", label: "Level" }, { k: "area", label: "Area" }, { k: "sub", label: "Sub-location" }, { k: "st", label: "Subtrade" }].concat(LOC_COLS.slice(1));
+    var cols = [{ k: "level", label: "Level" }, { k: "area", label: "Area" }, { k: "sub", label: "Sub-location" }, { k: "st", label: STL }].concat(LOC_COLS.slice(1));
     downloadCSV(slug() + "-locations.csv", cols, locRows);
   });
 
@@ -586,9 +588,10 @@
     var rows = pkRows(R).filter(function (g) { return g.st !== noSub && !(skip && skip.test(g.st)); }), groups = new Map();  // no chart for tasks without a subtrade
     rows.forEach(function (g) { if (!groups.has(g.loc)) groups.set(g.loc, []); groups.get(g.loc).push(g); });
     var att = rows.filter(function (g) { return g.attention; }).length;
-    $("prog-desc").textContent = rows.length ? fmtI(rows.length) + " subtrade" + (rows.length === 1 ? "" : "s") + " in " + fmtI(groups.size) + (prog.by === "sub" ? " locations" : " areas") + " · " + fmtI(att) + " need attention" : "";
+    $("prog-desc").textContent = rows.length ? fmtI(rows.length) + " " + stl + (rows.length === 1 ? "" : "s") + " in " + fmtI(groups.size) + (prog.by === "sub" ? " locations" : " areas") + " · " + fmtI(att) + " need attention" : "";
     if (!rows.length) {
-      $("progress").innerHTML = '<div class="empty">' + (prog.show === "attention" ? "Nothing needs attention for these filters." : prog.show === "all" ? "No subtrade matches these filters." : "No subtrade is in progress for these filters.") + "</div>";
+      $("prog-locs").innerHTML = "";
+      $("progress").innerHTML = '<div class="empty">' + (prog.show === "attention" ? "Nothing needs attention for these filters." : prog.show === "all" ? "No " + stl + " matches these filters." : "No " + stl + " is in progress for these filters.") + "</div>";
       return;
     }
     var order = Array.from(groups.entries()).sort(function (a, b) {
@@ -596,22 +599,125 @@
       var sb = b[1].reduce(function (m, g) { return g.psMin && (!m || g.psMin < m) ? g.psMin : m; }, null) || "9";
       return sa.localeCompare(sb) || a[0].localeCompare(b[0]);  // in construction sequence
     });
-    $("progress").innerHTML = '<div class="pk-wrap">' + order.map(function (ge) {
-      var list = ge[1].sort(function (x, y) { return (x.psMin || "9").localeCompare(y.psMin || "9") || x.st.localeCompare(y.st); });
-      var done = list.filter(function (g) { return g.status === "complete"; }).length, need = list.filter(function (g) { return g.attention; }).length, miss = list.filter(function (g) { return g.status === "missing"; }).length;
-      return '<div class="pk-group" style="--cols:' + Math.min(list.length, 6) + '"><div class="pk-gh"><h3>' + esc(ge[0]) + "</h3><span>" + fmtI(list.length) + " subtrade" + (list.length === 1 ? "" : "s") + "</span>" +
-        '<span class="pk-sum">' + statusRing(list) + fmtI(done) + " of " + fmtI(list.length) + " complete" + (need ? ' · <b class="neg">' + fmtI(need) + " need" + (need === 1 ? "s" : "") + " attention</b>" : "") + (miss ? ' · <b class="muted">' + fmtI(miss) + " missing data</b>" : "") + "</span></div>" +
-        '<div class="pk-cols">' + list.map(pkCard).join("") + "</div></div>";
-    }).join("") + "</div>";
+    // one location at a time: the Area filter's area when grouping by area, else the one picked, else the first
+    var names = order.map(function (ge) { return ge[0]; });
+    if (prog.by === "area" && F.a && names.indexOf(F.a) >= 0) prog.loc = F.a;
+    if (names.indexOf(prog.loc) < 0) prog.loc = names[0];
+    $("prog-locs").innerHTML = order.map(function (ge) {
+      var list = ge[1], need = list.filter(function (g) { return g.attention; }).length, done = list.filter(function (g) { return g.status === "complete"; }).length, on = ge[0] === prog.loc;
+      return '<button type="button" role="tab" class="q-loc" data-loc="' + esc(ge[0]) + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '">' + statusRing(list) +
+        '<span class="q-loc-t"><b>' + esc(ge[0]) + "</b><small>" + fmtI(list.length) + " " + stl + (list.length === 1 ? "" : "s") + (done ? " · " + fmtI(done) + " complete" : "") + "</small></span>" +
+        (need ? '<span class="q-loc-n" title="' + need + ' need attention">' + fmtI(need) + "</span>" : "") + "</button>";
+    }).join("");
+    var ge = order[names.indexOf(prog.loc)];
+    var list = ge[1].sort(function (x, y) { return (x.psMin || "9").localeCompare(y.psMin || "9") || x.st.localeCompare(y.st); });
+    var done = list.filter(function (g) { return g.status === "complete"; }).length, need = list.filter(function (g) { return g.attention; }).length, miss = list.filter(function (g) { return g.status === "missing"; }).length;
+    $("progress").innerHTML = '<div class="pk-group pk-one"><div class="pk-gh"><h3>' + esc(ge[0]) + "</h3><span>" + fmtI(list.length) + " " + stl + (list.length === 1 ? "" : "s") + "</span>" +
+      '<span class="pk-sum">' + statusRing(list) + fmtI(done) + " of " + fmtI(list.length) + " complete" + (need ? ' · <b class="neg">' + fmtI(need) + " need" + (need === 1 ? "s" : "") + " attention</b>" : "") + (miss ? ' · <b class="muted">' + fmtI(miss) + " missing data</b>" : "") + "</span></div>" +
+      '<div class="pk-cols">' + list.map(pkCard).join("") + "</div></div>";
     $("progress").querySelectorAll(".pk-col").forEach(function (el) {
       el.addEventListener("click", function () {
         var lc = el.getAttribute("data-loc"), st = el.getAttribute("data-st"), u = el.getAttribute("data-u");
         var whole = (P.data && P.data.location && P.data.location.wholeArea) || "Whole area";
-        drill({ eyebrow: "Subtrade progress", title: st + " · " + lc + " (" + u + ")", sub: ctxSub(), filter: null,
+        drill({ eyebrow: STL + " progress", title: st + " · " + lc + " (" + u + ")", sub: ctxSub(), filter: null,
           rows: R.filter(function (t) { var l = prog.by === "sub" && t.sl !== whole && t.sl !== t.a ? t.sl : t.a; return l === lc && t.st === st && t.u === u; }) });
       });
     });
   }
+  // the location picker: a click shows that location; picking another area than the Area filter's clears the filter
+  $("prog-locs").addEventListener("click", function (e) {
+    var b = e.target.closest(".q-loc");
+    if (!b) return;
+    prog.loc = b.getAttribute("data-loc");
+    if (prog.by === "area" && F.a && F.a !== prog.loc) { F.a = ""; render(); } else renderProgress(current);
+    var nb = $("prog-locs").querySelector('[aria-selected="true"]'); if (nb) nb.focus();
+  });
+  $("prog-locs").addEventListener("keydown", function (e) {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    var bs = Array.prototype.slice.call($("prog-locs").querySelectorAll(".q-loc")), i = bs.findIndex(function (b) { return b.getAttribute("aria-selected") === "true"; });
+    var nb = bs[(i + (e.key === "ArrowRight" ? 1 : bs.length - 1)) % bs.length];
+    if (nb) { e.preventDefault(); nb.click(); }
+  });
+
+  /* ---------- physical progress by construction phase (the master schedule's "Construction Phase"
+     custom field, from the S-curve facts): per phase, the weightage earned (actual) against what the
+     baseline and the working plan have due by today. Follows the Area filter. ---------- */
+  var PH_ICON = [  // phase name pattern -> icon
+    [/design|document|drawing/i, '<path d="m12 19 7-7 3 3-7 7z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18z"/><path d="m2 2 7.6 7.6"/><circle cx="11" cy="11" r="2"/>'],
+    [/procure/i, '<path d="M1 4h13v12H1zM14 9h4l4 4v3h-8"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>'],
+    [/pre-?construction|mobili|site prep/i, '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>'],
+    [/mep|electric|mechanical|plumb/i, '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'],
+    [/test|commission/i, '<path d="M9 2v6l-5 9a3 3 0 0 0 2.6 5h10.8a3 3 0 0 0 2.6-5l-5-9V2"/><path d="M8 2h8M7 15h10"/>'],
+    [/close|handover|hand over/i, '<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>'],
+    [/finish|interior/i, '<path d="M18 2H6v6h12z"/><path d="M12 8v4M8 12h8v4H8zM12 16v6"/>'],
+    [/construct|civil|structur|building/i, '<path d="M2 22h20M6 22V10l6-6 6 6v12"/><path d="M10 22v-6h4v6M10 12h4"/>'],
+    [/./, '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'],
+  ];
+  function phIcon(name) { for (var i = 0; i < PH_ICON.length; i++) if (PH_ICON[i][0].test(name)) return PH_ICON[i][1]; return ""; }
+  function renderKpis() {
+    var sec = $("q-kpis").closest("section"), SC = P.metrics && P.metrics.scurve, MT = SC && SC.facts && SC.facts.tasks;
+    if (!MT || !MT.length) { sec.hidden = true; return; }
+    sec.hidden = false;
+    var by = new Map(), W = 0;
+    MT.forEach(function (t) {
+      if (F.a && t.a !== F.a) return;  // the Area filter; the other filters are about quantities
+      var k = t.ph || "Unassigned";
+      if (!by.has(k)) by.set(k, { n: 0, w: 0, bw: 0, pw: 0, aw: 0 });
+      var g = by.get(k);
+      g.n++;
+      if (!t.bs) return;
+      g.w += t.w; W += t.w;
+      if (t.bs <= TODAY) g.bw += t.br * (Math.min(dnum(t.be), TODAY_N) - dnum(t.bs) + 1);
+      if (t.ps && t.ps <= TODAY) g.pw += t.pr * (Math.min(dnum(t.pe), TODAY_N) - dnum(t.ps) + 1);
+      if (t.ax) g.aw += t.ar * (dnum(t.ax) - dnum(t.as) + 1);
+    });
+    var rows = Array.from(by.entries()).filter(function (e) { return e[1].w > 0; }).map(function (e) {
+      var g = e[1];
+      return { name: e[0], n: g.n, w: g.w, b: 100 * g.bw / g.w, p: 100 * g.pw / g.w, a: 100 * g.aw / g.w };
+    }).sort(function (x, y) { return y.w - x.w; });
+    $("q-ov-desc").textContent = "Physical progress from the master schedule, weighted by its weightage, per construction phase" + (F.a ? " in " + F.a : "") + ". Actual is earned to date; baseline and planned are what is due by today";
+    if (!rows.length) { $("q-kpis").innerHTML = '<div class="empty">No weighted master-schedule task in this area.</div>'; return; }
+    function pf(v) { return v == null || !isFinite(v) ? DASH : (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, "") + "%"; }
+    function ring(a, b, tone) {
+      var r = 30, c = 2 * Math.PI * r, w = function (v) { return Math.max(0, Math.min(100, v || 0)); };
+      var arc = function (v, cls) { return w(v) > 0 ? '<circle class="' + cls + '" cx="40" cy="40" r="' + r + '" stroke-dasharray="' + (c * w(v) / 100).toFixed(2) + " " + c.toFixed(2) + '" transform="rotate(-90 40 40)"/>' : ""; };
+      var t = 2 * Math.PI * w(b) / 100 - Math.PI / 2;
+      return '<svg class="qp-ring ' + tone + '" viewBox="0 0 80 80" aria-hidden="true"><circle class="r-trk" cx="40" cy="40" r="' + r + '"/>' + arc(b, "r-base") + arc(a, "r-act") +
+        '<line class="r-tk" x1="' + (40 + 22 * Math.cos(t)).toFixed(1) + '" y1="' + (40 + 22 * Math.sin(t)).toFixed(1) + '" x2="' + (40 + 38 * Math.cos(t)).toFixed(1) + '" y2="' + (40 + 38 * Math.sin(t)).toFixed(1) + '"/>' +
+        '<text x="40" y="44" text-anchor="middle">' + pf(a) + "</text></svg>";
+    }
+    $("q-kpis").innerHTML = '<div class="qp-grid">' + rows.map(function (r) {
+      var d = r.a - r.b, idle = r.b < 0.05 && r.a < 0.05, tone = idle ? "idle" : d >= -0.05 ? "good" : d >= -5 ? "warn" : "bad";
+      function line(cls, l, v) { return '<div class="qp-l"><span>' + l + '</span><span class="qp-t ' + cls + '"><i style="width:' + Math.max(0, Math.min(100, v || 0)).toFixed(1) + '%"></i></span><b>' + pf(v) + "</b></div>"; }
+      return '<div class="qp qp-' + tone + '"><div class="qp-head"><span class="qp-ic"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + phIcon(r.name) + "</svg></span>" +
+        '<div class="qp-n"><b>' + esc(r.name) + "</b><small>" + fmtI(r.n) + " tasks · " + pf(100 * r.w / W) + ' of the weightage</small></div><span class="qp-d">' + (idle ? "not due yet" : Math.abs(d) < 0.05 ? "on baseline" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1).replace(/\.0$/, "") + " pts") + "</span></div>" +
+        '<div class="qp-body">' + ring(r.a, r.b, tone) + '<div class="qp-bars">' + line("act", "Actual", r.a) + line("plan", "Planned", r.p) + line("base", "Baseline", r.b) + "</div></div></div>";
+    }).join("") + "</div>";
+  }
+  function onKpi(e) {
+    var t = e.target.closest("[data-qs]");
+    if (!t || (e.type === "keydown" && e.key !== "Enter" && e.key !== " ")) return;
+    if (e.type === "keydown") e.preventDefault();
+    var k = t.getAttribute("data-qs");
+    var title = { "": "All activities", complete: "Complete", started: "In progress", notStarted: "Not started", overdue: "Overdue" }[k];
+    drill({ eyebrow: "Activities", title: title, sub: ctxSub(), filter: null,
+      rows: current.filter(function (x) { return !k || (k === "overdue" ? x.od : x.g === k); }) });
+  }
+  $("q-kpis").addEventListener("click", onKpi);
+  $("q-kpis").addEventListener("keydown", onKpi);
+
+  /* ---------- quantity details: by subtrade or by area and sub-location ---------- */
+  var qdView = "sub";
+  function qdShow() {
+    var sub = qdView === "sub";
+    $("qd-sub").hidden = !sub; $("qd-loc").hidden = sub;
+    ["loc-expand", "loc-collapse", "csv-loc"].forEach(function (id) { $(id).hidden = sub; });
+    $("csv-sub").hidden = !sub;
+    $("qd-view").querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === qdView)); });
+    $("qd-desc").textContent = sub ? "Total, planned to date, actual and variance (total − actual) per " + stl + " and unit. Schedule dates come from the custom fields (* = only some activities have one); actual dates show once every activity in the row is complete. Select a row for its activities"
+      : ($("loc-desc").textContent || "Area and sub-location quantities") + ". Select a row for its activities";
+  }
+  $("qd-view").addEventListener("click", function (e) { var b = e.target.closest("button[data-v]"); if (b) { qdView = b.getAttribute("data-v"); qdShow(); } });
   /* the heading's small ring: one arc per status, sized by how many subtrades have it */
   function statusRing(list) {
     var r = 7, c = 2 * Math.PI * r, n = list.length, off = 0, cnt = {};
@@ -691,7 +797,7 @@
       { k: "id", label: "ID", sv: function (r) { return +r.id || r.id; } },
       { k: "n", label: "Activity", cls: "wrap" },
     ].concat((DW.ctx && DW.ctx.extra) || []).concat([
-      { k: "st", label: "Subtrade" },
+      { k: "st", label: STL },
       { k: "a", label: "Location", sv: function (r) { return r.a + " " + r.sl; }, f: function (r) { return esc(r.a) + (r.sl && r.sl !== r.a ? ' <span class="faint">· ' + esc(r.sl) + "</span>" : ""); }, csv: function (r) { return r.loc || r.a; } },
       { k: "g", label: "Status", f: statusPill, csv: function (r) { return STATUS[r.g] + (r.od ? " (overdue)" : ""); } },
       { k: "u", label: "Unit" },
@@ -754,7 +860,7 @@
     var counts = { "": c.rows.length, overdue: c.rows.filter(function (t) { return t.od; }).length };
     c.rows.forEach(function (t) { counts[t.g] = (counts[t.g] || 0) + 1; });
     $("dw-body").innerHTML = dwSummary(c.rows) +
-      '<div class="dw-tools"><input class="dw-search" id="dw-q" type="search" placeholder="Search activity, ID, subtrade, location or owner" value="' + esc(DW.q) + '" aria-label="Search these activities">' +
+      '<div class="dw-tools"><input class="dw-search" id="dw-q" type="search" placeholder="Search activity, ID, ' + stl + ', location or owner" value="' + esc(DW.q) + '" aria-label="Search these activities">' +
       '<div class="seg" id="dw-s" role="group" aria-label="Status">' + DW_STATUS.map(function (s) {
         return '<button type="button" data-v="' + s[0] + '" aria-pressed="' + (DW.s === s[0]) + '">' + s[1] + " " + fmtI(counts[s[0]] || 0) + "</button>";
       }).join("") + "</div>" +
@@ -820,7 +926,8 @@
       "<div><dt>Actual per day</dt><dd>" + (t.ar ? fmtN(t.ar) + " " + U + " × " + fmtI(t.ad) + " days" : DASH) + "</dd></div>" +
       "<div><dt>Actual window</dt><dd>" + (t.ax ? fmtD(t.as) + " – " + fmtD(t.ax) + (done ? "" : " (today)") : DASH) + "</dd></div></dl>";
     h += '<div class="sec-h">Details</div><dl class="dl">' +
-      [["Subtrade", t.st], ["Trade", t.tr], ["Area", t.a], ["Sub-location", t.sl], ["Location in VisiLean", t.loc], ["Owner", t.o], ["Organisation", t.org], ["Planned completion week", t.wk], ["Schedule start (custom field)", t.ss ? fmtD(t.ss) + (t.sf && t.ss > t.sf ? " ⚠ after the schedule finish" : "") : null], ["Schedule finish (custom field)", t.sf ? fmtD(t.sf) : null], ["Forecast finish", t.fc ? fmtD(t.fc) + (t.fs === "baseline" ? " (JUI-1A baseline)" : " (Schedule Finish)") : null], ["Status in VisiLean", t.s]]
+      [[STL, t.st], ["Trade", STL === "Trade" ? false : t.tr], ["Area", t.a], ["Sub-location", t.sl], ["Location in VisiLean", t.loc], ["Owner", t.o], ["Organisation", t.org], ["Planned completion week", t.wk], ["Schedule start (custom field)", t.ss ? fmtD(t.ss) + (t.sf && t.ss > t.sf ? " ⚠ after the schedule finish" : "") : null], ["Schedule finish (custom field)", t.sf ? fmtD(t.sf) : null], ["Forecast finish", t.fc ? fmtD(t.fc) + (t.fs === "baseline" ? " (JUI-1A baseline)" : " (Schedule Finish)") : null], ["Status in VisiLean", t.s]]
+        .filter(function (f) { return f[1] !== false; })  // no second Trade row when the subtrade is the trade
         .map(function (f) { return "<div><dt>" + f[0] + "</dt><dd>" + esc(f[1] == null || f[1] === "" ? DASH : f[1]) + "</dd></div>"; }).join("") + "</dl>";
     h += '<div class="sec-h">History <span>' + fmtI(t.h.length) + " event" + (t.h.length === 1 ? "" : "s") + ", newest first</span></div>";
     if (!t.h.length) h += '<div class="empty">No history events recorded for this activity.</div>';
@@ -874,9 +981,10 @@
     pcR = vals("pc").map(pcRange).filter(Boolean);
     slSet = asSet("sl"); stSet = asSet("st");
     current = T.filter(matches);
-    renderHint(current);
+    renderKpis();
     renderSubtrade(current);
     renderLocations(current);
+    qdShow();
     renderProgress(current);
     var h = new URLSearchParams(location.hash.slice(1));
     Object.keys(F).forEach(function (k) { if (F[k]) h.set(k, F[k]); else h.delete(k); });

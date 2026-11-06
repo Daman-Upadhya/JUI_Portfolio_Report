@@ -248,23 +248,39 @@
 
   /* ---------- headline ---------- */
   function renderStrip(S) {
-    if (!S.n) { $("w-strip").innerHTML = '<div><div class="empty">No reporting day falls in this date range.</div></div>'; return; }
+    if (!S.n) { $("w-strip").innerHTML = '<div class="empty">No reporting day falls in this date range.</div>'; return; }
     var last = S.days[S.n - 1], prev7 = S.days.slice(Math.max(0, S.n - 8), S.n - 1), avg7 = prev7.length ? prev7.reduce(function (s, d) { return s + d.a; }, 0) / prev7.length : null;
     var peak = S.days.reduce(function (b, d) { return d.a > b.a ? d : b; }, S.days[0]);
     var top = Object.keys(S.trades).map(function (k) { return S.trades[k]; }).sort(function (a, b) { return b.a - a.a; })[0];
     var active = Object.keys(S.trades).filter(function (k) { return S.trades[k].a > 0; }).length;
     var diff = avg7 == null ? null : last.a - avg7;
-    var cells = [
-      ["Running average", "per reporting day", fmtA(S.avg) + " <small>workers</small>", fmtI(S.a) + " man-days ÷ " + fmtI(S.n) + " reporting days · " + fmtD(S.lo, true) + " → " + fmtD(S.hi, true)],
-      ["Latest report", fmtD(last.d), fmtI(last.a) + " <small>workers</small>", diff == null ? "the first report in this range" :
-        '<span class="' + (diff >= 0 ? "pos" : "neg") + '">' + (diff >= 0 ? "+" : "−") + fmtA(Math.abs(diff)) + "</span> against the previous " + prev7.length + " reports' average (" + fmtA(avg7) + ")"],
-      ["Peak day", WDAY[new Date(peak.d).getUTCDay()] + " " + fmtD(peak.d), fmtI(peak.a) + " <small>workers</small>", "the most workers on one day in this range"],
-      ["Man-days", S.p > 0 ? "actual vs planned" : "actual", fmtI(S.a), S.p > 0 ? "planned " + fmtI(S.p) + " · actual is " + fmtP(100 * S.a / S.p) + " of planned (only some trades are planned)" : "no planned workforce in view"],
-      ["Trades at work", "", fmtI(active), top && top.a > 0 ? "busiest: " + esc(top.t) + ", " + fmtA(top.a / S.n) + " a day" : ""],
+    function ic(d) { return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>"; }
+    var ICON = {
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+      cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>',
+      peak: '<path d="m8 3 4 8 5-5 5 15H2z"/>',
+      clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      hat: '<path d="M2 18h20M4 18v-3a8 8 0 0 1 16 0v3"/><path d="M10 7V5a2 2 0 0 1 4 0v2M12 7v5"/>',
+    };
+    var ratio = S.p > 0 ? S.a / S.p : null;
+    // cards in the Procurement page's style: [icon, tone, value, label, aside, sub lines, bar 0..1]
+    var cards = [
+      ["users", "brand", fmtA(S.avg) + " <small>workers</small>", "Running average", "per reporting day",
+        [fmtI(S.a) + " man-days ÷ " + fmtI(S.n) + " days", fmtD(S.lo, true) + " → " + fmtD(S.hi, true)]],
+      ["cal", "prog", fmtI(last.a) + " <small>workers</small>", "Latest report", fmtD(last.d),
+        [diff == null ? "the first report in this range" : '<span class="' + (diff >= 0 ? "pos" : "neg") + '">' + (diff >= 0 ? "+" : "−") + fmtA(Math.abs(diff)) + "</span> vs the previous " + prev7.length + " reports' average (" + fmtA(avg7) + ")"]],
+      ["peak", "good", fmtI(peak.a) + " <small>workers</small>", "Peak day", WDAY[new Date(peak.d).getUTCDay()] + " " + fmtD(peak.d),
+        ["the most workers on one day in this range"]],
+      ["clock", "brand", fmtI(S.a), "Man-days", S.p > 0 ? "actual vs planned" : "actual",
+        S.p > 0 ? ["planned " + fmtI(S.p) + " · actual is <b>" + fmtP(100 * ratio) + "</b> of planned", "only some trades are planned"] : ["no planned workforce in view"], ratio],
+      ["hat", "muted", fmtI(active), "Trades at work", "", top && top.a > 0 ? ["busiest: " + esc(top.t) + ", " + fmtA(top.a / S.n) + " a day"] : []],
     ];
-    $("w-strip").innerHTML = cells.map(function (c) {
-      return '<div><div class="st-l">' + c[0] + (c[1] ? "<span>" + c[1] + "</span>" : "") + '</div><div class="st-v">' + c[2] + '</div><div class="st-s">' + c[3] + "</div></div>";
-    }).join("");
+    $("w-strip").innerHTML = '<div class="kp-grid">' + cards.map(function (c) {
+      return '<div class="kp kp-' + c[1] + '"><span class="kp-i">' + ic(ICON[c[0]]) + '</span><div class="kp-t"><div class="kp-v">' + c[2] + "</div>" +
+        '<div class="kp-l">' + c[3] + (c[4] ? ' <span class="kp-a">' + c[4] + "</span>" : "") + "</div>" +
+        c[5].map(function (x) { return '<div class="kp-s">' + x + "</div>"; }).join("") +
+        (c[6] != null ? '<div class="kp-bar"><i style="width:' + Math.min(100, 100 * c[6]).toFixed(1) + '%"></i></div>' : "") + "</div></div>";
+    }).join("") + "</div>";
     $("n-wf").textContent = fmtA(S.avg) + "/day";
   }
 
@@ -502,12 +518,6 @@
     counts();
     $("w-reset").disabled = !Object.keys(F).some(function (k) { return F[k]; });
     var S = current = compute();
-    var parts = [];
-    if (vals("sh").length) parts.push(vals("sh").join(", "));
-    if (vals("c").length) parts.push(vals("c").join(", "));
-    if (vals("tr").length) parts.push(vals("tr").join(", "));
-    $("w-hint").innerHTML = "<span><b>" + esc(src.title || "Daily labour report") + "</b> · " + fmtI(S.n || 0) + " reporting days from " + fmtD(r[0]) + " to " + fmtD(r[1]) + (parts.length ? " · " + esc(parts.join(" · ")) : "") + "</span>" +
-      "<span>" + fmtI(TOT.matched) + " of " + fmtI(TOT.activities) + " workforce activities matched to the task feed by guid" + (TOT.unmatched ? " (the other " + fmtI(TOT.unmatched) + " have " + (TOT.unmatchedActual ? fmtI(TOT.unmatchedActual) + " man-days" : "no workers recorded") + ")" : "") + "</span>";
     renderStrip(S);
     if (!$("pg-wf").hidden) renderChart(S);
     renderTrades(S);

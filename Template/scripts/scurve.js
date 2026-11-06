@@ -35,8 +35,8 @@
   function hideTip() { tip.classList.remove("on"); }
 
   /* ---------- hash: this page's keys sit beside the quantity page's ---------- */
-  var HK = { a: "sa", sl: "ssl", grp: "sg", ph: "sph" };
-  var F = { a: "", sl: "", grp: "", ph: "" };
+  var HK = { a: "sa", sl: "ssl", grp: "sg", ph: "sph", wa: "swa" };  // wa: area WBS, set from Progress by area
+  var F = { a: "", sl: "", grp: "", ph: "", wa: "" };
   try {
     var hp = new URLSearchParams(location.hash.slice(1));
     Object.keys(HK).forEach(function (k) { if (hp.get(HK[k])) F[k] = hp.get(HK[k]); });
@@ -53,16 +53,12 @@
 
   /* ---------- header ---------- */
   var src = M.source || {};
-  $("s-title").textContent = src.title || "S-curve";
   if (M.unavailable) {
     $("s-filters").hidden = true;
-    ["s-progress", "s-kpis", "s-trio", "s-curve", "s-areas", "s-join"].forEach(function (id) { $(id).innerHTML = '<div class="empty">The master schedule could not be loaded on this refresh and there is no saved copy. The next refresh will try again.</div>'; });
+    ["s-tl", "s-gauge", "s-kpis", "s-trio", "s-curve", "s-arear"].forEach(function (id) { $(id).innerHTML = '<div class="empty">The master schedule could not be loaded on this refresh and there is no saved copy. The next refresh will try again.</div>'; });
     $("n-scurve").textContent = "no data";
     return;
   }
-  var asof = src.dataAsOf;
-  $("s-facts").innerHTML = "<span>" + (src.origin === "sample" ? "Sample export" : src.origin === "cache" ? "Saved copy from" : "Data as of") + ": <b>" +
-    (asof ? fmtD(asof) + ", " + asof.slice(11, 16) + " IST" : DASH) + "</b></span><span>Today: <b>" + fmtD(M.today) + "</b></span><span>Weighted tasks: <b>" + fmtI(M.totals.weighted) + "</b></span>";
   var T = M.facts.tasks, TODAY = M.today, TN = dnum(TODAY), J = M.join || { rows: [] };
 
   /* ---------- filters ---------- */
@@ -99,7 +95,7 @@
     options("s-f-ph", byCount(countBy(T, "ph")), "All phases", F.ph);
     $("s-reset").disabled = !Object.keys(F).some(function (k) { return F[k]; });
   }
-  function matches(t) { return (!F.a || t.a === F.a) && (!F.sl || t.sl === F.sl) && (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph); }
+  function matches(t) { return (!F.wa || t.wa === F.wa) && (!F.a || t.a === F.a) && (!F.sl || t.sl === F.sl) && (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph); }
   Object.keys(SEL).forEach(function (k) { $(SEL[k]).addEventListener("change", function () { F[k] = this.value; if (k === "a") F.sl = ""; render(); }); });
   $("s-reset").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k] = ""; }); render(); });
 
@@ -176,64 +172,135 @@
     return { w: w, b: w ? 100 * bw / w : null, p: w ? 100 * pw / w : null, a: w ? 100 * aw / w : null };
   }
 
+  /* ---------- the top section: timeline (baseline vs working plan, elapsed, variance) and progress ---------- */
+  function daysTxt(n) { return fmtI(Math.abs(n)) + " day" + (Math.abs(n) === 1 ? "" : "s"); }
+  function icon(d) { return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>"; }
+  var SX_IC = {
+    start: '<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    hour: '<path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/>',
+    shift: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    gauge: '<path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/>',
+  };
   function renderKpis(R, S) {
     var W = S ? S.W : 0, b = S ? 100 * S.baseTD / W : null, pl = S ? 100 * S.planTD / W : null, a = S ? 100 * S.actTD / W : null;
     var bs = minOf(R, "bs"), be = maxOf(R, "be"), ps = minOf(R, "ps"), pe = maxOf(R, "pe");
-    var slip = be && pe ? dnum(pe) - dnum(be) : null;
-    /* summary strip */
-    $("s-strip").innerHTML = [
-      ["Baseline", "", bs ? fmtD(bs) + " &#8594; " + fmtD(be) : DASH, "Committed · " + spanText(bs, be)],
-      ["Working plan", "", ps ? fmtD(ps) + " &#8594; " + fmtD(pe) : DASH, "Planned now · " + spanText(ps, pe) + (ps && bs ? (ps === bs ? " · starts on the baseline" : " · starts " + Math.abs(dnum(ps) - dnum(bs)) + " days " + (ps > bs ? "after" : "before") + " the baseline") : "")],
-      ["Finish variance", "plan vs baseline", slip == null ? DASH : slip === 0 ? "No change" : '<span class="' + (slip > 0 ? "neg" : "pos") + '">' + spanText(slip > 0 ? be : pe, slip > 0 ? pe : be) + (slip > 0 ? " later" : " earlier") + "</span>",
-        slip == null ? "" : slip === 0 ? "The working plan still finishes on the baseline date." : "The working plan finishes " + fmtI(Math.abs(slip)) + " days " + (slip > 0 ? "after" : "before") + " the baseline."],
-    ].map(function (c) { return '<div><div class="st-l">' + c[0] + (c[1] ? "<span>" + c[1] + "</span>" : "") + '</div><div class="st-v">' + c[2] + '</div><div class="st-s">' + c[3] + "</div></div>"; }).join("");
-    /* progress % */
-    var pastDue = R.filter(function (t) { return t.be && t.be < TODAY && t.pc < 100; }).length;
-    $("s-progress").innerHTML = S ? '<div class="pc-wrap">' + ring(a, band(a, b)) + '<div><div class="pc-big">' + fmtP(a) + '</div><div class="pc-sub">against <b>' + fmtP(b) +
-      "</b> the baseline plans for today<br>" + '<span class="' + (a - b < -0.05 ? "neg" : "pos") + '">' + fmtPts(a - b).replace("pts", "points") + (a - b < -0.05 ? " behind" : a - b > 0.05 ? " ahead" : "") + "</span></div></div></div>" +
-      note("Earned weightage (weightage × % complete) divided by all weightage in view.") +
-      (pastDue ? note("<b>" + fmtI(pastDue) + "</b> weighted tasks are past their baseline finish and not complete.", "bad") : "")
-      : '<div class="empty">No weighted task with baseline dates matches these filters.</div>';
-    /* weighted tasks */
-    var done = R.filter(function (t) { return t.pc >= 100; }).length, mid = R.filter(function (t) { return t.pc > 0 && t.pc < 100; }).length;
-    var jt = J.rows.filter(joinInView), jb = jt.filter(function (r) { return r.match === "both"; }).length, jm = jt.filter(function (r) { return r.match !== "linked only"; }).length;
-    var tiles = [
-      ["Weighted tasks", fmtI(R.length), "", "with a weightage"],
-      ["Completed", fmtI(done), "good", R.length ? fmtP(100 * done / R.length) + " of tasks" : DASH],
-      ["In progress", fmtI(mid), "", "some % complete"],
-      ["Not started", fmtI(R.length - done - mid), "ink", "0% complete"],
-    ];
-    $("s-kpis").innerHTML = '<div class="tgrp">' + tiles.map(function (t) {
-      return '<div><div class="tl-l">' + t[0] + '</div><div class="tl-v ' + t[2] + '">' + t[1] + '</div><div class="tl-s">' + t[3] + "</div></div>";
-    }).join("") + "</div>" +
-      note("Total weightage in view: <b>" + fmtN(W) + "</b>. It comes from the master schedule's custom field and is added as it is, because it is already a project-wide share.") +
-      (J.linked ? '<button type="button" class="callout" id="s-tojoin"><i class="i">i</i><span><b>' + fmtI(jb) + " of " + fmtI(jm) + "</b> master keys (area · sub-location · subtrade · LAP Plan) link to " + esc(J.project || "the quantity data") + ". See the link to execution.</span></button>" : "");
-    if ($("s-tojoin")) $("s-tojoin").addEventListener("click", function () { $("h-join").scrollIntoView({ block: "start" }); });
-    /* complete as of today */
-    $("s-trio").innerHTML = '<div class="trio">' + [
-      ["tc-base", "Baseline %", fmtP(b), "the committed baseline"],
-      ["tc-plan", "Planned %", fmtP(pl), "the working plan in VisiLean"],
-      ["tc-act", "Actual %", fmtP(a), "earned to date, from % complete"],
-    ].map(function (c) { return '<div class="' + c[0] + '"><div class="tl-l">' + c[1] + '</div><div class="tl-v">' + c[2] + '</div><div class="tl-s">' + c[3] + "</div></div>"; }).join("") + "</div>" +
-      note("Each task's weightage is spread evenly between its start and finish, so its share at today's date is interpolated.") +
-      (slip ? note("The working plan finishes on <b>" + fmtD(pe) + "</b>, " + fmtI(Math.abs(slip)) + " days " + (slip > 0 ? "after" : "before") + " the baseline (" + fmtD(be) + "). Actual is " +
-        '<b class="' + (a - pl < -0.05 ? "neg" : "pos") + '">' + fmtPts(a - pl) + "</b> against the working plan and " + '<b class="' + (a - b < -0.05 ? "neg" : "pos") + '">' + fmtPts(a - b) + "</b> against the baseline.") : "");
+    var slip = be && pe ? dnum(pe) - dnum(be) : null, sslip = bs && ps ? dnum(ps) - dnum(bs) : null;
+    var start = bs || ps, bDur = bs && be ? dnum(be) - dnum(bs) + 1 : null, pDur = ps && pe ? dnum(pe) - dnum(ps) + 1 : null;
+    var elapsed = start ? Math.max(0, TN - dnum(start) + 1) : null, timePct = bDur ? Math.min(100, 100 * elapsed / bDur) : null;
+    var remPlan = pe ? dnum(pe) - TN : null, remBase = be ? dnum(be) - TN : null;
+
+    /* the stat row */
+    function st(ic, tone, v, l, s, barPct) {
+      return '<div class="sx-st sx-' + tone + '"><span class="sx-ic">' + icon(SX_IC[ic]) + '</span><div><div class="sx-v">' + v + '</div><div class="sx-l">' + l + '</div><div class="sx-s">' + s + "</div>" +
+        (barPct != null ? '<div class="sx-bar"><i style="width:' + Math.max(0, Math.min(100, barPct)).toFixed(1) + '%"></i></div>' : "") + "</div></div>";
+    }
+    $("s-tl-stats").innerHTML = !start ? "" : [
+      st("clock", "brand", fmtI(elapsed) + "<small> days</small>", "Time elapsed", (timePct != null ? fmtP(timePct, 0) + " of the baseline duration" : "since " + fmtD(start)) + " · since " + fmtD(start), timePct),
+      st("hour", remPlan != null && remPlan < 0 ? "bad" : "prog", remPlan == null ? DASH : remPlan < 0 ? daysTxt(remPlan) + "<small> past</small>" : fmtI(remPlan) + "<small> days</small>", "Remaining",
+        "to the working plan finish" + (remBase != null ? " · " + (remBase >= 0 ? fmtI(remBase) + " days to the baseline finish" : "baseline finish passed " + daysTxt(remBase) + " ago") : "")),
+      st("shift", slip > 0 ? "bad" : "good", slip == null ? DASH : slip === 0 ? "On date" : (slip > 0 ? "+" : "−") + fmtI(Math.abs(slip)) + "<small> days</small>", "Finish variance",
+        slip == null ? "" : slip === 0 ? "the plan still finishes on the baseline" : spanText(slip > 0 ? be : pe, slip > 0 ? pe : be) + (slip > 0 ? " later" : " earlier") + " than the baseline"),
+      st("start", sslip > 0 ? "warn" : "good", sslip == null ? DASH : sslip === 0 ? "On date" : (sslip > 0 ? "+" : "−") + fmtI(Math.abs(sslip)) + "<small> days</small>", "Start variance",
+        sslip == null ? "" : sslip === 0 ? "the plan starts on the baseline" : "the working plan starts " + (sslip > 0 ? "after" : "before") + " the baseline"),
+      st("gauge", a != null && timePct != null && a < timePct - 5 ? "bad" : "good", fmtP(a), "Work done vs time used", a == null || timePct == null ? "" : fmtP(a) + " earned with " + fmtP(timePct, 0) + " of the baseline time gone", a),
+    ].join("");
+
+    /* the timeline: baseline and working plan bars on one date axis, elapsed shaded, variance hatched, today marked */
+    if (!start) { $("s-tl").innerHTML = '<div class="empty">No weighted task with dates matches these filters.</div>'; }
+    else {
+      var lo = Math.min(dnum(bs || ps), dnum(ps || bs), TN), hi = Math.max(dnum(be || pe), dnum(pe || be), TN);
+      var pad = (hi - lo) * 0.02; lo -= pad; hi += pad;
+      var x = function (n) { return (100 * (n - lo) / (hi - lo)).toFixed(3) + "%"; };
+      var w = function (a1, b1) { return (100 * Math.max(0, b1 - a1) / (hi - lo)).toFixed(3) + "%"; };
+      var ticks = "", d0 = new Date(lo * DAY), y = d0.getUTCFullYear(), m = d0.getUTCMonth();
+      m = Math.ceil((m + 1) / 3) * 3;  // next quarter start
+      for (var dt = Date.UTC(y, m, 1) / DAY; dt < hi; ) {
+        var dd = new Date(dt * DAY), mm = dd.getUTCMonth();
+        ticks += '<span class="sx-tick' + (mm === 0 ? " y" : "") + '" style="left:' + x(dt) + '">' + (mm === 0 ? dd.getUTCFullYear() : MON[mm]) + "</span>";
+        dt = Date.UTC(dd.getUTCFullYear(), mm + 3, 1) / DAY;
+      }
+      function bar(cls, s, e, label) {
+        if (!s || !e) return '<div class="sx-tr"><span class="sx-name">' + label + '</span><div class="sx-lane"><span class="sx-none">no dates</span></div></div>';
+        var S0 = dnum(s), E0 = dnum(e), el = Math.min(Math.max(TN, S0), E0 + 1);
+        return '<div class="sx-tr ' + cls + '"><span class="sx-name">' + label + "<small>" + spanText(s, e) + '</small></span><div class="sx-lane">' +
+          '<span class="sx-bar-full" style="left:' + x(S0) + ";width:" + w(S0, E0 + 1) + '"><i class="sx-done" style="width:' + (100 * (el - S0) / (E0 + 1 - S0)).toFixed(2) + '%"></i></span>' +
+          '<span class="sx-date s" style="left:' + x(S0) + '">' + fmtD(s) + '</span><span class="sx-date e" style="left:' + x(E0 + 1) + '">' + fmtD(e) + "</span>" +
+          (cls === "sx-plan" && slip ? '<span class="sx-var ' + (slip > 0 ? "late" : "early") + '" style="left:' + x(Math.min(dnum(be), E0) + 1) + ";width:" + w(Math.min(dnum(be), E0), Math.max(dnum(be), E0)) + '" title="Finish variance"><b>' + (slip > 0 ? "+" : "−") + daysTxt(slip) + "</b></span>" : "") +
+          (cls === "sx-plan" && sslip > 0 ? '<span class="sx-var start" style="left:' + x(dnum(bs)) + ";width:" + w(dnum(bs), S0) + '" title="Start variance"><b>+' + daysTxt(sslip) + "</b></span>" : "") +
+          "</div></div>";
+      }
+      $("s-tl").innerHTML = '<div class="sx-axis"><span class="sx-name"></span><div class="sx-lane">' + ticks + "</div></div>" +
+        bar("sx-base", bs, be, "Baseline") + bar("sx-plan", ps, pe, "Working plan") +
+        '<div class="sx-todayrow"><span class="sx-name"></span><div class="sx-lane"><span class="sx-today" style="left:' + x(TN) + '"><b>Today</b> ' + fmtD(TODAY) + "</span></div></div>" +
+        '<div class="sx-legend"><span><i class="k-base"></i>Baseline</span><span><i class="k-plan"></i>Working plan</span><span><i class="sx-k-done"></i>Elapsed to today</span><span><i class="sx-k-late"></i>Finish variance</span><span><i class="sx-k-start"></i>Start variance</span></div>';
+      $("s-tl").style.setProperty("--today", x(TN));
+    }
+
+    /* progress ring: a full circle; the faint arc is the baseline due by today, the solid arc what is
+       earned, coloured by how far behind the baseline it is; ticks mark the baseline and the working plan */
+    if (!S) $("s-gauge").innerHTML = '<div class="empty">No weighted task with baseline dates matches these filters.</div>';
+    else {
+      var Rr = 74, C = 2 * Math.PI * Rr;
+      var arc = function (v, cls) { v = Math.max(0, Math.min(100, v || 0)); return v > 0 ? '<circle class="' + cls + '" cx="100" cy="100" r="' + Rr + '" stroke-dasharray="' + (C * v / 100).toFixed(2) + " " + C.toFixed(2) + '" transform="rotate(-90 100 100)"/>' : ""; };
+      var tick = function (v, cls) { var t = 2 * Math.PI * Math.max(0, Math.min(100, v)) / 100 - Math.PI / 2; return '<line class="' + cls + '" x1="' + (100 + 60 * Math.cos(t)).toFixed(1) + '" y1="' + (100 + 60 * Math.sin(t)).toFixed(1) + '" x2="' + (100 + 88 * Math.cos(t)).toFixed(1) + '" y2="' + (100 + 88 * Math.sin(t)).toFixed(1) + '"/>'; };
+      var gap = a - b;
+      $("s-gauge").innerHTML = '<div class="sx-gauge bc-' + band(a, b) + '"><svg viewBox="0 0 200 200" aria-hidden="true"><circle class="g-trk" cx="100" cy="100" r="' + Rr + '"/>' + arc(b, "g-base") + arc(a, "g-act") + tick(b, "g-tb") + tick(pl, "g-tp") +
+        '<text x="100" y="102" text-anchor="middle" class="g-big">' + fmtP(a) + '</text><text x="100" y="124" text-anchor="middle" class="g-cap">EARNED</text></svg>' +
+        '<div class="sx-gnote"><span class="' + (gap < -0.05 ? "neg" : "pos") + '">' + fmtPts(gap).replace("pts", "points") + (gap < -0.05 ? " behind" : gap > 0.05 ? " ahead of" : " on") + "</span> the baseline (" + fmtP(b) + " due today)</div>" +
+        '<div class="sx-gk"><span><i class="k-base"></i>Baseline ' + fmtP(b) + '</span><span><i class="k-plan"></i>Plan ' + fmtP(pl) + "</span></div></div>";
+    }
+
+    /* complete as of today: three bars on one 0-100% scale */
+    $("s-trio").innerHTML = !S ? '<div class="empty">—</div>' : '<div class="sx-cmp">' + [
+      ["k-base", "Baseline", b, "the committed baseline"],
+      ["k-plan", "Working plan", pl, "planned in VisiLean"],
+      ["k-act", "Actual", a, "earned from % complete"],
+    ].map(function (c) {
+      return '<div class="sx-ci"><div class="sx-ct"><span><i class="' + c[0] + '"></i>' + c[1] + '</span><b>' + fmtP(c[2]) + '</b></div><div class="sx-cb"><i class="' + c[0] + '" style="width:' + clampP(c[2]) + '%"></i></div><div class="sx-cs">' + c[3] + "</div></div>";
+    }).join("") + '</div><div class="sx-cnote">Actual is <b class="' + (a - pl < -0.05 ? "neg" : "pos") + '">' + fmtPts(a - pl) + "</b> against the working plan and " +
+      '<b class="' + (a - b < -0.05 ? "neg" : "pos") + '">' + fmtPts(a - b) + "</b> against the baseline</div>";
+
+    /* weighted tasks: one stacked bar by % complete */
+    var done = R.filter(function (t) { return t.pc >= 100; }).length, mid = R.filter(function (t) { return t.pc > 0 && t.pc < 100; }).length, none = R.length - done - mid;
+    var pc = function (v) { return R.length ? 100 * v / R.length : 0; };
+    $("s-kpis").innerHTML = '<div class="sx-wt"><div class="sx-wv">' + fmtI(R.length) + '<small> tasks</small></div><div class="sx-ws">total weightage ' + fmtN(W) + "</div>" +
+      '<div class="sx-stack"><i class="w-done" style="width:' + pc(done).toFixed(2) + '%"></i><i class="w-mid" style="width:' + pc(mid).toFixed(2) + '%"></i><i class="w-none" style="width:' + pc(none).toFixed(2) + '%"></i></div>' +
+      '<div class="sx-wl">' + [["w-done", "Completed", done], ["w-mid", "In progress", mid], ["w-none", "Not started", none]].map(function (r) {
+        return '<div><i class="' + r[0] + '"></i><span>' + r[1] + "</span><b>" + fmtI(r[2]) + "</b><small>" + fmtP(pc(r[2])) + "</small></div>";
+      }).join("") + "</div></div>";
+
     $("s-inview").textContent = fmtI(R.length) + " weighted tasks in view";
     $("n-scurve").textContent = S ? fmtP(a) + " vs " + fmtP(b) : "";
     $("n-scurve").className = "n" + (S && a - b < -0.05 ? " bad" : "");
   }
 
-  /* ---------- by area: plan bars that filter the page ---------- */
-  function renderSplit(el, R, key, label) {
-    var m = new Map();
-    R.forEach(function (t) { if (!m.has(t[key])) m.set(t[key], []); m.get(t[key]).push(t); });
-    var W = 0;
-    m.forEach(function (rows) { rows.forEach(function (t) { if (t.bs) W += t.w; }); });
-    var rows = Array.from(m.entries()).map(function (e) {
-      var q = pctOf(e[1]);
-      return { key: e[0], name: e[0], sub: fmtI(e[1].length) + " tasks · " + (W ? fmtP(100 * q.w / W) : DASH) + " of the weightage", a: q.a, p: q.b, w: q.w, sel: F[label] === e[0] };
-    }).filter(function (r) { return r.w > 0; }).sort(function (x, y) { return y.w - x.w; });
-    planBars(el, rows, { limit: 8, legend: true, onRow: function (r) { F[label] = F[label] === r.key ? "" : r.key; if (label === "a") F.sl = ""; render(); } });
+  /* ---------- progress by area (beside the site model): actual against planned and baseline due today ---------- */
+  function renderAreas() {
+    var el = $("s-arear");
+    if (!el) return;
+    // every area whatever the area filter (the other filters still apply); the selected area is highlighted
+    var R = T.filter(function (t) { return (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph); });
+    // the area is the task's area WBS (build.py: the nearest WBS parent named like an area), so an area
+    // holds every activity of its WBS branches whatever their location field says
+    var OTHER = "Not under an area WBS", m = new Map(), W = 0;
+    R.forEach(function (t) { var k = t.wa || OTHER; if (!m.has(k)) m.set(k, []); m.get(k).push(t); if (t.bs) W += t.w; });
+    var rows = Array.from(m.entries()).map(function (e) { return { name: e[0], n: e[1].length, q: pctOf(e[1]) }; })
+      .filter(function (r) { return r.q.w > 0; }).sort(function (x, y) { return (x.name === OTHER) - (y.name === OTHER) || y.q.w - x.q.w; });
+    if (!rows.length) { el.innerHTML = '<div class="empty">No weighted task matches these filters.</div>'; return; }
+    el.innerHTML = '<div class="sa">' + rows.map(function (r) {
+      var q = r.q, bd = band(q.a, q.b);
+      return '<button type="button" class="sa-row' + (F.wa === r.name ? " is-sel" : "") + (r.name === OTHER ? " is-other" : "") + '" data-a="' + esc(r.name) + '" aria-pressed="' + (F.wa === r.name) + '">' +
+        '<span class="sa-h"><b>' + esc(r.name) + '</b><span class="sa-d bc-' + bd + '">' + (q.a == null ? DASH : fmtPts(q.a - q.b)) + "</span></span>" +
+        '<span class="sa-s">' + fmtI(r.n) + " tasks · " + (W ? fmtP(100 * q.w / W) : DASH) + " of the weightage</span>" +
+        // one bar: actual is the fill, planned and baseline due today are ticks on it
+        '<span class="sa-bar bc-' + bd + '"><i class="sa-fill" style="width:' + clampP(q.a) + '%"></i>' +
+        '<i class="sa-tk plan" style="left:' + clampP(q.p) + '%" title="Planned ' + fmtP(q.p) + '"></i><i class="sa-tk base" style="left:' + clampP(q.b) + '%" title="Baseline ' + fmtP(q.b) + '"></i></span>' +
+        '<span class="sa-v"><span class="v-act">Actual <b>' + fmtP(q.a) + '</b></span><span class="v-plan">Planned <b>' + fmtP(q.p) + '</b></span><span class="v-base">Baseline <b>' + fmtP(q.b) + "</b></span></span></button>";
+    }).join("") + "</div>";
+    el.querySelectorAll(".sa-row").forEach(function (b) {
+      b.addEventListener("click", function () { var k = b.getAttribute("data-a"); if (k === OTHER) return; F.wa = F.wa === k ? "" : k; render(); });
+    });
   }
 
   /* ---------- S-curve chart ---------- */
@@ -412,6 +479,7 @@
     { k: "linkedActualEnd", label: "Actual end", f: function (r) { return fmtD(r.linkedActualEnd || r.masterActualEnd); } },
   ];
   function renderJoin() {
+    if (!$("s-join")) return;  // the join table is no longer on the page (its CSV stays in the downloads)
     var inView = J.rows.filter(joinInView), q = joinQ.toLowerCase(), counts = { "": inView.length };
     inView.forEach(function (r) { counts[r.match] = (counts[r.match] || 0) + 1; });
     $("s-join-match").innerHTML = MATCH.map(function (m) { return '<button type="button" data-v="' + m[0] + '" aria-pressed="' + (joinMatch === m[0]) + '">' + esc(m[1]) + "<b>" + fmtI(counts[m[0]] || 0) + "</b></button>"; }).join("");
@@ -422,8 +490,8 @@
     if (!joinRows.length) { $("s-join").innerHTML = '<div class="empty">No keys match this selection.</div>'; return; }
     table($("s-join"), JOIN_COLS, sortRows(joinRows, JOIN_COLS, joinSort), joinSort, { rerender: renderJoin });
   }
-  $("s-join-q").addEventListener("input", function () { joinQ = this.value.trim(); renderJoin(); });
-  $("s-csv-join").addEventListener("click", function () {
+  if ($("s-join-q")) $("s-join-q").addEventListener("input", function () { joinQ = this.value.trim(); renderJoin(); });
+  if ($("s-csv-join")) $("s-csv-join").addEventListener("click", function () {
     var cols = JOIN_COLS.map(function (c) { return c.k === "linkedActualQty" ? { k: "linkedActualQty", label: "Actual qty" } : c; })
       .concat([{ k: "linkedTotalQty", label: "Total qty" }, { k: "linkedUnit", label: "Unit" }, { k: "joinKey", label: "Join key" }]);
     downloadCSV(slug() + "-join-lap-plan.csv", cols, sortRows(joinRows, JOIN_COLS, joinSort));
@@ -437,7 +505,7 @@
     curS = series(current);
     renderKpis(current, curS);
     if (!$("pg-scurve").hidden) renderCurve(current, curS);
-    renderSplit($("s-areas"), current, "a", "a");
+    renderAreas();
     renderJoin();
     writeHash();
     window.JUIScurveFilter = { a: F.a, sl: F.sl };  // the 3D model on this page follows the area slicer

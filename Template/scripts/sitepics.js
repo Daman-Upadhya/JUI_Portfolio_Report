@@ -134,7 +134,6 @@
   function render() {
     pills();
     var list = PR.slides.filter(function (s) { return !F.a || s.area === F.a; });
-    $("sp-hint").innerHTML = "<span>Drawings from <b>" + esc(PR.source) + "</b>, saved " + fmtD(PR.updated) + "</span><span>" + fmtI(list.length) + " of " + fmtI(PR.slides.length) + " drawings in view</span><span>Today <b>" + fmtD(TODAY) + "</b></span>";
     $("sp-cards").innerHTML = list.length ? list.map(card).join("") : '<div class="empty">No drawing for this area.</div>';
     writeHash();
   }

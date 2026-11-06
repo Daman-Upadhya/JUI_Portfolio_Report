@@ -1,0 +1,38 @@
+{
+  "key": "JUI02",
+  "title": "JUI02",
+  "projectId": "0F5F0EDC-2A48-0056-8D6E-23CF2B90CA4B",
+  "facts": [],
+  "scurve": {
+    "_comment": "Second page: the weightage S-curve from the JUI02 P6 master schedule. Its token is found under tokenKey (secret VL_TOKEN_JUI02_P6, or tokens.json \"JUI02-P6\").",
+    "title": "JUI02 P6 master schedule",
+    "projectId": "559DA3B6-053C-3AC8-5048-9A2BE2B9F9FC",
+    "tokenKey": "JUI02-P6",
+    "extraQuery": "IncludeStatusChange=true&IncludeReschedule=true&IncludeQuantities=true&IncludeOther=true"
+  },
+  "workforce": {
+    "_comment": "Workforce page: VisiLean's type=workForce feed for this same project (the JUI02 quantity tracker), using its own token (secret VL_TOKEN_JUI02, or tokens.json \"JUI02\").",
+    "title": "JUI02 daily labour report",
+    "projectId": "0F5F0EDC-2A48-0056-8D6E-23CF2B90CA4B",
+    "tokenKey": "JUI02"
+  },
+  "display": {
+    "_subtradeColumn": "JUI02 has no Subtrade custom field: the task's VisiLean trade is used in its place, and the page calls it Trade",
+    "subtradeColumn": "trade",
+    "subtradeLabel": "Trade",
+    "_progressExclude": "Subtrade progress by location: subtrades matching this regular expression (case-insensitive) get no card",
+    "progressExclude": "PCC",
+    "_location": "JUI02 locations read 'DC Building - DC4A' / 'HSD Yard - H1': building tokens via the shared tokenRules, everything else split on ' - '",
+    "location": {
+      "delimiter": " - "
+    },
+    "scurve": {
+      "_weightField": "The JUI02 P6 feed has no weightage or S-curve group custom field yet (only 'Construction Phase' and 'Critical Activity'); set these once they exist in VisiLean",
+      "weightField": "Weightage",
+      "_defaultWeight": "Until a weightage field exists, every activity with no weightage value counts as 1 (the S-curve is then by activity count)",
+      "defaultWeight": 1,
+      "groupField": "S Curve",
+      "phaseField": "Construction Phase"
+    }
+  }
+}

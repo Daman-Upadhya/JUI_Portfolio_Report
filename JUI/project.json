@@ -17,6 +17,93 @@
     "tokenKey": "JUI"
   },
   "display": {
+    "_wbs": "WBS page: the JUI-1A master schedule's whole parentGUID tree, parents included (dist/JUI/wbs.json, loaded when the tab opens)",
+    "wbs": {"source": "scurve"},
+    "_mepProcurement": "MEP procurement page: one WBS branch whose activity names carry stage, scope, discipline and material (PROC- DELV - PH2 - HVAC - Buffer Tanks). pattern: named groups stage/step/phase/scope/disc/name; an activity's stage key is stage[-step][-phase], e.g. TDS-APR, DELV-PH2. Activities of one scope + discipline + name form a material; one whose stages all have a doc label (TDS items, shop drawings) is a design document, listed under its discipline's doc row instead",
+    "mepProcurement": {
+      "title": "MEP procurement tracker",
+      "path": ["^MEP Works$", "^Procurement, Design"],
+      "_fuzzyMatch": "names of one discipline that differ slightly (HT Cables / HT Power Cables, GI Conduit / GI Conduits) are one material when they match at least this much (0-1) and never share a stage; 0 = exact names only",
+      "fuzzyMatch": 0.9,
+      "pattern": "^(?:PROC|D&D)\\s*-\\s*(?P<stage>ORDER FIN|MNFC CLR|DELV|TDS|SD|CRD)\\s*-\\s*(?:(?P<phase>PH\\s*\\d)\\s*-\\s*)?(?:(?P<step>SUB|APR)\\s*-\\s*)?(?:(?P<scope>GIS)\\s*-\\s*)?(?:(?P<disc>Electrical|ELE|ELV & BMS|ELV|FPS|PHE|HVAC|HSD|BMS)\\s*-\\s*)?(?P<name>.+)$",
+      "scopes": {"": "Day-1 Building", "GIS": "GIS Building"},
+      "disciplines": {"ELE": "Electrical", "ELECTRICAL": "Electrical", "HVAC": "HVAC", "FPS": "Fire protection (FPS)", "PHE": "PHE", "ELV": "ELV", "ELV & BMS": "ELV", "BMS": "BMS", "HSD": "HSD", "": "Co-ordination"},
+      "phases": ["Order finalisation", "Design & development", "Manufacturing clearance & delivery"],
+      "stages": [
+        {"key": "ORDER FIN", "label": "Order finalisation", "phase": 0},
+        {"key": "TDS-SUB", "label": "TDS submission", "phase": 1, "doc": "TDS items"},
+        {"key": "TDS-APR", "label": "TDS approval", "phase": 1, "doc": "TDS items"},
+        {"key": "SD-SUB", "label": "Shop drawing submission", "phase": 1, "doc": "Shop drawings"},
+        {"key": "SD-APR", "label": "Shop drawing approval", "phase": 1, "doc": "Shop drawings"},
+        {"key": "CRD", "label": "Co-ordinated drawings", "phase": 1, "doc": "Co-ordinated drawings"},
+        {"key": "MNFC CLR", "label": "Manufacturing clearance", "phase": 2},
+        {"key": "DELV", "label": "Delivery at site", "phase": 2},
+        {"key": "DELV-PH1", "label": "Delivery Phase 1", "phase": 2},
+        {"key": "DELV-PH2", "label": "Delivery Phase 2", "phase": 2},
+        {"key": "DELV-PH3", "label": "Delivery Phase 3", "phase": 2},
+        {"key": "DELV-PH4", "label": "Delivery Phase 4", "phase": 2}
+      ]
+    },
+    "_procurement": "Procurement page:stage-wise tracking of one master-schedule WBS branch. path: a WBS node name pattern, then each child step. stages: [column, pattern] in column order; an activity takes the FIRST stage whose pattern matches its name, else Other",
+    "procurement": {
+      "_stageGroups": "Stage flow groups: [group, [stage column names]] in order; a stage in none goes under Other",
+      "stageGroups": [
+        ["Procurement", ["RFQ floating", "Pre-bid discussion", "Technical evaluation", "PO issuance", "Vendor onboarding"]],
+        ["Submittals & approval", ["Submission", "Approval", "Mock-up"]],
+        ["Execution", ["Fabrication", "Material delivery", "Mobilization"]]
+      ],
+      "title": "Core and Shell procurement",
+      "path": [
+        "^Core and Shell works$",
+        "^Procurement$"
+      ],
+      "stages": [
+        [
+          "RFQ floating",
+          "\\bRFQ\\b"
+        ],
+        [
+          "Pre-bid discussion",
+          "pre\\s*-?\\s*bid"
+        ],
+        [
+          "Technical evaluation",
+          "technical evaluation"
+        ],
+        [
+          "PO issuance",
+          "\\bPO\\b"
+        ],
+        [
+          "Vendor onboarding",
+          "onboarding"
+        ],
+        [
+          "Submission",
+          "submi(?!.*approv)"
+        ],
+        [
+          "Approval",
+          "(?<!mockup )(?<!mock up )approv"
+        ],
+        [
+          "Mock-up",
+          "mock\\s*-?\\s*up"
+        ],
+        [
+          "Fabrication",
+          "fabricat|manufactur"
+        ],
+        [
+          "Material delivery",
+          "^(?!.*mobili[sz]).*deliver"
+        ],
+        [
+          "Mobilization",
+          "mobili[sz]"
+        ]
+      ]
+    },
     "_progressExclude": "Subtrade progress by location: subtrades matching this regular expression (case-insensitive) get no card",
     "progressExclude": "PCC",
     "scurve": {

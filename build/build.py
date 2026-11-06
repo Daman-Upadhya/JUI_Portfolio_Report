@@ -219,6 +219,16 @@ class Assets:
         self.model3d_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "model3d.js"))
         # the Workforce page (project.json "workforce")
         self.workforce_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "workforce.js"))
+        # the WBS page (project.json display.wbs): loads dist/<key>/wbs.json when opened
+        self.wbs_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "wbs.js"))
+        # the Procurement page (project.json display.procurement)
+        self.proc_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "procurement.js"))
+        # shared parts of the Procurement page's two trackers (KPI cards, stage flow, switch)
+        self.procui_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "procui.js"))
+        # activity drill-through drawer of the two procurement pages
+        self.actdrill_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "actdrill.js"))
+        # the MEP procurement page (project.json display.mepProcurement)
+        self.mep_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "mep.js"))
         self.tabs_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "tabs.js"))
         # per-viewer "hide this visual" buttons; last, once every title has its info icon
         self.cardhide_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "cardhide.js"))
@@ -402,6 +412,56 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
             % (key, t["activities"], t["matched"], t["unmatched"], t["points"], t["days"], round(t["actualManDays"]), key))
         return m
 
+    def procurement(tree):
+        """The Procurement page (project.json display.procurement): stage-wise tracking of one WBS
+        branch of the master schedule. Small, so it is embedded in the page."""
+        p = assets.calc.procurement(tree, data, today)
+        if not p:
+            log("::warning title=%s procurement branch not found::display.procurement.path matches no WBS branch" % key)
+            return None
+        assets.calc._write_csv(os.path.join(DATA_DIR, key, "scurve", "procurement.csv"), assets.calc.procurement_csv_rows(p),
+                               assets.calc.PROCUREMENT_COLUMNS)
+        a = p["activities"]
+        log("%s: procurement %s: %d items, %d activities (%d complete, %d overdue, %d other-stage) -> data/%s/scurve/procurement.csv"
+            % (key, p["branch"], len(p["items"]), len(a), sum(x["group"] == "complete" for x in a), sum(x["overdue"] for x in a),
+               sum(x["stage"] == len(p["stages"]) - 1 for x in a), key))
+        return p
+
+    def mep(tree):
+        """The MEP procurement page (project.json display.mepProcurement): material-wise tracking of a
+        WBS branch whose activity names carry stage, discipline and material. Embedded in the page."""
+        p = assets.calc.mep_procurement(tree, data, today)
+        if not p:
+            log("::warning title=%s MEP procurement branch not found::display.mepProcurement.path matches no WBS branch" % key)
+            return None
+        assets.calc._write_csv(os.path.join(DATA_DIR, key, "scurve", "mep_procurement.csv"), assets.calc.mep_procurement_csv_rows(p),
+                               assets.calc.MEP_PROCUREMENT_COLUMNS)
+        a, it = p["activities"], p["items"]
+        for kept, joined in p.pop("merged", []):
+            log("%s: MEP procurement: \"%s\" matched to \"%s\"" % (key, joined, kept))
+        log("%s: MEP procurement %s: %d materials, %d document rows (%d documents), %d activities (%d complete, %d overdue, %d other-stage) -> data/%s/scurve/mep_procurement.csv"
+            % (key, p["branch"], sum(x["kind"] == "material" for x in it), sum(x["kind"] == "docs" for x in it),
+               sum(x["kind"] == "doc" for x in it), len(a), sum(x["group"] == "complete" for x in a), sum(x["overdue"] for x in a),
+               sum(x["stage"] == len(p["stages"]) - 1 for x in a), key))
+        return p
+
+    def wbs(tree):
+        """The WBS page (project.json display.wbs): the master schedule's whole parentGUID tree,
+        parents included. Too big to embed, so it goes to dist/<key>/wbs.json, which the page
+        loads when its tab opens; the page itself only gets the counts."""
+        text = I.to_json(tree)
+        I.assert_clean(text, forbidden_strings(cfg))
+        write(os.path.join(out_dir, "wbs.json"), text)
+        assets.calc._write_csv(os.path.join(DATA_DIR, key, "scurve", "wbs_tree.csv"), assets.calc.wbs_csv_rows(tree),
+                               ["row"] + assets.calc.WBS_NODE)
+        n = tree["nodes"]
+        info = {"file": "wbs.json", "nodes": len(n), "parents": sum(1 for x in n if x[2]),
+                "levels": 1 + max((x[1] for x in n), default=-1), "roots": sum(1 for x in n if x[0] < 0),
+                "bytes": len(text.encode("utf-8"))}
+        log("%s: WBS %d activities (%d parents), %d levels, %d root(s) -> dist/%s/wbs.json (%d KB)"
+            % (key, info["nodes"], info["parents"], info["levels"], info["roots"], key, info["bytes"] // 1024))
+        return info
+
     def scurve(jui_tasks):
         """The S-curve page: the weightage master schedule (project.json "scurve"), joined to this
         project's Table 2. None when not configured; {"unavailable": true} when it has no data."""
@@ -421,6 +481,21 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         m["join"]["project"] = cfg.get("title") or key
         m["source"] = {"title": cfg["scurve"].get("title"), "origin": origin2, "dataAsOf": asof2}
         assets.calc.write_scurve_tables(tables, os.path.join(DATA_DIR, key, "scurve"), os.path.join(out_dir, "tables"))
+        tree = assets.calc.wbs_tree(rows2)
+        # Progress by area: each task's area from its WBS (the nearest parent named like an area)
+        blank = data.get("noLocation", "Unassigned")
+        names = {t["a"] for t in m["facts"]["tasks"] if t.get("a") and t["a"] != blank}
+        wa = assets.calc.wbs_areas(tree, names)
+        for t in m["facts"]["tasks"]:
+            t["wa"] = wa.get(str(t.get("id")), "")
+        log("%s: S-curve: %d of %d tasks sit under an area WBS (%s)" % (key, sum(1 for t in m["facts"]["tasks"] if t["wa"]), len(m["facts"]["tasks"]), ", ".join(sorted(names))))
+        if data.get("wbs") or data.get("procurement") or data.get("mepProcurement"):
+            if data.get("wbs"):
+                m["wbs"] = wbs(tree)
+            if data.get("procurement"):
+                m["procurement"] = procurement(tree)
+            if data.get("mepProcurement"):
+                m["mep"] = mep(tree)
         t = m["totals"]
         log("%s: S-curve master %d tasks (%d weighted), baseline %d, planned %d, actual %d task-days, join %d matched / %d master only / %d %s only -> data/%s/scurve/"
             % (key, t["tasks"], t["weighted"], t["baselineDays"], t["plannedDays"], t["actualDays"], t["joinBoth"], t["joinMasterOnly"], t["joinLinkedOnly"], key, key))
@@ -458,7 +533,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
     }
     payload = {"meta": meta, "project": public_project(cfg), "data": strip_private(data), "metrics": metrics}
 
-    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.tabs_js, assets.cardhide_js)))
+    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.wbs_js, assets.actdrill_js, assets.procui_js, assets.proc_js, assets.mep_js, assets.tabs_js, assets.cardhide_js)))
     page = I.fill(page, {
         "TITLE": cfg.get("title") or key, "EYEBROW": data.get("eyebrow", "JUI Portfolio"),
         "GENERATED_AT": fmt_when(now), "BUILD_ID": build_id, "LOGIC_HASH": assets.logic_hash,

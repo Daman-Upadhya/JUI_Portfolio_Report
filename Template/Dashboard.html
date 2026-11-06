@@ -250,6 +250,325 @@ tr.lv3 td:not(.lv) { color: var(--muted); }
 .tg[aria-expanded="true"] { transform: rotate(90deg); }
 .tg:hover { background: var(--line-soft); color: var(--ink); }
 .tg:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* ---------- Procurement page ---------- */
+#pr-matrix .tbl-wrap { max-height: 76vh; }
+#pr-matrix table { font-size: 12px; }
+#pr-matrix th, #pr-matrix td { padding: 6px 6px; }
+#pr-matrix th.st { white-space: normal; min-width: 92px; max-width: 110px; line-height: 1.25; text-align: center; }
+#pr-matrix td.it, #pr-matrix th.it { position: sticky; left: 0; z-index: 1; background: var(--card); white-space: normal; min-width: 200px; max-width: 260px; box-shadow: inset -1px 0 0 var(--line-soft); }
+#pr-matrix th.it { z-index: 3; background: var(--inset); }
+#pr-matrix tr.grp td { position: sticky; left: 0; }
+#pr-matrix tr.pr-part td { background: var(--inset); font-weight: 700; font-size: 12.5px; }
+#pr-matrix tr.pr-grp td { background: color-mix(in srgb, var(--inset) 50%, var(--card)); font-weight: 600; color: var(--muted); font-size: 11.5px; }
+.it-sub { display: block; font-size: 10.5px; color: var(--faint); font-weight: 400; }
+td.pc { padding: 3px !important; }
+.pcell { border-radius: 7px; padding: 4px 6px; text-align: center; line-height: 1.25; font-variant-numeric: tabular-nums; cursor: default; }
+.pcell .d { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink); }
+.pcell .x { display: block; font-size: 10.5px; }
+.pcell .k { display: block; font-size: 10px; color: var(--muted); }
+.c-done { background: color-mix(in srgb, var(--s-app) 16%, transparent); }
+.c-prog { background: color-mix(in srgb, var(--s-prog) 16%, transparent); }
+.c-over { background: color-mix(in srgb, var(--s-rej) 18%, transparent); }
+.c-todo { background: var(--inset); }
+.pr-late { color: var(--bad); font-weight: 600; }
+.pr-early { color: var(--good); font-weight: 600; }
+.pr-ok { color: var(--muted); }
+.pr-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.pr-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pr-k { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+/* Procurement page (procui.js): header with the Core and Shell / MEP switch, KPI cards, stage flow, filter bar */
+.pv-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; margin-top: 0; padding: 4px 4px 2px; }
+.pv-hl { min-width: 0; flex: 1 1 320px; }
+.pv-hl h2 { font-size: 20px; letter-spacing: -.02em; margin-top: 2px; }
+.pv-desc { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); max-width: 90ch; }
+.pv-mode { display: inline-flex; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line-soft); border-radius: 14px; box-shadow: var(--shadow); }
+.pv-mode[hidden] { display: none; }
+.pv-mode button { appearance: none; border: 0; background: none; font: inherit; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 7px 16px 7px 8px; border-radius: 10px; text-align: left; transition: background .15s var(--ease), color .15s var(--ease); }
+.pv-mode button:hover { background: var(--inset); }
+.pv-mode button[aria-selected="true"] { background: var(--brand); color: var(--on-fill); box-shadow: var(--shadow-xs); }
+.pv-mi { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--inset); color: var(--brand); flex: none; }
+.pv-mode button[aria-selected="true"] .pv-mi { background: color-mix(in srgb, var(--on-fill) 20%, transparent); color: inherit; }
+.pv-mt b { display: block; font-size: 13.5px; }
+.pv-mt small { display: block; font-size: 11px; opacity: .85; }
+.pv-panel > section, .pv-panel > .fbar { margin-top: 14px; }
+.pv-sec { margin: 20px 0 10px; }
+.pv-filters { position: relative; z-index: 1; }
+.pv-filters .seg button { white-space: nowrap; }
+.pv-q { flex: 1 1 240px; }
+.pv-q .search { flex: 1; min-width: 0; max-width: none; }
+.pv-wide { flex-basis: 100%; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+.pv-wide .seg { flex-wrap: wrap; }
+.pv-reset { min-height: 30px; }
+/* KPI cards */
+.kp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 12px; }
+.kp { --t: var(--brand); position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 14px 14px 12px; border: 1px solid var(--line-soft); border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--t) 6%, var(--card)), var(--card) 70%); overflow: hidden; }
+.kp::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--t); }
+.kp.drill { transition: border-color .15s var(--ease), transform .12s var(--ease), box-shadow .15s var(--ease); }
+.kp.drill:hover { border-color: color-mix(in srgb, var(--t) 45%, var(--line)); box-shadow: var(--shadow); transform: translateY(-1px); }
+.kp.drill:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.kp-good { --t: var(--s-app); } .kp-prog { --t: var(--s-prog); } .kp-bad { --t: var(--bad); } .kp-muted { --t: var(--muted); }
+.kp-i { width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--t); background: color-mix(in srgb, var(--t) 14%, transparent); }
+.kp-t { min-width: 0; flex: 1; }
+.kp-v { font-size: 22px; font-weight: 650; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kp-v small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.kp-bad .kp-v { color: var(--bad); }
+.kp-l { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.kp-s { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+.kp-a { letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--faint); margin-left: 4px; }
+.kp-s b { color: var(--ink); font-weight: 600; }
+.kp-s .pos { color: var(--good); font-weight: 600; } .kp-s .neg { color: var(--bad); font-weight: 600; }
+.w-kpis { padding: 14px; }
+.kp-bar { height: 4px; border-radius: 2px; background: var(--inset); margin-top: 8px; overflow: hidden; }
+.kp-bar i { display: block; height: 100%; background: var(--t); border-radius: 2px; }
+/* stage flow (procui.js flow()): one card per track; its groups side by side, split by dashed lines; each
+   stage a small icon with a status dot, joined to the next by an arrow, then its label, count, bar and status */
+.fl { display: grid; gap: 14px;
+  --f-done: color-mix(in srgb, var(--s-app) 38%, #9db39a); --f-over: color-mix(in srgb, var(--s-rej) 42%, #c4a09c);
+  --f-prog: color-mix(in srgb, var(--s-prog) 45%, #8e97ab); --f-todo: var(--line); }
+.ft { margin: 0; border: 1px solid var(--line-soft); border-radius: 18px; background: var(--card); box-shadow: var(--shadow-xs); overflow: hidden; }
+.ft-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 16px 20px; border-bottom: 1px solid var(--line-soft); }
+.ft-id { display: flex; align-items: center; gap: 14px; min-width: 0; border-radius: 10px; }
+.ft-id.drill:hover .ft-title { color: var(--brand); }
+.ft-id:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.ft-ic { position: relative; width: 40px; height: 40px; flex: none; border-radius: 11px; display: grid; place-items: center; color: var(--muted); background: var(--inset); border: 1px solid var(--line-soft); }
+.ft-no { position: absolute; top: -6px; left: -6px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; color: var(--card); background: var(--muted); box-shadow: 0 0 0 2px var(--card); }
+.ft-title { font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; }
+.ft-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ft-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; color: var(--muted); background: var(--inset); }
+.ft-chip.bad { color: var(--bad); background: var(--bad-bg); }
+.ft-chip.warn { color: var(--warn); background: var(--warn-bg); }
+.ft-sum { flex: 0 1 380px; min-width: 240px; }
+.ft-sum-t { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ft-pct { font-size: 22px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ft-cnt { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ft-bar { display: flex; height: 12px; border-radius: 3px; background: var(--inset); overflow: hidden; margin-top: 8px; }
+.ft-bar i, .fs-bar i { display: block; height: 100%; }
+.b-done { background: var(--f-done); }
+.b-over { background: var(--f-over); }
+.ft-body { display: flex; overflow-x: auto; padding: 16px 6px 18px; scrollbar-width: thin; }
+.fg { flex: 1 1 0; min-width: min-content; padding: 0 12px; }
+.fg + .fg { border-left: 1px dashed var(--line); }
+.fg-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; font-size: 11.5px; border-radius: 6px; white-space: nowrap; }
+.fg-h b { font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.fg-h span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.fg-h.drill:hover b { color: var(--brand); }
+.fg-h:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.fg-steps { display: flex; }
+.fs { --c: var(--f-todo); flex: 1 1 0; min-width: 88px; display: flex; flex-direction: column; align-items: stretch; padding: 4px 8px 4px 0; border-radius: 10px; }
+.fs-done { --c: var(--f-done); } .fs-over { --c: var(--f-over); } .fs-prog { --c: var(--f-prog); }
+.fs:hover .fs-l { color: var(--brand); }
+.fs:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.fs-top { display: flex; align-items: center; gap: 6px; height: 34px; }
+.fs-ic { position: relative; width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: var(--inset); border: 1px solid var(--line); }
+.fs-hot .fs-ic { border-color: var(--f-over); box-shadow: 0 0 0 2px color-mix(in srgb, var(--f-over) 35%, transparent); color: var(--bad); }
+.fs-dot { position: absolute; top: -1px; right: -2px; width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--card); }
+.fs-link { position: relative; flex: 1; height: 0; border-top: 1.5px dashed var(--line); margin-right: 4px; }
+.fs-link::after { content: ""; position: absolute; right: -2px; top: -5px; width: 6px; height: 6px; border: solid var(--muted); border-width: 1.5px 1.5px 0 0; transform: rotate(45deg); opacity: .7; }
+.fs-link.solid { border-top: 1.5px solid var(--f-done); }
+.fs-link.solid::after { border-color: var(--f-done); opacity: 1; }
+.fs-l { font-size: 12.5px; overflow-wrap: anywhere; color: var(--ink); opacity: .85; line-height: 1.3; margin-top: 10px; min-height: 2.6em; }
+.fs-n { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 6px; }
+.fs-n b { font-size: 21px; font-weight: 650; color: var(--ink); margin-right: 3px; letter-spacing: -.02em; }
+.fs-bar { display: flex; height: 6px; border-radius: 2px; background: var(--inset); overflow: hidden; margin-top: 6px; }
+.fs-f { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 6px; margin-top: 8px; font-size: 12px; }
+.fs-s { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--ink); opacity: .85; }
+.fs-s i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); flex: none; }
+.fs-over .fs-s { color: var(--bad); opacity: 1; }
+.fs-todo .fs-s { color: var(--muted); }
+.fs-p { color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) { .ft-sum { flex-basis: 100%; } }
+/* Overview page top section (scurve.js renderKpis): stats, the baseline / working plan timeline, three panels */
+.sx { margin-top: 14px; }
+.sx-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.sx-st { --t: var(--brand); display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--t) 6%, var(--card)), var(--card) 75%); position: relative; overflow: hidden; }
+.sx-st::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--t); }
+.sx-good { --t: var(--s-app); } .sx-bad { --t: var(--bad); } .sx-warn { --t: var(--s-reop); } .sx-prog { --t: var(--s-prog); }
+.sx-ic { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--t); background: color-mix(in srgb, var(--t) 14%, transparent); }
+.sx-v { font-size: 20px; font-weight: 650; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.sx-v small { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.sx-bad .sx-v { color: var(--bad); }
+.sx-l { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.sx-s { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+.sx-bar { height: 4px; border-radius: 2px; background: var(--inset); margin-top: 7px; overflow: hidden; }
+.sx-bar i { display: block; height: 100%; background: var(--t); }
+/* timeline */
+.sx-tl { position: relative; margin: 18px 0 4px; padding: 6px 0 2px; }
+.sx-axis, .sx-tr, .sx-todayrow { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: center; gap: 12px; }
+.sx-lane { position: relative; }
+.sx-axis .sx-lane { height: 22px; border-bottom: 1px solid var(--line-soft); }
+.sx-tick { position: absolute; bottom: 4px; transform: translateX(-1px); padding-left: 4px; border-left: 1px solid var(--line); font-size: 11px; color: var(--muted); white-space: nowrap; line-height: 1; height: 14px; }
+.sx-tick.y { color: var(--ink); font-weight: 650; border-left-color: var(--muted); }
+.sx-tr { margin-top: 10px; }
+.sx-tr .sx-lane { height: 46px; }
+.sx-name { font-size: 13px; font-weight: 600; }
+.sx-name small { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.sx-bar-full { position: absolute; top: 6px; height: 18px; border-radius: 6px; overflow: hidden; background: color-mix(in srgb, var(--c) 22%, var(--card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }
+.sx-base { --c: var(--s-draft); } .sx-plan { --c: var(--s-reop); }
+.sx-done { display: block; height: 100%; background: var(--c); }
+.sx-date { position: absolute; top: 28px; font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sx-date.s { transform: translateX(0); } .sx-date.e { transform: translateX(-100%); }
+.sx-var { position: absolute; top: 4px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: visible; white-space: nowrap; }
+.sx-var b { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow-xs); }
+.sx-var.late { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--bad) 55%, transparent) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1.5px var(--bad); }
+.sx-var.late b { color: var(--bad); }
+.sx-var.early { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--good) 45%, transparent) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1.5px var(--good); }
+.sx-var.early b { color: var(--good); }
+.sx-var.start { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--s-reop) 45%, transparent) 0 4px, transparent 4px 8px); box-shadow: inset 0 0 0 1.5px var(--s-reop); }
+.sx-var.start b { color: var(--warn); }
+.sx-none { font-size: 12px; color: var(--faint); }
+.sx-todayrow .sx-lane { height: 22px; }
+.sx-today { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--bad); white-space: nowrap; }
+.sx-today b { font-weight: 700; }
+.sx-today::before { content: ""; position: absolute; left: 50%; bottom: 100%; height: 132px; border-left: 2px dashed var(--bad); opacity: .7; }
+.sx-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0 0 142px; font-size: 12px; color: var(--muted); }
+.sx-legend i { display: inline-block; width: 16px; height: 8px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+.sx-legend i.k-base, .sx-legend i.k-plan { height: 8px; }
+.sx-k-done { background: var(--s-draft); }
+.sx-k-late { background: repeating-linear-gradient(135deg, var(--bad) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--bad); }
+.sx-k-start { background: repeating-linear-gradient(135deg, var(--s-reop) 0 2px, transparent 2px 4px); box-shadow: inset 0 0 0 1px var(--s-reop); }
+/* progress by area (beside the site model) */
+.sx-ak { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.sx-ak i { display: inline-block; width: 14px; height: 6px; border-radius: 3px; margin-right: 6px; vertical-align: 1px; }
+.ak-tk { width: 3px !important; height: 12px !important; border-radius: 2px; vertical-align: -2px !important; }
+.ak-tk.plan { background: var(--s-reop); } .ak-tk.base { background: var(--ink); }
+.ak-act { background: linear-gradient(90deg, var(--s-app) 0 33%, var(--s-reop) 33% 66%, var(--s-rej) 66%); }
+.sa { display: grid; gap: 8px; }
+.sa-row { appearance: none; font: inherit; color: inherit; text-align: left; cursor: pointer; display: grid; gap: 3px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-soft); background: var(--card); transition: border-color .12s var(--ease), background .12s var(--ease); }
+.sa-row:hover { background: var(--inset); }
+.sa-row.is-other { cursor: default; opacity: .8; }
+.sa-row.is-sel { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.sa-row:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.sa-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13.5px; }
+.sa-d { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sa-d.bc-good { color: var(--good); } .sa-d.bc-warn { color: var(--warn); } .sa-d.bc-bad { color: var(--bad); } .sa-d.bc-idle { color: var(--muted); }
+.sa-s { font-size: 11.5px; color: var(--faint); }
+.sa-bar { position: relative; display: block; height: 14px; border-radius: 7px; background: var(--inset); margin: 10px 0 4px; }
+.sa-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 7px; background: var(--brand); }
+.sa-bar.bc-good .sa-fill { background: var(--s-app); } .sa-bar.bc-warn .sa-fill { background: var(--s-reop); } .sa-bar.bc-bad .sa-fill { background: var(--s-rej); }
+.sa-tk { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; }
+.sa-tk.plan { background: var(--s-reop); box-shadow: 0 0 0 1.5px var(--card); }
+.sa-tk.base { background: var(--ink); box-shadow: 0 0 0 1.5px var(--card); }
+.sa-v { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12px; color: var(--muted); }
+.sa-v b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.sa-v span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.v-act::before { background: var(--brand); }
+.sa-row:has(.bc-good) .v-act::before { background: var(--s-app); } .sa-row:has(.bc-warn) .v-act::before { background: var(--s-reop); } .sa-row:has(.bc-bad) .v-act::before { background: var(--s-rej); }
+.v-plan::before { width: 3px !important; height: 11px !important; background: var(--s-reop); vertical-align: -1px !important; }
+.v-base::before { width: 3px !important; height: 11px !important; background: var(--ink); vertical-align: -1px !important; }
+/* the three panels */
+.sx-row { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) minmax(0, 1fr); margin-top: 18px; border-top: 1px solid var(--line-soft); }
+.sx-panel { padding: 16px 18px 4px; min-width: 0; }
+.sx-panel + .sx-panel { border-left: 1px solid var(--line-soft); }
+.sx-h { font-size: 10.5px; font-weight: 650; letter-spacing: .09em; text-transform: uppercase; color: var(--brand); margin-bottom: 10px; }
+.sx-gauge { text-align: center; }
+.sx-gauge svg { width: min(190px, 100%); display: block; margin: 0 auto; }
+.sx-gauge circle { fill: none; stroke-width: 18; stroke-linecap: round; }
+.sx-gauge .g-trk { stroke: var(--inset); }
+.sx-gauge .g-base { stroke: color-mix(in srgb, var(--s-draft) 45%, transparent); }
+.sx-gauge .g-act { stroke: var(--bc, var(--brand)); }
+.sx-gauge.bc-good { --bc: var(--s-app); } .sx-gauge.bc-warn { --bc: var(--s-reop); } .sx-gauge.bc-bad { --bc: var(--s-rej); } .sx-gauge.bc-idle { --bc: var(--s-idle); }
+.sx-gauge .g-tb { stroke: var(--s-draft); stroke-width: 3; }
+.sx-gauge .g-tp { stroke: var(--s-reop); stroke-width: 3; }
+.sx-gauge .g-big { font-size: 32px; font-weight: 700; fill: var(--ink); letter-spacing: -.02em; }
+.sx-gauge .g-cap { font-size: 9px; font-weight: 650; letter-spacing: .12em; fill: var(--muted); }
+.sx-gnote { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.sx-gnote span { font-weight: 650; }
+.sx-gk { display: flex; justify-content: center; gap: 14px; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+.sx-gk i, .sx-ct i, .sx-wl i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.sx-cmp { display: grid; gap: 12px; }
+.sx-ct { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
+.sx-ct b { font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.sx-cb { height: 10px; border-radius: 5px; background: var(--inset); overflow: hidden; margin-top: 5px; }
+.sx-cb i { display: block; height: 100%; border-radius: 5px; }
+.sx-cs { font-size: 11.5px; color: var(--faint); margin-top: 3px; }
+.sx-cnote { font-size: 12px; color: var(--muted); margin-top: 12px; }
+.sx-wv { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.sx-wv small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.sx-ws { font-size: 12px; color: var(--faint); }
+.sx-stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--inset); margin: 12px 0 12px; }
+.sx-stack i { display: block; height: 100%; }
+.w-done { background: var(--s-app); } .w-mid { background: var(--s-prog); } .w-none { background: color-mix(in srgb, var(--s-idle) 45%, var(--inset)); }
+.sx-wl { display: grid; gap: 7px; }
+.sx-wl div { display: grid; grid-template-columns: auto 1fr auto 52px; align-items: center; gap: 4px; font-size: 13px; }
+.sx-wl b { font-variant-numeric: tabular-nums; font-weight: 650; }
+.sx-wl small { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) { .sx-row { grid-template-columns: minmax(0, 1fr); } .sx-panel + .sx-panel { border-left: 0; border-top: 1px solid var(--line-soft); } .sx-axis, .sx-tr, .sx-todayrow { grid-template-columns: 88px minmax(0, 1fr); } .sx-legend { margin-left: 0; } }
+/* activity drill-through (actdrill.js) on the Procurement and MEP procurement pages */
+.drill { cursor: pointer; }
+.pcell.drill { transition: box-shadow .12s var(--ease), transform .1s var(--ease); }
+.pcell.drill:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 45%, transparent); }
+.pcell.drill:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.dr-name { all: unset; cursor: pointer; display: block; overflow-wrap: anywhere; }
+.dr-name:hover b, .dr-name:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+.dr-name:focus-visible { outline: 2px solid var(--brand); border-radius: 4px; }
+#drawer .late, .sum-v.late { color: var(--bad); }
+#drawer .early, .sum-v.early { color: var(--good); }
+.ad-dates th:first-child { text-align: left; color: var(--muted); font-weight: 600; }
+.ad-dates td, .ad-dates th { font-variant-numeric: tabular-nums; }
+/* MEP procurement page: matrix and timeline share #pr-matrix's look */
+#mp-body .tbl-wrap { max-height: 76vh; }
+#mp-body table { font-size: 12px; }
+#mp-body th, #mp-body td { padding: 6px 6px; }
+#mp-body th.st { white-space: normal; min-width: 100px; max-width: 112px; letter-spacing: .03em; line-height: 1.25; text-align: center; }
+#mp-body td.it, #mp-body th.it { position: sticky; left: 0; z-index: 1; background: var(--card); white-space: normal; min-width: 220px; max-width: 280px; box-shadow: inset -1px 0 0 var(--line-soft); }
+#mp-body th.it { z-index: 3; background: var(--inset); }
+#mp-body tr.grp td { position: sticky; left: 0; }
+#mp-body tr.pr-part td { background: var(--inset); font-weight: 700; font-size: 12.5px; }
+#mp-body tr.pr-grp td { background: color-mix(in srgb, var(--inset) 50%, var(--card)); font-weight: 600; color: var(--muted); font-size: 11.5px; }
+#mp-body tr.mp-band th.ph { position: static; }
+#mp-body th.ph { text-align: center; font-size: 11.5px; letter-spacing: .02em; }
+#mp-body .ph0 { --ph: var(--s-prog); }
+#mp-body .ph1 { --ph: var(--cat-7); }
+#mp-body .ph2 { --ph: var(--s-app); }
+#mp-body .ph3 { --ph: var(--muted); }
+#mp-body th.ph, #mp-body th.st { box-shadow: inset 0 3px 0 var(--ph); }
+#mp-body td.mp-doc { padding-left: 26px; color: var(--muted); font-size: 11.5px; }
+#mp-body tr.mp-docs td.it { background: color-mix(in srgb, var(--inset) 35%, var(--card)); }
+.mp-tog { all: unset; cursor: pointer; display: block; }
+.mp-tog:focus-visible { outline: 2px solid var(--accent, #2563eb); border-radius: 4px; }
+/* timeline */
+#mp-body th.mp-axis, #mp-body td.mp-axis { width: 100%; min-width: 640px; padding: 0 12px; }
+.mp-track { position: relative; height: 22px; }
+#mp-body th.mp-axis .mp-track { height: 30px; }
+.mp-tick { position: absolute; top: 4px; transform: translateX(-1px); font-size: 10.5px; color: var(--muted); font-weight: 500; white-space: nowrap; border-left: 1px solid var(--line-soft); padding-left: 3px; height: 24px; }
+.mp-tick.y { color: var(--ink); font-weight: 700; border-left-color: var(--muted); }
+.mp-today { position: absolute; bottom: 0; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: var(--bad); }
+.mp-now { position: absolute; top: -6px; bottom: -6px; width: 0; border-left: 1.5px dashed var(--bad); opacity: .55; }
+.mp-base { position: absolute; top: 15px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 35%, transparent); }
+.mp-span { position: absolute; top: 9px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 30%, transparent); }
+.mp-m { position: absolute; top: 5px; width: 11px; height: 11px; margin-left: -5.5px; box-sizing: border-box; border: 2px solid var(--ph); background: var(--card); cursor: default; }
+.mp-m.ph0 { border-radius: 50%; }
+.mp-m.ph1 { transform: rotate(45deg) scale(.88); }
+.mp-m.ph2 { border-radius: 2px; }
+.mp-m.c-done { background: var(--s-app); }
+.mp-m.c-prog { background: var(--s-prog); }
+.mp-m.c-over { background: var(--s-rej); border-color: var(--s-rej); }
+.mp-m:hover { z-index: 2; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ph) 35%, transparent); }
+.mp-k { position: static; display: inline-block; margin: 0 2px 0 8px; vertical-align: -1px; }
+.mp-k.mp-base { width: 18px; height: 4px; vertical-align: 2px; }
+.mp-k.mp-now { height: 12px; vertical-align: -2px; }
+.pr-legend .mp-m { --ph: var(--muted); }
+.pr-legend .mp-m.ph0 { --ph: var(--s-prog); } .pr-legend .mp-m.ph1 { --ph: var(--cat-7); } .pr-legend .mp-m.ph2 { --ph: var(--s-app); }
+/* ---------- WBS page ---------- */
+.wbs-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.wbs-tools .search { flex: 1 1 280px; max-width: 460px; }
+.wbs-note { font-size: 12px; color: var(--muted); }
+#wbs-tree .tbl-wrap { max-height: 72vh; }
+td.wbs-n { white-space: normal; min-width: 300px; max-width: 520px; }
+.wbs-n .tg { margin-left: 0; }
+.wbs-n .tg-sp { display: inline-block; width: 22px; margin-right: 6px; }
+.wbs-n .nm { vertical-align: middle; }
+tr.wbs-p .nm { font-weight: 600; }
+.wbs-c { display: block; font-size: 11px; color: var(--faint); margin-top: 1px; }
+.wbs-n mark { background: color-mix(in srgb, var(--s-reop) 35%, transparent); color: inherit; border-radius: 2px; }
+.wbs-st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.wbs-st i { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.wbs-mix { display: flex; align-items: center; gap: 8px; min-width: 150px; }
+.wbs-mix .bar { flex: 1; display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--inset); }
+.wbs-mix .bar span { height: 100%; }
+.wbs-mix .c { background: var(--s-app); } .wbs-mix .s { background: var(--s-prog); } .wbs-mix .n { background: var(--s-idle); }
+.wbs-mix em { font-style: normal; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.wbs-roll { color: var(--muted); }
 tfoot td { font-weight: 600; background: var(--inset); position: sticky; bottom: 0; }
 td.wrap { white-space: normal; min-width: 180px; }
 .neg { color: var(--bad); }
@@ -423,6 +742,49 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .pk-legend .sw-tick { width: 2px; height: 13px; border-radius: 1px; background: var(--ink); vertical-align: -2px; }
 .pk-legend .sw-scope { background: var(--inset); box-shadow: inset 0 0 0 1px var(--line); }
 .pk-legend .hint { margin: 0 0 0 auto; }
+/* Quantity page: physical progress by construction phase */
+.qp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 12px; }
+.qp { --t: var(--s-app); position: relative; border: 1px solid var(--line-soft); border-radius: 14px; padding: 14px 16px 14px 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--t) 6%, var(--card)), var(--card) 70%); overflow: hidden; }
+.qp::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--t); }
+.qp-warn { --t: var(--s-reop); } .qp-bad { --t: var(--s-rej); }
+.qp-idle { --t: var(--s-idle); }
+.qp-idle .qp-d { color: var(--muted); background: var(--inset); }
+.qp-ring.idle { --t: var(--s-idle); }
+.qp-head { display: flex; align-items: center; gap: 12px; }
+.qp-ic { width: 40px; height: 40px; flex: none; border-radius: 11px; display: grid; place-items: center; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); }
+.qp-n { min-width: 0; flex: 1; }
+.qp-n b { display: block; font-size: 14.5px; font-weight: 650; }
+.qp-n small { display: block; font-size: 11.5px; color: var(--muted); }
+.qp-d { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; color: var(--good); background: var(--good-bg); }
+.qp-warn .qp-d { color: var(--warn); background: var(--warn-bg); } .qp-bad .qp-d { color: var(--bad); background: var(--bad-bg); }
+.qp-body { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+.qp-ring { width: 84px; height: 84px; flex: none; }
+.qp-ring circle { fill: none; stroke-width: 9; stroke-linecap: round; }
+.qp-ring .r-trk { stroke: var(--inset); }
+.qp-ring .r-base { stroke: color-mix(in srgb, var(--s-draft) 40%, transparent); }
+.qp-ring .r-act { stroke: var(--t); }
+.qp-ring.good { --t: var(--s-app); } .qp-ring.warn { --t: var(--s-reop); } .qp-ring.bad { --t: var(--s-rej); }
+.qp-ring .r-tk { stroke: var(--s-draft); stroke-width: 2.5; }
+.qp-ring text { font-size: 15px; font-weight: 700; fill: var(--ink); }
+.qp-bars { flex: 1; display: grid; gap: 7px; min-width: 0; }
+.qp-l { display: grid; grid-template-columns: 62px minmax(0, 1fr) 48px; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.qp-l b { text-align: right; color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; font-size: 12.5px; }
+.qp-t { display: block; height: 8px; border-radius: 4px; background: var(--inset); overflow: hidden; }
+.qp-t i { display: block; height: 100%; border-radius: 4px; }
+.qp-t.act i { background: var(--t); } .qp-t.plan i { background: var(--s-reop); opacity: .85; } .qp-t.base i { background: var(--s-draft); }
+/* Quantity page: sections, the location picker, one location's cards in a grid */
+.q-sec { margin-top: 14px; }
+.q-locs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; margin: 0 0 6px; scrollbar-width: thin; }
+.q-loc { appearance: none; font: inherit; color: var(--ink); cursor: pointer; flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line-soft); background: var(--card); text-align: left; transition: border-color .12s var(--ease), background .12s var(--ease); }
+.q-loc:hover { border-color: var(--line); background: var(--inset); }
+.q-loc[aria-selected="true"] { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, var(--card)); box-shadow: inset 0 0 0 1px var(--brand); }
+.q-loc:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.q-loc-t b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.q-loc-t small { display: block; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.q-loc-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; color: var(--bad); background: var(--bad-bg); }
+.pk-one { margin-top: 12px; box-shadow: none; }
+.pk-one .pk-cols { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+#q-kpis .kp.drill { cursor: pointer; }
 .pk-wrap { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; align-items: stretch; }
 .pk-group { flex: 1 1 calc(var(--cols, 1) * 236px); max-width: 100%; min-width: min(100%, 236px); background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--r-xl); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; }
 .pk-gh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 13px 18px; border-bottom: 1px solid var(--line-soft); }
@@ -518,6 +880,10 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .legend i.m3-k-due, .m3-due { background: color-mix(in srgb, var(--s-rej) 40%, var(--card)); }
 /* the model image is shown near its native width (about 690px) so it stays sharp; the list takes the rest */
 .m3d-wrap { display: block; }
+.sx-mrow { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: stretch; margin-top: 18px; }
+.sx-mrow > section { margin-top: 0; }
+.sx-mrow > #m3d-card[hidden] + .sx-areas { grid-column: 1 / -1; }
+@media (max-width: 1100px) { .sx-mrow { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 960px) { .m3d-wrap { grid-template-columns: minmax(0, 1fr); } }
 .lay-fig { margin: 0; }
 .lay-img { position: relative; width: 100%; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line-soft); background: #ffffff; }
@@ -728,10 +1094,11 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 <main class="container" id="main">
   <div class="tabbar">
     <nav class="tabs" id="tabs" role="tablist" aria-label="Pages">
+      <button type="button" class="tab" role="tab" id="tab-scurve" data-p="scurve" aria-controls="pg-scurve" aria-selected="false" tabindex="-1" hidden>Overview<span class="n" id="n-scurve"></span></button>
       <button type="button" class="tab" role="tab" id="tab-qty" data-p="qty" aria-controls="pg-qty" aria-selected="true" tabindex="0">Quantity tracking</button>
-      <button type="button" class="tab" role="tab" id="tab-scurve" data-p="scurve" aria-controls="pg-scurve" aria-selected="false" tabindex="-1" hidden>Progress &amp; S-curve<span class="n" id="n-scurve"></span></button>
-      <button type="button" class="tab" role="tab" id="tab-site" data-p="site" aria-controls="pg-site" aria-selected="false" tabindex="-1" hidden>Site progress</button>
+      <button type="button" class="tab" role="tab" id="tab-proc" data-p="proc" aria-controls="pg-proc" aria-selected="false" tabindex="-1" hidden>Procurement<span class="n" id="n-proc"></span></button>
       <button type="button" class="tab" role="tab" id="tab-wf" data-p="wf" aria-controls="pg-wf" aria-selected="false" tabindex="-1" hidden>Workforce<span class="n" id="n-wf"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-site" data-p="site" aria-controls="pg-site" aria-selected="false" tabindex="-1" hidden>Site progress</button>
       <span class="tabs-side" id="asof"></span>
     </nav>
   </div>
@@ -748,36 +1115,38 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
     <label class="fp"><span>Search</span><input id="f-q" type="search" placeholder="Activity name or ID" autocomplete="off"></label>
     <button class="btn reset" id="reset" type="button">Clear all filters</button>
   </section>
-  <p class="fhint" id="q-hint"></p>
 
-  <section class="pk" aria-labelledby="h-prog">
-    <div class="pk-head">
-      <div><h2 id="h-prog">Subtrade progress by location</h2><span class="desc">In construction sequence. Quantities are cumulative to today. Select a card for its activities</span></div>
+  <section class="card q-sec" aria-labelledby="h-qov">
+    <div class="card-head"><h2 id="h-qov">Physical progress by construction phase</h2><span class="desc" id="q-ov-desc"></span></div>
+    <div id="q-kpis"></div>
+  </section>
+
+  <section class="card q-sec" aria-labelledby="h-prog">
+    <div class="card-head">
+      <h2 id="h-prog">Subtrade progress</h2>
+      <span class="desc">One location at a time, in construction sequence: choose it below or with the Area filter. Quantities are cumulative to today. Select a card for its activities</span>
       <div class="tools">
         <div class="seg" id="prog-by" role="group" aria-label="Group by"><button type="button" data-v="area" aria-pressed="true">Area</button><button type="button" data-v="sub" aria-pressed="false">Sub-location</button></div>
         <div class="seg" id="prog-show" role="group" aria-label="Which subtrades"><button type="button" data-v="progress" aria-pressed="true">In progress</button><button type="button" data-v="attention" aria-pressed="false">Needs attention</button><button type="button" data-v="all" aria-pressed="false">All</button></div>
       </div>
     </div>
+    <div class="q-locs" id="prog-locs" role="tablist" aria-label="Location"></div>
     <div class="pk-legend"><span><i class="sw-status"></i>Solid arc: actual to date, coloured by status</span><span><i class="sw-plan"></i>Light arc: plan to date</span><span><i class="sw-tick"></i>Plan tick</span><span><i class="sw-scope"></i>Full ring is total scope</span><span class="hint" id="prog-desc"></span></div>
     <div id="progress"></div>
   </section>
 
-  <section class="card" aria-labelledby="h-sub">
+  <section class="card q-sec" aria-labelledby="h-qd">
     <div class="card-head">
-      <h2 id="h-sub">Quantity by subtrade</h2>
-      <span class="desc">Total, planned to date, actual and variance (total − actual), per subtrade and unit. Schedule dates come from the custom fields (* = only some activities have one); actual dates show once every activity in the row is complete. Select a row for its activities</span>
-      <div class="tools"><button class="btn" type="button" id="csv-sub">Download CSV</button></div>
+      <h2 id="h-qd">Quantity details</h2>
+      <span class="desc" id="qd-desc"></span>
+      <div class="tools">
+        <div class="seg" id="qd-view" role="group" aria-label="View"><button type="button" data-v="sub" id="h-sub" aria-pressed="true">By subtrade</button><button type="button" data-v="loc" id="h-loc" aria-pressed="false">By area &amp; sub-location</button></div>
+        <button class="btn" type="button" id="loc-expand" hidden>Expand all</button><button class="btn" type="button" id="loc-collapse" hidden>Collapse all</button>
+        <button class="btn" type="button" id="csv-sub">Download CSV</button><button class="btn" type="button" id="csv-loc" hidden>Download CSV</button>
+      </div>
     </div>
-    <div id="subtrade"></div>
-  </section>
-
-  <section class="card" aria-labelledby="h-loc">
-    <div class="card-head">
-      <h2 id="h-loc">Area, sub-location and subtrade</h2>
-      <span class="desc" id="loc-desc"></span>
-      <div class="tools"><button class="btn" type="button" id="loc-expand">Expand all</button><button class="btn" type="button" id="loc-collapse">Collapse all</button><button class="btn" type="button" id="csv-loc">Download CSV</button></div>
-    </div>
-    <div id="locations"></div>
+    <div id="qd-sub"><div id="subtrade"></div></div>
+    <div id="qd-loc" hidden><div id="locations"></div><span id="loc-desc" hidden></span></div>
   </section>
 
   </div>
@@ -791,26 +1160,34 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
     <label class="fp"><span>Phase</span><select id="s-f-ph"></select></label>
     <button class="btn reset" id="s-reset" type="button">Clear all filters</button>
   </section>
-  <p class="fhint"><b id="s-title"></b><span id="s-facts"></span></p>
 
-  <section class="strip" id="s-strip" aria-label="Schedule summary"></section>
-
-  <section class="row3" aria-label="S-curve headline numbers">
-    <div class="card">
-      <div class="card-head"><h2>Progress %</h2><span class="desc">Earned weightage out of all weightage in view</span></div>
-      <div id="s-progress"></div>
+  <section class="card sx" aria-labelledby="h-sx">
+    <div class="card-head">
+      <h2 id="h-sx">Project timeline and progress</h2>
+      <span class="desc">The committed baseline against the working plan in VisiLean, how much time has passed and how much work is done. Progress is weighted by the master schedule's weightage</span>
     </div>
-    <div class="card">
-      <div class="card-head"><h2>Weighted tasks</h2><span class="desc">Tasks with a weightage, by % complete</span></div>
-      <div id="s-kpis"></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h2>Complete as of today</h2><span class="desc">Baseline, working plan and actual, all weighted by weightage</span></div>
-      <div id="s-trio"></div>
+    <div class="sx-tl" id="s-tl"></div>
+    <div class="sx-stats" id="s-tl-stats"></div>
+    <div class="sx-row">
+      <div class="sx-panel"><div class="sx-h">Progress</div><div id="s-gauge"></div></div>
+      <div class="sx-panel"><div class="sx-h">Complete as of today</div><div id="s-trio"></div></div>
+      <div class="sx-panel"><div class="sx-h">Weighted tasks</div><div id="s-kpis"></div></div>
     </div>
   </section>
 
-  <section class="card" id="m3d-card" aria-labelledby="h-m3d">
+  <section class="card" aria-label="Progress against plan">
+    <div class="card-head">
+      <h2 id="h-curve">Progress against plan</h2>
+      <span class="desc">Three lines: grey is the committed <b>baseline</b>, amber the current <b>working plan</b>, blue what has actually been <b>earned</b>. Bars are weightage per month against the right-hand axis</span>
+      <span class="aside" id="s-inview"></span>
+    </div>
+    <div class="stats" id="s-stats" style="margin:0 0 12px"></div>
+    <div class="legend"><span><i class="k-base"></i>Baseline</span><span><i class="k-plan"></i>Working plan</span><span><i class="k-act"></i>Actual (earned)</span><span><i class="k-bbar"></i>Baseline per month</span><span><i class="k-abar"></i>Earned per month</span></div>
+    <div id="s-curve"></div>
+  </section>
+
+  <section class="sx-mrow" aria-label="Site model and progress by area">
+  <section class="card sx-m3d" id="m3d-card" aria-labelledby="h-m3d">
     <div class="card-head">
       <h2 id="h-m3d">Progress on the site model</h2>
       <span class="desc">3D model: the site built from the BIM model (IFC), simplified for the web; drag to turn, scroll to zoom, right-drag to pan, and use the chips to show or hide a category. Each building carries a ring of its earned weightage in the master schedule; the ring's colour compares it with what the baseline says is due by today (green on or ahead, amber up to 5 points behind, red further behind) and the faint arc behind shows that baseline share. Hover or focus a ring for the building's storeys and dates;</span>
@@ -821,37 +1198,26 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
       <div id="m3d"></div>
     </div>
   </section>
-
-  <section class="row21" aria-label="Progress against plan">
-    <div class="card">
-      <div class="card-head">
-        <h2 id="h-curve">Progress against plan</h2>
-        <span class="desc">Three lines: grey is the committed <b>baseline</b>, amber the current <b>working plan</b>, blue what has actually been <b>earned</b>. Bars are weightage per month against the right-hand axis</span>
-        <span class="aside" id="s-inview"></span>
-      </div>
-      <div class="stats" id="s-stats" style="margin:0 0 12px"></div>
-      <div class="legend"><span><i class="k-base"></i>Baseline</span><span><i class="k-plan"></i>Working plan</span><span><i class="k-act"></i>Actual (earned)</span><span><i class="k-bbar"></i>Baseline per month</span><span><i class="k-abar"></i>Earned per month</span></div>
-      <div id="s-curve"></div>
-    </div>
-    <div class="stack">
-      <div class="card">
-        <div class="card-head"><h2>By area</h2><span class="desc">Bar is weightage earned; the dark tick is where the baseline says it should be today</span><span class="aside">click to filter</span></div>
-        <div id="s-areas"></div>
-      </div>
-    </div>
+  <section class="card sx-areas" aria-labelledby="h-sar">
+    <div class="card-head"><h2 id="h-sar">Progress by area</h2><span class="desc">Each area's WBS: every activity under a WBS node named after the area (DC Building, DG Building, ...), in any branch: design, construction or facade. Earned weightage (actual) against what the baseline and the working plan say is due by today. Select an area to filter the page by its WBS; select it again to clear</span></div>
+    <div class="sx-ak"><span><i class="ak-act"></i>Actual (bar: green on track, amber or red behind)</span><span><i class="ak-tk plan"></i>Planned</span><span><i class="ak-tk base"></i>Baseline</span></div>
+    <div id="s-arear"></div>
+  </section>
   </section>
 
-  <section class="card" aria-labelledby="h-join">
+  <section class="card" id="wbs-card" aria-labelledby="h-wbs" hidden>
     <div class="card-head">
-      <h2 id="h-join">Link to execution</h2>
-      <span class="desc" id="s-join-desc"></span>
-      <div class="tools">
-        <input class="search" id="s-join-q" type="search" placeholder="Search subtrade or LAP Plan" aria-label="Search the join">
-        <div class="seg" id="s-join-match" role="group" aria-label="Match"></div>
-        <button class="btn" type="button" id="s-csv-join">Download CSV</button>
-      </div>
+      <h2 id="h-wbs">Work breakdown structure</h2>
+      <span class="desc">Every activity of the master schedule, parents included, under its immediate parent (VisiLean parentGUID). Siblings run in planned start order. Status and % complete are each row's own VisiLean values. On a parent row, Activities counts the activities (non-parent rows) below it by status, and the dates are the earliest start and latest finish of the parent and everything below it; its actual finish shows only once every activity below it has one</span>
+      <div class="tools"><button class="btn" type="button" id="wbs-csv">Download CSV</button></div>
     </div>
-    <div id="s-join"></div>
+    <div class="stats" id="wbs-stats" style="margin:0 0 14px"></div>
+    <div class="wbs-tools">
+      <input class="search" id="wbs-q" type="search" placeholder="Search activity, WBS code, ID, location, trade or owner" aria-label="Search the WBS">
+      <div class="seg" id="wbs-lv" role="group" aria-label="Expand to level"></div>
+      <span class="wbs-note" id="wbs-note"></span>
+    </div>
+    <div id="wbs-tree"><div class="empty">Loading the WBS…</div></div>
   </section>
   </div>
 
@@ -861,7 +1227,6 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
     <div class="fp" role="group" aria-label="Area"><span>Area</span><div class="fchips" id="sp-area-chips"></div></div>
     <button class="btn reset" id="sp-reset" type="button">Clear all filters</button>
   </section>
-  <p class="fhint" id="sp-hint"></p>
 
   <section class="pk" aria-labelledby="h-site">
     <div class="pk-head">
@@ -882,9 +1247,8 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
     <div class="fp"><span>Trade</span><div class="ms" id="w-trade"></div></div>
     <button class="btn reset" id="w-reset" type="button">Clear all filters</button>
   </section>
-  <p class="fhint" id="w-hint"></p>
 
-  <section class="strip w-strip" id="w-strip" aria-label="Workforce summary"></section>
+  <section class="card w-kpis" id="w-strip" aria-label="Workforce summary"></section>
 
   <section class="row21" aria-label="Daily and monthly workforce">
     <div class="card">
@@ -919,6 +1283,69 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
     </div>
     <div id="w-matrix"></div>
   </section>
+  </div>
+
+  <div class="page" id="pg-proc" role="tabpanel" aria-labelledby="tab-proc" hidden>
+  <section class="pv-head" aria-labelledby="pv-title">
+    <div class="pv-hl">
+      <div class="eyebrow">Procurement</div>
+      <h2 id="pv-title">Procurement tracker</h2>
+      <p class="pv-desc" id="pv-desc"></p>
+    </div>
+    <div class="pv-mode" id="pv-mode" role="tablist" aria-label="Tracker" hidden></div>
+  </section>
+
+  <!-- Core and Shell (procurement.js) -->
+  <div class="pv-panel" id="pv-core" data-key="core" data-icon="box" hidden>
+    <section class="card" aria-labelledby="h-pr-ov">
+      <div class="card-head"><h2 id="h-pr-ov">Overview</h2><span class="desc">Materials and agencies in view, and how far each stage has got. Select a card or a stage for its activities</span></div>
+      <div class="kp-grid" id="pr-stats"></div>
+      <div class="sec-h pv-sec">Stage flow</div>
+      <div class="fl" id="pr-flow"></div>
+    </section>
+    <div class="fbar pv-filters" role="group" aria-label="Filters">
+      <div class="fp"><span>Part</span><div class="seg" id="pr-part" role="group" aria-label="Part"></div></div>
+      <div class="fp"><span>Show</span><div class="seg" id="pr-show" role="group" aria-label="Which items"></div></div>
+      <div class="fp pv-q"><span>Search</span><input class="search" id="pr-q" type="search" placeholder="Material or agency" aria-label="Search items"></div>
+      <button class="btn pv-reset" type="button" id="pr-reset">Reset</button>
+    </div>
+    <section class="card" aria-labelledby="h-pr-mx">
+      <div class="card-head">
+        <h2 id="h-pr-mx">Stage matrix</h2>
+        <span class="desc">Each cell: the stage's finish (actual when complete, else planned) and its delay against the baseline finish. Select a cell, or a name, for its activities</span>
+        <div class="tools"><button class="btn" type="button" id="pr-csv">Download CSV</button></div>
+      </div>
+      <div class="legend pr-legend"><span><i class="pr-k c-done"></i>Complete</span><span><i class="pr-k c-prog"></i>In progress</span><span><i class="pr-k c-over"></i>Overdue</span><span><i class="pr-k c-todo"></i>Not started</span><span><b class="pr-late">+12d</b> late vs baseline</span><span><b class="pr-early">−3d</b> early</span></div>
+      <div id="pr-matrix"></div>
+    </section>
+  </div>
+
+  <!-- MEP (mep.js) -->
+  <div class="pv-panel" id="pv-mep" data-key="mep" data-icon="truck" hidden>
+    <section class="card" aria-labelledby="h-mp-ov">
+      <div class="card-head"><h2 id="h-mp-ov">Overview</h2><span class="desc">MEP materials in view through order finalisation, design &amp; development and manufacturing clearance &amp; delivery. Select a card, a phase or a stage for its activities</span></div>
+      <div class="kp-grid" id="mp-stats"></div>
+      <div class="sec-h pv-sec">Stage flow</div>
+      <div class="fl" id="mp-flow"></div>
+    </section>
+    <div class="fbar pv-filters" role="group" aria-label="Filters">
+      <div class="fp"><span>Scope</span><div class="seg" id="mp-part" role="group" aria-label="Scope"></div></div>
+      <div class="fp"><span>Show</span><div class="seg" id="mp-show" role="group" aria-label="Which materials"></div></div>
+      <div class="fp pv-q"><span>Search</span><input class="search" id="mp-q" type="search" placeholder="Material or drawing" aria-label="Search materials"></div>
+      <button class="btn pv-reset" type="button" id="mp-reset">Reset</button>
+      <div class="fp pv-wide"><span>Discipline</span><div class="seg" id="mp-disc" role="group" aria-label="Discipline"></div></div>
+    </div>
+    <section class="card" aria-labelledby="h-mp-mx">
+      <div class="card-head">
+        <h2 id="h-mp-mx">Stage matrix</h2>
+        <span class="desc" id="mp-mx-desc"></span>
+        <div class="tools"><div class="seg" id="mp-view" role="group" aria-label="View"></div><button class="btn" type="button" id="mp-csv">Download CSV</button></div>
+      </div>
+      <div class="legend pr-legend"><span><i class="pr-k c-done"></i>Complete</span><span><i class="pr-k c-prog"></i>In progress</span><span><i class="pr-k c-over"></i>Overdue</span><span><i class="pr-k c-todo"></i>Not started</span><span><b class="pr-late">+12d</b> late vs baseline</span><span><b class="pr-early">−3d</b> early</span>
+        <span id="mp-leg-tl" hidden><i class="mp-k mp-m ph0 c-todo"></i>Order finalisation <i class="mp-k mp-m ph1 c-todo"></i>Design &amp; development <i class="mp-k mp-m ph2 c-todo"></i>Manufacturing &amp; delivery <i class="mp-k mp-base"></i>Baseline span <i class="mp-k mp-now"></i>Today</span></div>
+      <div id="mp-body"></div>
+    </section>
+  </div>
   </div>
 
   <footer class="foot" id="foot">
