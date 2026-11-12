@@ -505,6 +505,41 @@ td.pc { padding: 3px !important; }
 #drawer .early, .sum-v.early { color: var(--good); }
 .ad-dates th:first-child { text-align: left; color: var(--muted); font-weight: 600; }
 .ad-dates td, .ad-dates th { font-variant-numeric: tabular-nums; }
+/* MEP timeline: swimlane Gantt (mep.js timeline()) */
+#mp-body .mt td, #mp-body .mt th { vertical-align: middle; }
+#mp-body th.mt-axis, #mp-body td.mt-axis { width: 100%; min-width: 680px; padding: 0 12px; }
+#mp-body th.mt-nowh { min-width: 170px; }
+.mt-track { position: relative; }
+.mt-head { height: 30px; }
+.mt-row { height: 40px; }
+.mt-tick { position: absolute; top: 6px; transform: translateX(-1px); padding-left: 4px; border-left: 1px solid var(--line); font-size: 10.5px; color: var(--muted); font-weight: 600; white-space: nowrap; height: 20px; }
+.mt-tick.y { color: var(--ink); font-weight: 750; border-left-color: var(--muted); }
+.mt-todayl { position: absolute; bottom: -2px; transform: translateX(-50%); font-size: 10px; font-weight: 750; color: var(--bad); letter-spacing: .04em; text-transform: uppercase; }
+.mt-grid { position: absolute; top: -8px; bottom: -8px; width: 0; border-left: 1px solid var(--line-soft); }
+.mt-grid.y { border-left-color: var(--line); }
+.mt-today { position: absolute; top: -9px; bottom: -9px; width: 0; border-left: 2px solid color-mix(in srgb, var(--bad) 55%, transparent); z-index: 2; }
+.mt-lane { position: absolute; left: 0; right: 0; height: 9px; border-radius: 3px; background: color-mix(in srgb, var(--inset) 70%, transparent); }
+.mt-lane.ln0, .mt-blk.ln0 { top: 4px; } .mt-lane.ln1, .mt-blk.ln1 { top: 15px; } .mt-lane.ln2, .mt-blk.ln2 { top: 26px; }
+.mt-blk { position: absolute; height: 9px; border-radius: 3px; z-index: 1; cursor: pointer; box-shadow: 0 0 0 1px var(--card); transition: transform .1s var(--ease), box-shadow .1s var(--ease); }
+.mt-blk.c-done { background: var(--s-app); }
+.mt-blk.c-prog { background: var(--s-prog); }
+.mt-blk.c-over { background: var(--s-rej); }
+.mt-blk.c-todo { background: var(--card); box-shadow: inset 0 0 0 1.5px var(--s-idle); }
+.mt-blk:hover { transform: scaleY(1.5); box-shadow: 0 0 0 2px var(--card), 0 2px 6px rgba(0,0,0,.18); z-index: 3; }
+.mt-bl { position: absolute; width: 2px; height: 13px; margin-left: -1px; border-radius: 1px; background: var(--ink); opacity: .55; z-index: 2; pointer-events: auto; }
+.mt-bl.ln0 { top: 2px; } .mt-bl.ln1 { top: 13px; } .mt-bl.ln2 { top: 24px; }
+.mt-now { display: block; line-height: 1.25; }
+.mt-now b { display: block; font-size: 12px; font-weight: 650; }
+.mt-now small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.mt-now.n-over b, .mt-now.n-over small { color: var(--bad); }
+.mt-now.n-prog b { color: var(--s-prog); }
+.mt-now.done { color: var(--good); font-weight: 650; font-size: 12px; }
+.mt-k { display: inline-block; width: 18px; height: 9px; border-radius: 3px; margin: 0 5px 0 10px; vertical-align: 0; }
+.mt-k.done { background: var(--s-app); } .mt-k.prog { background: var(--s-prog); } .mt-k.over { background: var(--s-rej); } .mt-k.todo { box-shadow: inset 0 0 0 1.5px var(--s-idle); }
+.mt-k.bl { width: 2px; height: 12px; background: var(--ink); opacity: .55; vertical-align: -2px; }
+.mt-k.td { width: 0; height: 12px; border-left: 2px solid color-mix(in srgb, var(--bad) 55%, transparent); border-radius: 0; vertical-align: -2px; }
+.mt-lanes { display: inline-flex; flex-direction: column; gap: 1px; vertical-align: middle; margin: 0 5px 0 10px; }
+.mt-lanes i { display: block; width: 18px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .5; }
 /* MEP procurement page: matrix and timeline share #pr-matrix's look */
 #mp-body .tbl-wrap { max-height: 76vh; }
 #mp-body table { font-size: 12px; }
@@ -1342,7 +1377,7 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
         <div class="tools"><div class="seg" id="mp-view" role="group" aria-label="View"></div><button class="btn" type="button" id="mp-csv">Download CSV</button></div>
       </div>
       <div class="legend pr-legend"><span><i class="pr-k c-done"></i>Complete</span><span><i class="pr-k c-prog"></i>In progress</span><span><i class="pr-k c-over"></i>Overdue</span><span><i class="pr-k c-todo"></i>Not started</span><span><b class="pr-late">+12d</b> late vs baseline</span><span><b class="pr-early">−3d</b> early</span>
-        <span id="mp-leg-tl" hidden><i class="mp-k mp-m ph0 c-todo"></i>Order finalisation <i class="mp-k mp-m ph1 c-todo"></i>Design &amp; development <i class="mp-k mp-m ph2 c-todo"></i>Manufacturing &amp; delivery <i class="mp-k mp-base"></i>Baseline span <i class="mp-k mp-now"></i>Today</span></div>
+        <span id="mp-leg-tl" hidden>· Stage blocks:<i class="mt-k done"></i>Done<i class="mt-k prog"></i>In progress<i class="mt-k over"></i>Overdue<i class="mt-k todo"></i>Not started<span class="mt-lanes"><i></i><i></i><i></i></span>Lanes, top to bottom: order finalisation, design &amp; development, manufacturing &amp; delivery<i class="mt-k bl"></i>Baseline finish<i class="mt-k td"></i>Today</span></div>
       <div id="mp-body"></div>
     </section>
   </div>

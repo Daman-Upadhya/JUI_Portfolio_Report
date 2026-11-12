@@ -1038,6 +1038,59 @@ def mep_procurement_csv_rows(p: dict) -> list[dict]:
              "kind": I[a["item"]]["kind"], "stage": p["stages"][a["stage"]]} for a in p["activities"]]
 
 
+def portfolio_scurve(m: dict, today: date) -> dict | None:
+    """The landing card's slice of an S-curve payload: progress per construction phase (actual,
+    planned and baseline % of the phase's weightage due today), the project's month-by-month
+    cumulative curves (baseline, planned, actual up to today) with each month's baseline and actual
+    increments, and the baseline vs working plan dates."""
+    facts = [f for f in ((m or {}).get("facts") or {}).get("tasks") or [] if f["bs"]]
+    total = sum(f["w"] for f in facts)
+    if not total:
+        return None
+    phases = {}
+    for f in facts:
+        p = phases.setdefault(f["ph"] or "No phase", {"name": f["ph"] or "No phase", "n": 0, "w": 0.0, "e": 0.0, "b": 0.0, "p": 0.0})
+        p["n"] += 1; p["w"] += f["w"]; p["e"] += f["e"]
+        p["b"] += _baseline_to(f, today); p["p"] += _baseline_to(f, today, "ps", "pe", "pr")
+    ph = [{"name": p["name"], "n": p["n"], "share": round(100 * p["w"] / total, 2), "actual": round(100 * p["e"] / p["w"], 2),
+           "planned": round(100 * p["p"] / p["w"], 2), "baseline": round(100 * p["b"] / p["w"], 2)}
+          for p in sorted(phases.values(), key=lambda p: -p["w"]) if p["w"]]
+
+    dates = [d for f in facts for d in (f["bs"], f["be"], f["ps"], f["pe"], f["as"], f["ax"]) if d] + [today.isoformat()]
+    lo, hi = date.fromisoformat(min(dates)), date.fromisoformat(max(dates))
+    months = [date(lo.year, lo.month, 1)]
+    while months[-1] <= hi:
+        y, mo = divmod(months[-1].month, 12)
+        months.append(date(months[-1].year + y, mo + 1, 1))
+    idx = {(d.year, d.month): i for i, d in enumerate(months)}
+    inc = {k: [0.0] * len(months) for k in ("b", "p", "a")}
+    for f in facts:  # spread each task's rate over the months its window covers
+        for k, s, e, r in (("b", "bs", "be", "br"), ("p", "ps", "pe", "pr"), ("a", "as", "ax", "ar")):
+            if not f[s] or not f[e] or not f[r]:
+                continue
+            d0, d1 = date.fromisoformat(f[s]), date.fromisoformat(f[e])
+            if k == "a":
+                d1 = min(d1, today)
+            while d0 <= d1:
+                i = idx[(d0.year, d0.month)]
+                end = min(d1, months[i + 1] - timedelta(days=1))
+                inc[k][i] += f[r] * ((end - d0).days + 1)
+                d0 = months[i + 1]
+    def cum(xs):
+        out, c = [0.0], 0.0
+        for x in xs[:-1]:
+            c += x
+            out.append(round(min(100.0, 100 * c / total), 2))
+        return out
+    a_upto = next(i for i, d in enumerate(months) if d > today)  # month boundaries up to today
+    curve = {"months": [d.isoformat()[:7] for d in months], "b": cum(inc["b"]), "p": cum(inc["p"]), "a": cum(inc["a"])[:a_upto],
+             "bm": [round(100 * x / total, 3) for x in inc["b"][:-1]], "am": [round(100 * x / total, 3) for x in inc["a"][:-1]]}
+    be = max((f["be"] for f in facts if f["be"]), default=None)
+    pe = max((f["pe"] for f in facts if f["pe"]), default=None)
+    return {"phases": ph, "curve": curve, "baselineStart": min(f["bs"] for f in facts), "baselineFinish": be, "plannedFinish": pe,
+            "finishVariance": (date.fromisoformat(pe) - date.fromisoformat(be)).days if be and pe else None}
+
+
 def _baseline_to(f: dict, day: date, s: str = "bs", e: str = "be", r: str = "br") -> float:
     """A task's baseline (or, with ps/pe/pr, planned) weightage due by the end of day."""
     if not f[s] or f[s] > day.isoformat():

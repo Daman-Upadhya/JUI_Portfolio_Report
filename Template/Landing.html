@@ -27,27 +27,74 @@ h1, h2 { margin: 0; font-weight: 600; }
 .eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--on-panel-soft); }
 .hero h1 { font-size: 24px; letter-spacing: -.02em; margin-top: 2px; }
 .hero p { margin: 6px 0 0; color: var(--on-panel-soft); font-size: 13px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; margin-top: 26px; }
-.card { display: block; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--r-xl); padding: 16px 18px; box-shadow: var(--shadow); transition: border-color .12s linear, transform .1s var(--ease); }
-.card:hover { border-color: var(--brand); }
-.card:active { transform: scale(.985); }
-.card-top { display: flex; align-items: baseline; gap: 10px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; margin-top: 26px; align-items: start; }
+.card { background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--r-xl); padding: 18px 20px 14px; box-shadow: var(--shadow); min-width: 0; }
+.card-top { display: flex; align-items: flex-start; gap: 10px; }
 .code { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); }
-.card h2 { font-size: 15px; letter-spacing: -.01em; margin-top: 2px; }
-.state { margin-left: auto; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.card h2 { font-size: 17px; letter-spacing: -.01em; margin-top: 1px; }
+.card h2 a:hover { color: var(--brand); }
+.top-r { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
+.state { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
 .state.fresh { background: var(--good-bg); color: var(--good); }
 .state.stale { background: var(--warn-bg); color: var(--warn); }
 .state.unavailable { background: var(--bad-bg); color: var(--bad); }
-.nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
-.v { font-size: 20px; font-weight: 600; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
-.l { margin-top: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.track { margin-top: 14px; height: 8px; border-radius: 4px; background: var(--inset); display: flex; gap: 2px; overflow: hidden; }
-.track i { display: block; height: 100%; border-radius: 4px; }
-.c-complete { background: var(--s-app); } .c-started { background: var(--s-prog); } .c-notStarted { background: var(--s-idle); }
-.when { margin-top: 10px; font-size: 12px; color: var(--faint); }
-.sc { margin-top: 12px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.sc b { color: var(--ink); font-weight: 600; }
-.neg { color: var(--bad); }
+.asof { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.sub { margin-top: 4px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-top: 8px; }
+.minis .tile { padding: 8px 10px 8px 12px; }
+.minis .v { font-size: 17px; }
+.minis .s { font-size: 11px; }
+.tile { position: relative; display: block; border: 1px solid var(--line-soft); border-radius: var(--r-lg); padding: 10px 12px 10px 14px; overflow: hidden; transition: border-color .12s linear, transform .1s var(--ease); }
+.tile::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--acc, var(--brand)); }
+a.tile:hover { border-color: var(--brand); }
+a.tile:active { transform: scale(.985); }
+.tile.good { --acc: var(--good); } .tile.bad { --acc: var(--bad); } .tile.warn { --acc: var(--warn); } .tile.prog { --acc: var(--s-prog); } .tile.idle { --acc: var(--s-idle); }
+.l { font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v { margin-top: 4px; font-size: 26px; font-weight: 600; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--acc, var(--brand)); white-space: nowrap; }
+.v small { font-size: 12px; font-weight: 600; letter-spacing: 0; margin-left: 2px; }
+.s { margin-top: 3px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sec { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; white-space: nowrap; font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.sec .key { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 11px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.key i { display: inline-block; vertical-align: middle; margin-right: 4px; }
+.k-fill { width: 12px; height: 7px; border-radius: 4px; background: var(--brand); }
+.k-pt { width: 2px; height: 11px; background: var(--s-reop); }
+.k-bt { width: 2px; height: 11px; background: var(--ink); opacity: .7; }
+.k-base { width: 14px; height: 2px; background: var(--s-draft); }
+.k-plan { width: 14px; height: 2px; background: var(--s-reop); }
+.k-act { width: 14px; height: 3px; background: var(--brand); }
+.k-bbar { width: 7px; height: 10px; background: color-mix(in srgb, var(--s-draft) 40%, transparent); }
+.k-td { width: 0; height: 11px; border-left: 2px dashed var(--bad); }
+.phases { margin-top: 6px; display: grid; gap: 2px; }
+.ph { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(70px, 1.3fr) auto; align-items: center; gap: 12px; padding: 5px 0; }
+.ph-n { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-c { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 10px; border-radius: 5px; background: var(--inset); }
+.bar > b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--brand); min-width: 3px; }
+.bar > b.behind { background: var(--bad); } .bar > b.ahead { background: var(--good); }
+.bar > i { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; }
+.bar > i.pt { background: var(--s-reop); } .bar > i.bt { background: var(--ink); opacity: .7; }
+.ph-v { font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ph-v b { font-weight: 650; }
+.ph-v b.behind { color: var(--bad); } .ph-v b.ahead { color: var(--good); } .ph-v b.on { color: var(--brand); }
+.chart { margin-top: 8px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-size: 11px; fill: var(--muted); font-family: var(--font); font-variant-numeric: tabular-nums; }
+.chart .gl { stroke: var(--grid, var(--line-soft)); stroke-width: 1; }
+.chart .bb { fill: color-mix(in srgb, var(--s-draft) 32%, transparent); }
+.chart .ab { fill: color-mix(in srgb, var(--brand) 45%, transparent); }
+.chart .cb { stroke: var(--s-draft); } .chart .cp { stroke: var(--s-reop); } .chart .ca { stroke: var(--brand); stroke-width: 3; }
+.chart path.c { fill: none; stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.chart .td { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.chart .dot { stroke: var(--card); stroke-width: 1.5; }
+.chart .hit { fill: transparent; }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--card); color: var(--ink); border: 1px solid var(--line-soft); box-shadow: var(--shadow); border-radius: 10px; padding: 8px 10px; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 150px; }
+.tip b { display: block; margin-bottom: 3px; }
+.tip div { display: flex; gap: 12px; justify-content: space-between; color: var(--muted); }
+.tip div span:last-child { color: var(--ink); font-weight: 600; }
+.nodata { margin-top: 16px; padding: 22px 12px; border: 1px dashed var(--line); border-radius: var(--r-lg); text-align: center; color: var(--muted); font-size: 13px; }
+.open { display: inline-block; margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--brand); }
+.open:hover { text-decoration: underline; }
 .empty { margin-top: 26px; color: var(--muted); }
 .foot { margin-top: 30px; display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--faint); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -63,11 +110,12 @@ h1, h2 { margin: 0; font-weight: 600; }
   <section class="hero">
     <div class="eyebrow">{{EYEBROW}}</div>
     <h1>{{TITLE}}</h1>
-    <p>Construction quantities by subtrade and location, and weightage S-curves, refreshed from VisiLean twice a day.</p>
+    <p>Progress by construction phase, the weighted S-curve and one key figure from each dashboard page, refreshed from VisiLean twice a day.</p>
   </section>
   <div class="grid" id="cards"></div>
   <footer class="foot"><span>Built {{GENERATED_AT}}</span><span>Build {{BUILD_ID}}</span><span>Logic {{LOGIC_HASH}}</span></footer>
 </main>
+<div class="tip" id="tip" hidden></div>
 <script type="application/json" id="data">{{DATA}}</script>
 <script>
 (function () {
@@ -86,16 +134,117 @@ h1, h2 { margin: 0; font-weight: 600; }
   var STATE = { fresh: "Up to date", stale: "Stale copy", unavailable: "No data" };
   var el = document.getElementById("cards");
   if (!P.projects.length) { el.outerHTML = '<p class="empty">No project has been built yet. Run a project refresh to add its card.</p>'; return; }
-  function pts(v) { return v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1).replace(/\.0$/, "") + " pts"; }
-  el.innerHTML = P.projects.map(function (s) {
-    var t = s.tasks || 0;
-    function seg(cls, v) { return v ? '<i class="' + cls + '" style="flex:' + v + ' 1 0" title="' + n(v) + '"></i>' : ""; }
-    return '<a class="card" href="' + esc(s.href) + '"><div class="card-top"><div><div class="code">' + esc(s.key) + "</div><h2>" + esc(s.title) + '</h2></div><span class="state ' + esc(s.state) + '">' + esc(STATE[s.state] || s.state) + "</span></div>" +
-      '<div class="nums"><div><div class="v">' + n(s.tasks) + '</div><div class="l">Activities</div></div><div><div class="v">' + p(s.completePct) + '</div><div class="l">Complete</div></div><div><div class="v">' + n(s.overdue) + '</div><div class="l">Overdue</div></div></div>' +
-      (t ? '<div class="track" aria-label="' + n(s.complete) + " complete, " + n(s.started) + " started, " + n(s.notStarted) + ' not started">' + seg("c-complete", s.complete) + seg("c-started", s.started) + seg("c-notStarted", s.notStarted) + "</div>" : "") +
-      (s.scurveActualPct != null ? '<div class="sc">S-curve: actual <b>' + p(s.scurveActualPct) + "</b> vs baseline <b>" + p(s.scurveBaselinePct) + '</b> <span class="' + (s.scurveActualPct - s.scurveBaselinePct < -0.05 ? "neg" : "") + '">(' + pts(s.scurveActualPct - s.scurveBaselinePct) + ")</span></div>" : "") +
-      '<div class="when">' + n(s.subtrades) + " subtrades · " + n(s.areas) + " areas · refreshed " + d(s.dataAsOf || s.generatedAt) + "</div></a>";
+  function sd(iso) { if (!iso) return "—"; var x = iso.slice(0, 10).split("-"); return +x[2] + " " + MON[+x[1] - 1] + " " + x[0].slice(2); }
+  function pc(v) { return v == null ? "—" : (Math.round(v * 10) / 10).toFixed(1) + "%"; }
+  function clamp(v) { return Math.max(0, Math.min(100, v || 0)).toFixed(2); }
+  function tone(a, p) { return a == null || p == null ? "on" : a + 0.05 < p ? "behind" : a > p + 0.05 ? "ahead" : "on"; }
+  function tile(href, cls, label, v, s, title) {
+    return '<a class="tile ' + cls + '" href="' + esc(href) + '"' + (title ? ' title="' + esc(title) + '"' : "") + '><div class="l">' + label + '</div><div class="v">' + v + '</div><div class="s">' + s + "</div></a>";
+  }
+
+  /* one key figure per dashboard page */
+  function tiles(s, pf) {
+    var h = s.href, out = [];
+    if (s.scurveActualPct != null) {
+      var t = tone(s.scurveActualPct, s.scurvePlannedPct);
+      out.push(tile(h + "#p=scurve", t === "behind" ? "bad" : t === "ahead" ? "good" : "", "Progress", pc(s.scurveActualPct),
+        "plan today " + pc(s.scurvePlannedPct), "Weighted progress from the master schedule: actual " + pc(s.scurveActualPct) + ", working plan today " + pc(s.scurvePlannedPct) + ", baseline today " + pc(s.scurveBaselinePct)));
+    }
+    if (pf && pf.finishVariance != null) {
+      var fv = pf.finishVariance;
+      out.push(tile(h + "#p=scurve", fv > 0 ? "bad" : "good", "Finish variance", fv === 0 ? "On date" : (fv > 0 ? "+" : "−") + n(Math.abs(fv)) + "<small>days</small>",
+        "plan finish " + sd(pf.plannedFinish), "Working plan finish " + sd(pf.plannedFinish) + " vs baseline finish " + sd(pf.baselineFinish)));
+    }
+    if (s.tasks) {
+      out.push(tile(h + "#p=qty", "", "Quantities done", pc(s.completePct), n(s.complete) + " of " + n(s.tasks),
+        "Quantity tracking: " + n(s.complete) + " complete, " + n(s.started) + " in progress, " + n(s.notStarted) + " not started"));
+    }
+    if (s.procurement && s.procurement.steps) {
+      var pr = s.procurement;
+      out.push(tile(h + "#p=proc", "", "Procurement", pc(100 * pr.complete / pr.steps), n(pr.complete) + " of " + n(pr.steps) + " steps",
+        "Core & shell and MEP procurement activities complete"));
+    }
+    if (s.workforce && s.workforce.avgDaily != null) {
+      var wf = s.workforce;
+      out.push(tile(h + "#p=wf", "", "Workforce", n(Math.round(wf.avgDaily)) + "<small>/day</small>", n(wf.trades) + " trades",
+        "Average workers per reporting day, last report " + sd(wf.last)));
+    }
+    var big = out.slice(0, 2), small = out.slice(2);  // progress and finish variance large, the page figures in a row below
+    return (big.length ? '<div class="tiles">' + big.join("") + "</div>" : "") + (small.length ? '<div class="minis">' + small.join("") + "</div>" : "");
+  }
+
+  /* progress per construction phase: fill = actual, amber tick = working plan today, dark tick = baseline today */
+  function phases(list) {
+    return '<div class="sec">Progress by construction phase<span class="key"><span><i class="k-fill"></i>Actual</span><span><i class="k-pt"></i>Plan today</span><span><i class="k-bt"></i>Baseline today</span></span></div><div class="phases">' +
+      list.map(function (f) {
+        var t = tone(f.actual, f.planned);
+        return '<div class="ph" title="' + esc(f.name + ": actual " + pc(f.actual) + " · plan today " + pc(f.planned) + " · baseline today " + pc(f.baseline)) + '"><div><div class="ph-n">' + esc(f.name) + '</div><div class="ph-c">' +
+          n(f.n) + " activities · " + pc(f.share) + ' of weight</div></div><div class="bar"><b class="' + t + '" style="width:' + clamp(f.actual) + '%"></b><i class="bt" style="left:' + clamp(f.baseline) + '%"></i><i class="pt" style="left:' + clamp(f.planned) + '%"></i></div>' +
+          '<div class="ph-v"><b class="' + t + '">' + pc(f.actual) + "</b> vs " + pc(f.planned) + "</div></div>";
+      }).join("") + "</div>";
+  }
+
+  /* the S-curve: cumulative baseline, working plan and actual at month boundaries; bars are each month's baseline and actual */
+  var CURVES = [];
+  function chart(s, c, ci) {
+    var W = 440, H = 220, L = 36, R = 8, T = 8, B = 24, N = c.months.length - 1, PW = W - L - R, PH = H - T - B;
+    function x(i) { return L + PW * i / N; }
+    function y(v) { return T + PH * (1 - v / 100); }
+    var td = s.today.split("-"), m0 = c.months[0].split("-");
+    var ti = (+td[0] - +m0[0]) * 12 + (+td[1] - +m0[1]) + (+td[2] - 1) / new Date(Date.UTC(+td[0], +td[1], 0)).getUTCDate();
+    var g = "";
+    [0, 25, 50, 75, 100].forEach(function (v) { g += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v + "%</text>"; });
+    var step = N > 36 ? 12 : N > 15 ? 6 : 3;
+    for (var i = 0; i <= N; i += step) { var mm = c.months[i].split("-"); g += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + MON[+mm[1] - 1] + " " + mm[0].slice(2) + "</text>"; }
+    var bmax = Math.max.apply(null, c.bm.concat(c.am, [0.0001])), bw = PW / N;
+    function bar(cls, v, i, off) { var hh = 0.62 * PH * v / bmax; return v > 0 ? '<rect class="' + cls + '" x="' + (x(i) + bw * off).toFixed(2) + '" y="' + (T + PH - hh).toFixed(2) + '" width="' + Math.max(1, bw * 0.4).toFixed(2) + '" height="' + hh.toFixed(2) + '" rx="1"/>' : ""; }
+    c.bm.forEach(function (v, i) { g += bar("bb", v, i, 0.1); });
+    c.am.forEach(function (v, i) { g += bar("ab", v, i, 0.5); });
+    function path(vals, cls, extra) {
+      var pts = vals.map(function (v, i) { return [x(i), y(v)]; });
+      if (extra) pts.push(extra);
+      return pts.length > 1 ? '<path class="c ' + cls + '" d="M' + pts.map(function (p) { return p[0].toFixed(2) + "," + p[1].toFixed(2); }).join("L") + '"/>' : "";
+    }
+    var tx = L + PW * ti / N;
+    g += path(c.b, "cb") + path(c.p, "cp") + path(c.a, "ca", s.scurveActualPct != null ? [tx, y(s.scurveActualPct)] : null);
+    g += '<line class="td" x1="' + tx + '" x2="' + tx + '" y1="' + T + '" y2="' + (T + PH) + '"/>';
+    if (s.scurvePlannedPct != null) g += '<circle class="dot" cx="' + tx + '" cy="' + y(s.scurvePlannedPct) + '" r="4" fill="var(--s-reop)"/>';
+    if (s.scurveActualPct != null) g += '<circle class="dot" cx="' + tx + '" cy="' + y(s.scurveActualPct) + '" r="4" fill="var(--brand)"/>';
+    for (i = 0; i < N; i++) g += '<rect class="hit" data-c="' + ci + '" data-i="' + i + '" x="' + x(i) + '" y="' + T + '" width="' + bw + '" height="' + PH + '"/>';
+    CURVES[ci] = c;
+    return '<div class="sec">S-curve<span class="key"><span><i class="k-base"></i>Baseline</span><span><i class="k-plan"></i>Working plan</span><span><i class="k-act"></i>Actual</span><span><i class="k-bbar"></i>Monthly</span><span><i class="k-td"></i>Today</span></span></div>' +
+      '<div class="chart"><svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(s.title + " S-curve: actual " + pc(s.scurveActualPct) + ", plan today " + pc(s.scurvePlannedPct) + ", baseline today " + pc(s.scurveBaselinePct)) + '">' + g + "</svg></div>";
+  }
+
+  el.innerHTML = P.projects.map(function (s, ci) {
+    var pf = s.portfolio, h = s.href, has = s.state !== "unavailable" || s.tasks;
+    var sub = s.scurveTasks ? n(s.scurveTasks) + " activities · " + n(s.scurveComplete) + " complete" + (pf ? " · baseline " + sd(pf.baselineStart) + " – " + sd(pf.baselineFinish) : "")
+      : s.tasks ? n(s.tasks) + " activities · " + n(s.subtrades) + " subtrades · " + n(s.areas) + " areas" : "No data in this build";
+    return '<article class="card"><div class="card-top"><div><div class="code">' + esc(s.key) + '</div><h2><a href="' + esc(h) + '">' + esc(s.title) + "</a></h2></div>" +
+      '<div class="top-r"><span class="state ' + esc(s.state) + '">' + esc(STATE[s.state] || s.state) + '</span><span class="asof">refreshed ' + d(s.dataAsOf || s.generatedAt) + "</span></div></div>" +
+      '<div class="sub">' + sub + "</div>" +
+      (has ? tiles(s, pf) : "") +
+      (pf && pf.phases.length ? phases(pf.phases) : "") +
+      (pf && pf.curve && pf.curve.months.length > 1 ? chart(s, pf.curve, ci) : has ? '<div class="nodata">No master schedule S-curve for this project yet.</div>' : "") +
+      '<a class="open" href="' + esc(h) + '">Open dashboard →</a></article>';
   }).join("");
+
+  /* hover: the month's cumulative and monthly figures */
+  var tip = document.getElementById("tip");
+  function f2(v) { return v == null ? "—" : (Math.round(v * 10) / 10).toFixed(1) + "%"; }
+  el.addEventListener("mousemove", function (e) {
+    var r = e.target.closest && e.target.closest("rect.hit");
+    if (!r) { tip.hidden = true; return; }
+    var c = CURVES[+r.getAttribute("data-c")], i = +r.getAttribute("data-i"), mm = c.months[i].split("-");
+    tip.innerHTML = "<b>" + MON[+mm[1] - 1] + " " + mm[0] + "</b><div><span>Baseline (to month end)</span><span>" + f2(c.b[i + 1]) + "</span></div><div><span>Working plan</span><span>" + f2(c.p[i + 1]) +
+      "</span></div><div><span>Actual</span><span>" + (i + 1 < c.a.length ? f2(c.a[i + 1]) : i < c.a.length ? "in progress" : "—") + "</span></div><div><span>Baseline this month</span><span>" + f2(c.bm[i]) +
+      "</span></div><div><span>Actual this month</span><span>" + (i < c.a.length ? f2(c.am[i]) : "—") + "</span></div>";
+    tip.hidden = false;
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.min(window.innerWidth - tw - 8, e.clientX + 14) + "px";
+    tip.style.top = Math.max(8, e.clientY - th - 10) + "px";
+  });
+  el.addEventListener("mouseleave", function () { tip.hidden = true; });
 })();
 </script>
 </body>

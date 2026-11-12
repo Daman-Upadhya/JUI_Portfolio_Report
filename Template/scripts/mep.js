@@ -151,42 +151,64 @@
     return h + "</tbody></table></div>";
   }
 
-  /* ---------- timeline ---------- */
+  /* ---------- timeline: a swimlane Gantt per material ----------
+     Three thin lanes per row, one per phase (order finalisation, design & development, manufacturing
+     & delivery), so phases that run side by side stay readable. Each stage is a block from its first
+     start (actual, else planned) to its finish (actual when complete, else planned), coloured by
+     status; a small tick under it marks the stage's baseline finish. "Now at" names the first stage
+     not yet complete. */
+  function stageStart(k, s) {
+    return acts(k).filter(function (a) { return a.stage === s; }).reduce(function (m, a) { var d = a.actualStart || a.plannedStart; return d && (!m || d < m) ? d : m; }, null);
+  }
+  function nowAt(it) {
+    var ks = Object.keys(it.cells).map(Number).sort(function (a, b) { return a - b; });
+    var s = ks.filter(function (x) { var c = it.cells[x]; return c.done < c.n; })[0];
+    if (s == null) return '<span class="mt-now done">All stages done</span>';
+    var c = it.cells[s], cls = cellClass(c);
+    return '<span class="mt-now n' + cls.slice(1) + '"><b>' + esc(ST[s]) + "</b><small>" + (cls === "c-over" ? "overdue · was due " : cls === "c-prog" ? "in progress · due " : "not started · due ") + fmtD(c.finish) + "</small></span>";
+  }
   function timeline(list) {
-    var lo = Infinity, hi = -Infinity;
+    var lo = Infinity, hi = -Infinity, t = day(TODAY);
     list.forEach(function (r) {
       var cs = I[r.k].cells;
-      Object.keys(cs).forEach(function (s) { [cs[s].finish, cs[s].baseline].forEach(function (d) { d = day(d); if (d != null) { lo = Math.min(lo, d); hi = Math.max(hi, d); } }); });
+      Object.keys(cs).forEach(function (s) {
+        [cs[s].finish, cs[s].baseline, stageStart(r.k, +s)].forEach(function (d) { d = day(d); if (d != null) { lo = Math.min(lo, d); hi = Math.max(hi, d); } });
+      });
     });
-    var t = day(TODAY);
     lo = Math.min(lo, t); hi = Math.max(hi, t);
     if (!isFinite(lo)) return '<div class="empty">No dates to place.</div>';
     var d0 = new Date(lo * 864e5), d1 = new Date(hi * 864e5);  // whole months either side
     lo = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1) / 864e5;
     hi = Date.UTC(d1.getUTCFullYear(), d1.getUTCMonth() + 1, 1) / 864e5;
     function x(d) { return (100 * (d - lo) / (hi - lo)).toFixed(3) + "%"; }
-    var months = [], m = new Date(lo * 864e5), every = (hi - lo) / 30 > 30 ? 3 : 1;
+    function w(a, b) { return (100 * Math.max(0, b - a) / (hi - lo)).toFixed(3) + "%"; }
+    var months = [], grid = [], m = new Date(lo * 864e5), every = (hi - lo) / 30 > 30 ? 3 : 1;
     while (m.getTime() / 864e5 < hi) {
-      if (m.getUTCMonth() % every === 0) months.push('<span class="mp-tick' + (m.getUTCMonth() === 0 ? " y" : "") + '" style="left:' + x(m.getTime() / 864e5) + '">' +
-        MON[m.getUTCMonth()] + (m.getUTCMonth() === 0 || !months.length ? " " + String(m.getUTCFullYear()).slice(2) : "") + "</span>");
+      var md = m.getTime() / 864e5;
+      if (m.getUTCMonth() % every === 0) {
+        if (!(every === 1 && m.getUTCMonth() === 1)) months.push('<span class="mt-tick' + (m.getUTCMonth() === 0 ? " y" : "") + '" style="left:' + x(md) + '">' + MON[m.getUTCMonth()] + (m.getUTCMonth() === 0 ? " " + String(m.getUTCFullYear()).slice(2) : "") + "</span>");
+        grid.push('<i class="mt-grid' + (m.getUTCMonth() === 0 ? " y" : "") + '" style="left:' + x(md) + '"></i>');
+      }
       m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1));
     }
-    var grid = months.join(""), now = '<i class="mp-now" style="left:' + x(t) + '"></i>';
-    var h = '<div class="tbl-wrap"><table><thead><tr><th class="it">Material</th><th class="r">Done</th><th class="mp-axis"><div class="mp-track">' + grid +
-      '<span class="mp-today" style="left:' + x(t) + '">Today</span></div></th></tr></thead><tbody>';
-    groupRows(list, 3).forEach(function (r) {
+    var bg = grid.join("") + '<i class="mt-today" style="left:' + x(t) + '"></i>';
+    var lanes = PH.length - 1;  // "Other" shares the last lane
+    var h = '<div class="tbl-wrap mt-wrap"><table class="mt"><thead><tr><th class="it">Material</th><th class="mt-nowh">Now at</th><th class="r">Delay</th><th class="mt-axis"><div class="mt-track mt-head">' + months.join("") +
+      '<span class="mt-todayl" style="left:' + x(t) + '">Today</span></div></th></tr></thead><tbody>';
+    groupRows(list, 4).forEach(function (r) {
       if (typeof r === "string") { h += r; return; }
-      var it = I[r.k], cs = it.cells, ks = Object.keys(cs).map(Number).filter(function (s) { return cs[s].finish; });
-      var fs = ks.map(function (s) { return day(cs[s].finish); }), bs = ks.map(function (s) { return day(cs[s].baseline); }).filter(function (d) { return d != null; });
-      var marks = ks.map(function (s) {
-        var c = cs[s];
-        return '<i class="mp-m drill ph' + SP[s] + " " + cellClass(c) + '" data-dk="' + r.k + '" data-ds="' + s + '" style="left:' + x(day(c.finish)) + '" title="' + esc(ST[s] + " · " + fmtD(c.finish) + " · " + fmtDelayT(c.delay) + "\n" + tip(r.k, s)) + '"></i>';
+      var it = I[r.k], cs = it.cells;
+      var blocks = Object.keys(cs).map(Number).filter(function (s) { return cs[s].finish; }).map(function (s) {
+        var c = cs[s], e = day(c.finish), st = day(stageStart(r.k, s)), b = day(c.baseline), lane = Math.min(SP[s], lanes - 1);
+        if (st == null || st > e) st = e;
+        return '<i class="mt-blk ' + cellClass(c) + " ln" + lane + ' drill" data-dk="' + r.k + '" data-ds="' + s + '" style="left:' + x(st) + ";width:max(6px," + w(st, e + 1) + ')" title="' +
+          esc(ST[s] + " · " + fmtD(stageStart(r.k, s)) + " → " + fmtD(c.finish) + " · " + fmtDelayT(c.delay) + "\n" + tip(r.k, s)) + '"></i>' +
+          (b != null ? '<i class="mt-bl ln' + lane + '" style="left:' + x(b + 1) + '" title="' + esc(ST[s] + " baseline finish " + fmtD(c.baseline)) + '"></i>' : "");
       }).join("");
-      var span = fs.length > 1 ? '<i class="mp-span" style="left:' + x(Math.min.apply(null, fs)) + ";width:calc(" + x(Math.max.apply(null, fs)) + " - " + x(Math.min.apply(null, fs)) + ')"></i>' : "";
-      var base = bs.length > 1 ? '<i class="mp-base" style="left:' + x(Math.min.apply(null, bs)) + ";width:calc(" + x(Math.max.apply(null, bs)) + " - " + x(Math.min.apply(null, bs)) + ')" title="Baseline: ' +
-        fmtD(new Date(Math.min.apply(null, bs) * 864e5).toISOString().slice(0, 10)) + " – " + fmtD(new Date(Math.max.apply(null, bs) * 864e5).toISOString().slice(0, 10)) + '"></i>' : "";
-      h += '<tr class="' + (it.kind === "docs" ? "mp-docs" : r.depth ? "mp-docr" : "") + '">' + nameCell(r) + '<td class="r">' + fmtI(it.done) + "/" + fmtI(it.n) + '</td><td class="mp-axis"><div class="mp-track mp-row">' +
-        now + base + span + marks + "</div></td></tr>";
+      h += '<tr class="' + (it.kind === "docs" ? "mp-docs" : r.depth ? "mp-docr" : "") + '">' + nameCell(r) +
+        "<td>" + (it.kind === "material" || it.kind === "doc" ? nowAt(it) : '<span class="mt-now"><small>' + fmtI(it.done) + "/" + fmtI(it.n) + " done</small></span>") + "</td>" +
+        '<td class="r">' + (fmtDelay(it.delay) || DASH) + '</td><td class="mt-axis"><div class="mt-track mt-row">' + bg +
+        '<i class="mt-lane ln0"></i><i class="mt-lane ln1"></i><i class="mt-lane ln2"></i>' + blocks + "</div></td></tr>";
     });
     return h + "</tbody></table></div>";
   }
@@ -220,7 +242,7 @@
     summary(list);
     $("mp-leg-tl").hidden = F.view !== "timeline";
     $("h-mp-mx").firstChild.nodeValue = F.view === "timeline" ? "Timeline" : "Stage matrix";
-    $("mp-mx-desc").textContent = F.view === "timeline" ? "Each stage's finish on a date axis: the shape is the phase, the fill its status; the grey band is the baseline span. Select a marker or a name for its activities" :
+    $("mp-mx-desc").textContent = F.view === "timeline" ? "A swimlane Gantt per material: one lane per phase, each stage a block from its start to its finish, coloured by status; the dark tick is the stage's baseline finish. Now at is the first stage not yet complete. Select a block or a name for its activities" :
       "Each cell: the stage's finish (actual when complete, else planned) and its delay against the baseline finish. Select a cell or a name for its activities; TDS items and shop drawings open under each discipline";
     $("mp-body").className = F.view === "timeline" ? "mp-tl" : "mp-mx";
     $("mp-body").innerHTML = !list.length ? '<div class="empty">No material matches these filters.</div>' : F.view === "timeline" ? timeline(list) : matrix(list);

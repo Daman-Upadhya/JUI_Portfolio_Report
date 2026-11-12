@@ -553,8 +553,19 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         "href": "./%s/" % key,
         "projectStatus": next((f["value"] for f in cfg.get("facts") or [] if f["label"] == "Status"), None),
         **{k: t.get(k) for k in ("tasks", "complete", "started", "notStarted", "completePct", "overdue", "subtrades", "areas")},
-        "scurveBaselinePct": st.get("baselinePct"), "scurveActualPct": st.get("actualPct"),
+        "scurveBaselinePct": st.get("baselinePct"), "scurveActualPct": st.get("actualPct"), "scurvePlannedPct": st.get("plannedPct"),
+        "scurveTasks": st.get("tasks"), "scurveComplete": st.get("complete"),
     }
+    # the landing card: phase progress, the S-curve and one key figure per page
+    sc = (metrics or {}).get("scurve") or {}
+    if sc.get("facts"):
+        summary["portfolio"] = assets.calc.portfolio_scurve(sc, today)
+        acts = [a for k in ("procurement", "mep") for a in (sc.get(k) or {}).get("activities") or []]
+        if acts:
+            summary["procurement"] = {"steps": len(acts), "complete": sum(a["group"] == "complete" for a in acts)}
+    wt = ((metrics or {}).get("workforce") or {}).get("totals") or {}
+    if wt.get("days"):
+        summary["workforce"] = {"avgDaily": wt.get("avgDaily"), "last": wt.get("last"), "trades": wt.get("trades")}
     write(os.path.join(out_dir, "build.json"), json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
     log("%s: %s (%s) -> dist/%s/index.html %d KB" % (key, state, origin or "no data", key, len(page.encode("utf-8")) // 1024))
     return summary
