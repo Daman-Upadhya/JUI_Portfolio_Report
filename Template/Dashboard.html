@@ -298,6 +298,124 @@ td.pc { padding: 3px !important; }
 .pv-q .search { flex: 1; min-width: 0; max-width: none; }
 .pv-wide { flex-basis: 100%; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line-soft); }
 .pv-wide .seg { flex-wrap: wrap; }
+/* Milestones page (milestones.js) */
+.kp-warn { --t: var(--warn); } .kp-warn .kp-v { color: var(--warn); }
+.ms-complete { --ms: var(--good); --msb: var(--good-bg); } .ms-ontrack { --ms: var(--s-prog); --msb: var(--brand-soft); }
+.ms-risk { --ms: var(--warn); --msb: var(--warn-bg); } .ms-delayed { --ms: var(--bad); --msb: var(--bad-bg); }
+.pill.ms-complete, .pill.ms-ontrack, .pill.ms-risk, .pill.ms-delayed { background: var(--msb); color: var(--ms); white-space: nowrap; }
+.ms-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ms); margin-right: 5px; vertical-align: 0; }
+.ms-warn { color: var(--warn); font-weight: 600; }
+.ms-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.ms-chk input[type="checkbox"] { all: revert; width: 15px; height: 15px; margin: 0; accent-color: var(--brand); cursor: pointer; }
+#ms-stats .kp-s { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.msg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.msg { position: relative; border: 1px solid var(--line-soft); border-radius: 14px; padding: 14px 14px 12px 16px; overflow: hidden; cursor: pointer;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ms) 7%, var(--card)), var(--card) 70%); transition: border-color .12s linear, transform .1s var(--ease); }
+.msg::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ms); }
+.msg:hover { border-color: var(--brand); }
+.msg-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.msg-top b { font-size: 13.5px; }
+.msg-v { margin-top: 10px; font-size: 12.5px; color: var(--muted); display: flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; }
+.msg-v b { font-size: 22px; color: var(--ink); font-weight: 650; letter-spacing: -.02em; }
+.msg-v small { margin-left: auto; font-size: 12px; font-weight: 650; color: var(--ink); }
+.msg .tc-bar .b-done { background: var(--good); }
+.msg-s { margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.msg-mix { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); }
+#ms-tl { overflow-x: auto; }
+.ms-tl { min-width: 980px; }
+.ms-row { display: grid; grid-template-columns: 340px minmax(0, 1fr); align-items: stretch; border-bottom: 1px solid var(--line-soft); }
+.ms-head { position: sticky; top: 0; z-index: 4; background: var(--inset); border-radius: 8px 8px 0 0; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ms-head .ms-lab { padding: 8px 10px; }
+.ms-head .ms-trk { height: 34px; }
+.ms-lab { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px 12px 7px 10px; box-shadow: inset -1px 0 0 var(--line-soft); }
+.ms-t { min-width: 0; flex: 1; }
+.ms-t .dr-name b { font-weight: 600; font-size: 12.5px; }
+.ms-t .it-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-trk { position: relative; min-height: 46px; }
+.ms-bg { position: absolute; inset: 0; pointer-events: none; }
+.ms-gl { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line-soft); }
+.ms-gl.y { border-left-color: var(--line); }
+.ms-today { position: absolute; top: 0; bottom: 0; border-left: 2px solid color-mix(in srgb, var(--bad) 60%, transparent); z-index: 1; }
+.ms-ml { position: absolute; top: 10px; padding-left: 4px; white-space: nowrap; }
+.ms-ml.y { color: var(--ink); }
+.ms-tdl { position: absolute; bottom: 1px; transform: translateX(-50%); font-size: 9.5px; font-weight: 750; color: var(--bad); }
+.ms-gh { background: color-mix(in srgb, var(--inset) 70%, var(--card)); }
+.ms-gh.ms-d1 { background: color-mix(in srgb, var(--inset) 35%, var(--card)); }
+.ms-tg { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; border-radius: 6px; }
+.ms-tg:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.ms-chev { flex: none; color: var(--muted); transform: rotate(90deg); transition: transform .15s var(--ease); }
+.ms-gh.shut .ms-chev { transform: none; }
+.ms-gt { min-width: 0; }
+.ms-gt b { display: block; font-size: 13px; font-weight: 700; }
+.ms-gh.ms-d1 .ms-gt b { font-size: 12.5px; font-weight: 650; }
+.ms-gh .it-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-d1 .ms-lab { padding-left: 30px; }
+.ms-d2 .ms-lab { padding-left: 52px; }
+.ms-gh.ms-d0 .ms-lab { padding-left: 10px; }
+.ms-mk.sum { width: 10px; height: 10px; margin: -5px 0 0 -5px; opacity: .85; }
+.ms-lbl { position: absolute; top: 50%; transform: translateY(-50%); font-size: 10.5px; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; z-index: 2; }
+.ms-lbl.r { margin-left: 11px; }
+.ms-lbl.l { transform: translate(calc(-100% - 11px), -50%); }
+.ms-lbl.up { top: calc(50% - 19px); transform: none; }
+.ms-lbl.up.ur { transform: translateX(-100%); }
+.ms-lbl.b { color: var(--faint); }
+.ms-lbl.f { color: var(--ms); font-weight: 650; }
+.ms-sl { position: absolute; top: calc(50% - 16px); transform: translateX(-50%); font-size: 10px; line-height: 1; white-space: nowrap; pointer-events: none; z-index: 2; padding: 1px 3px; border-radius: 3px; background: var(--card); }
+.ms-slt { color: var(--ms); font-weight: 750; }
+.ms-slt.ok { color: var(--good); font-weight: 600; }
+.ms-gh .ms-lbl, .ms-gh .ms-sl { opacity: .85; }
+.ms-mk { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; transform: rotate(45deg); border-radius: 2px; background: var(--ms); box-shadow: 0 0 0 2px var(--card); z-index: 3; }
+.ms-mk.base { background: var(--card); border: 2px solid var(--faint); box-shadow: none; z-index: 2; }
+.ms-mk.drill { cursor: pointer; } .ms-mk.drill:hover, .ms-mk.drill:focus-visible { transform: rotate(45deg) scale(1.3); outline: none; }
+.ms-slip { position: absolute; top: 50%; height: 0; border-top: 2px dashed var(--ms); z-index: 1; }
+.ms-row:hover { background: color-mix(in srgb, var(--inset) 45%, transparent); }
+.ms-lk { display: inline-block; width: 10px; height: 10px; transform: rotate(45deg); border-radius: 2px; background: var(--s-prog); }
+.ms-lk.base { background: transparent; border: 2px solid var(--faint); }
+.ms-ls { display: inline-block; width: 22px; border-top: 2px dashed var(--bad); }
+.ms-lt { display: inline-block; width: 2px; height: 14px; background: var(--bad); opacity: .6; }
+#ms-tbl table { font-size: 12.5px; }
+#ms-tbl td.it { white-space: normal; min-width: 260px; }
+#ms-tbl td.ms-st { color: var(--muted); font-size: 11.5px; }
+@media (max-width: 760px) { .ms-row { grid-template-columns: 220px minmax(0, 1fr); } }
+/* Commissioning page (commissioning.js): data-centre commissioning tag colours, level cards, phase x level grid, matrix */
+.lv-red { --lv: #DC2626; } .lv-yellow, .lv-yellow-pre { --lv: #EAB308; } .lv-green { --lv: #16A34A; } .lv-blue { --lv: #2563EB; } .lv-white { --lv: #FFFFFF; } .lv-other { --lv: var(--muted); }
+.lvt { display: inline-block; width: 14px; height: 10px; border-radius: 3px; background: var(--lv); box-shadow: inset 0 0 0 1px rgba(0,0,0,.28); vertical-align: -1px; margin-right: 5px; flex: none; }
+.lvt.lv-yellow-pre, .lv-yellow-pre .tlc-band { background: repeating-linear-gradient(135deg, var(--lv) 0 3px, color-mix(in srgb, var(--lv) 35%, transparent) 3px 6px); }
+.tlc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tlc { position: relative; border: 1px solid var(--line-soft); border-radius: 14px; padding: 16px 14px 12px; overflow: hidden; background: linear-gradient(180deg, color-mix(in srgb, var(--lv) 9%, var(--card)), var(--card) 65%); }
+.tlc.drill { cursor: pointer; transition: border-color .12s linear, transform .1s var(--ease); }
+.tlc.drill:hover { border-color: var(--brand); }
+.tlc.is-empty { opacity: .62; }
+.tlc-band { position: absolute; left: 0; right: 0; top: 0; height: 6px; background: var(--lv); box-shadow: inset 0 -1px 0 rgba(0,0,0,.18); }
+.tlc-top { display: flex; align-items: baseline; gap: 8px; }
+.tlc-key { font-size: 20px; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }
+.tlc-tag { margin-left: auto; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tlc-name { font-size: 12.5px; font-weight: 600; margin-top: 2px; min-height: 2.5em; line-height: 1.25; }
+.tlc-v { margin-top: 8px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 4px; }
+.tlc-v b { font-size: 22px; color: var(--ink); font-weight: 650; letter-spacing: -.02em; }
+.tlc-v small { margin-left: auto; font-size: 12px; font-weight: 650; color: var(--ink); }
+.tlc-s { margin-top: 6px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tlc-none { margin-top: 10px; font-size: 12px; color: var(--faint); }
+.tc-bar { display: flex; height: 6px; margin-top: 6px; border-radius: 3px; background: var(--inset); overflow: hidden; }
+.tc-bar i { display: block; height: 100%; }
+#tc-grid table, #tc-matrix table { font-size: 12px; }
+#tc-grid th, #tc-grid td, #tc-matrix th, #tc-matrix td { padding: 6px; }
+#tc-grid th.st, #tc-matrix th.st { white-space: normal; min-width: 104px; max-width: 132px; line-height: 1.25; text-align: center; vertical-align: bottom; }
+#tc-grid th.st b, #tc-matrix th.st b { font-size: 12.5px; }
+#tc-grid th.st small, #tc-matrix th.st small { display: block; font-weight: 500; font-size: 10.5px; color: var(--muted); text-transform: none; letter-spacing: 0; }
+#tc-grid td.it, #tc-grid th.it, #tc-matrix td.it, #tc-matrix th.it { position: sticky; left: 0; z-index: 1; background: var(--card); white-space: normal; min-width: 200px; max-width: 280px; box-shadow: inset -1px 0 0 var(--line-soft); }
+#tc-grid th.it, #tc-matrix th.it { z-index: 3; background: var(--inset); }
+#tc-grid tr.tc-tot td { border-top: 2px solid var(--line); }
+#tc-matrix .tbl-wrap { max-height: 76vh; }
+#tc-matrix tr.grp td { position: sticky; left: 0; }
+#tc-matrix tr.pr-part td { background: var(--inset); font-weight: 700; font-size: 12.5px; }
+#tc-matrix tr.pr-grp td { background: color-mix(in srgb, var(--inset) 50%, var(--card)); font-weight: 600; color: var(--muted); font-size: 11.5px; }
+.tgc, .tcc { position: relative; border-radius: 7px; padding: 6px 8px 6px 12px; text-align: left; font-variant-numeric: tabular-nums; cursor: pointer; }
+.tgc::before, .tcc::before { content: ""; position: absolute; left: 3px; top: 4px; bottom: 4px; width: 4px; border-radius: 2px; background: var(--lv, transparent); box-shadow: inset 0 0 0 1px rgba(0,0,0,.22); }
+.tgc:not([class*="lv-"])::before { display: none; }
+.tgc-v { display: block; font-size: 12px; color: var(--muted); } .tgc-v b { font-size: 14px; color: var(--ink); }
+.tgc-s { display: block; margin-top: 4px; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.tgc:hover, .tcc:hover { outline: 2px solid var(--brand); outline-offset: -1px; }
 .pv-reset { min-height: 30px; }
 /* KPI cards */
 .kp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 12px; }
@@ -557,6 +675,10 @@ td.pc { padding: 3px !important; }
 #mp-body .ph2 { --ph: var(--s-app); }
 #mp-body .ph3 { --ph: var(--muted); }
 #mp-body th.ph, #mp-body th.st { box-shadow: inset 0 3px 0 var(--ph); }
+#mp-body th.ph, #mp-body th.st { background: color-mix(in srgb, var(--ph) 13%, var(--card)); }
+#mp-body th.ph { color: color-mix(in srgb, var(--ph) 70%, var(--ink)); font-weight: 750; }
+#mp-body td.pc.ph0, #mp-body td.pc.ph1, #mp-body td.pc.ph2, #mp-body td.pc.ph3 { background: color-mix(in srgb, var(--ph) 4%, transparent); }
+#mp-body .gs { border-left: 2px solid color-mix(in srgb, var(--ph) 45%, var(--line)) !important; }
 #mp-body td.mp-doc { padding-left: 26px; color: var(--muted); font-size: 11.5px; }
 #mp-body tr.mp-docs td.it { background: color-mix(in srgb, var(--inset) 35%, var(--card)); }
 .mp-tog { all: unset; cursor: pointer; display: block; }
@@ -1130,8 +1252,10 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
   <div class="tabbar">
     <nav class="tabs" id="tabs" role="tablist" aria-label="Pages">
       <button type="button" class="tab" role="tab" id="tab-scurve" data-p="scurve" aria-controls="pg-scurve" aria-selected="false" tabindex="-1" hidden>Overview<span class="n" id="n-scurve"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-ms" data-p="ms" aria-controls="pg-ms" aria-selected="false" tabindex="-1" hidden>Milestones<span class="n" id="n-ms"></span></button>
       <button type="button" class="tab" role="tab" id="tab-qty" data-p="qty" aria-controls="pg-qty" aria-selected="true" tabindex="0">Quantity tracking</button>
       <button type="button" class="tab" role="tab" id="tab-proc" data-p="proc" aria-controls="pg-proc" aria-selected="false" tabindex="-1" hidden>Procurement<span class="n" id="n-proc"></span></button>
+      <button type="button" class="tab" role="tab" id="tab-tc" data-p="tc" aria-controls="pg-tc" aria-selected="false" tabindex="-1" hidden>Commissioning<span class="n" id="n-tc"></span></button>
       <button type="button" class="tab" role="tab" id="tab-wf" data-p="wf" aria-controls="pg-wf" aria-selected="false" tabindex="-1" hidden>Workforce<span class="n" id="n-wf"></span></button>
       <button type="button" class="tab" role="tab" id="tab-site" data-p="site" aria-controls="pg-site" aria-selected="false" tabindex="-1" hidden>Site progress</button>
       <span class="tabs-side" id="asof"></span>
@@ -1379,6 +1503,86 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
       <div class="legend pr-legend"><span><i class="pr-k c-done"></i>Complete</span><span><i class="pr-k c-prog"></i>In progress</span><span><i class="pr-k c-over"></i>Overdue</span><span><i class="pr-k c-todo"></i>Not started</span><span><b class="pr-late">+12d</b> late vs baseline</span><span><b class="pr-early">−3d</b> early</span>
         <span id="mp-leg-tl" hidden>· Stage blocks:<i class="mt-k done"></i>Done<i class="mt-k prog"></i>In progress<i class="mt-k over"></i>Overdue<i class="mt-k todo"></i>Not started<span class="mt-lanes"><i></i><i></i><i></i></span>Lanes, top to bottom: order finalisation, design &amp; development, manufacturing &amp; delivery<i class="mt-k bl"></i>Baseline finish<i class="mt-k td"></i>Today</span></div>
       <div id="mp-body"></div>
+    </section>
+  </div>
+  </div>
+
+  <!-- Milestones (milestones.js) -->
+  <div class="page" id="pg-ms" role="tabpanel" aria-labelledby="tab-ms" hidden>
+  <section class="pv-head" aria-labelledby="ms-title">
+    <div class="pv-hl">
+      <div class="eyebrow">Project milestones</div>
+      <h2 id="ms-title">Project milestones</h2>
+      <p class="pv-desc" id="ms-desc"></p>
+    </div>
+  </section>
+  <div class="pv-panel">
+    <section class="card" aria-labelledby="h-ms-ov">
+      <div class="card-head"><h2 id="h-ms-ov">Overview</h2><span class="desc">Milestones by schedule status. Select a status card to filter, or the next / finish card for that milestone</span></div>
+      <div class="kp-grid" id="ms-stats"></div>
+      <div class="sec-h pv-sec">Progress by group</div>
+      <div class="msg-grid" id="ms-groups"></div>
+    </section>
+    <div class="fbar pv-filters" role="group" aria-label="Filters">
+      <div class="fp"><span>Status</span><div class="seg" id="ms-status" role="group" aria-label="Schedule status"></div></div>
+      <div class="fp"><span>Group</span><div class="seg" id="ms-group" role="group" aria-label="Group"></div></div>
+      <div class="fp pv-q"><span>Search</span><input class="search" id="ms-q" type="search" placeholder="Milestone or ID" aria-label="Search milestones"></div>
+      <label class="fp ms-chk"><input type="checkbox" id="ms-base" checked> Baseline</label>
+      <button class="btn pv-reset" type="button" id="ms-reset">Reset</button>
+    </div>
+    <section class="card" aria-labelledby="h-ms-tl">
+      <div class="card-head"><h2 id="h-ms-tl">Milestone timeline</h2><span class="desc">Hollow diamond: the baseline date; filled diamond: the forecast (or actual) date, coloured by status; the line between them is the slip. A group row shows its latest baseline and forecast; select it to open or close the group. Select a milestone for its detail</span>
+        <div class="tools"><button class="btn" type="button" id="ms-expand">Expand all</button><button class="btn" type="button" id="ms-collapse">Collapse all</button></div></div>
+      <div class="legend pr-legend"><span><i class="ms-lk base"></i>Baseline date</span><span><i class="ms-lk"></i>Planned end / actual date</span><span><i class="ms-ls"></i><b class="ms-slt ms-delayed">+12d</b> slip vs baseline</span><span><i class="ms-lt"></i>Today</span>
+        <span>·</span><span><i class="ms-dot ms-complete"></i>Complete</span><span><i class="ms-dot ms-ontrack"></i>On track</span><span><i class="ms-dot ms-risk"></i>At risk</span><span><i class="ms-dot ms-delayed"></i>Delayed</span></div>
+      <div id="ms-tl"></div>
+    </section>
+    <section class="card" aria-labelledby="h-ms-reg">
+      <div class="card-head">
+        <h2 id="h-ms-reg">Milestone register</h2>
+        <span class="desc">Slip is the forecast (or actual) date minus the baseline date, in days</span>
+        <div class="tools"><button class="btn" type="button" id="ms-csv">Download CSV</button></div>
+      </div>
+      <div id="ms-tbl"></div>
+    </section>
+  </div>
+  </div>
+
+  <!-- Commissioning (commissioning.js) -->
+  <div class="page" id="pg-tc" role="tabpanel" aria-labelledby="tab-tc" hidden>
+  <section class="pv-head" aria-labelledby="tc-title">
+    <div class="pv-hl">
+      <div class="eyebrow">Testing &amp; commissioning</div>
+      <h2 id="tc-title">Commissioning tracker</h2>
+      <p class="pv-desc" id="tc-desc"></p>
+    </div>
+  </section>
+  <div class="pv-panel">
+    <section class="card" aria-labelledby="h-tc-ov">
+      <div class="card-head"><h2 id="h-tc-ov">Overview</h2><span class="desc">Equipment types in view and how far each commissioning level has got. Select a card, a level or a cell for its activities</span></div>
+      <div class="kp-grid" id="tc-stats"></div>
+      <div class="sec-h pv-sec">Commissioning levels</div>
+      <div class="tlc-grid" id="tc-levels"></div>
+      <div class="sec-h pv-sec">Phase by level</div>
+      <div id="tc-grid"></div>
+    </section>
+    <div class="fbar pv-filters" role="group" aria-label="Filters">
+      <div class="fp"><span>Phase</span><div class="seg" id="tc-phase" role="group" aria-label="Phase"></div></div>
+      <div class="fp"><span>Level</span><div class="seg" id="tc-level" role="group" aria-label="Commissioning level"></div></div>
+      <div class="fp"><span>Show</span><div class="seg" id="tc-show" role="group" aria-label="Which equipment types"></div></div>
+      <div class="fp pv-q"><span>Search</span><input class="search" id="tc-q" type="search" placeholder="Equipment type" aria-label="Search equipment types"></div>
+      <button class="btn pv-reset" type="button" id="tc-reset">Reset</button>
+      <div class="fp pv-wide"><span>Discipline</span><div class="seg" id="tc-disc" role="group" aria-label="Discipline"></div></div>
+    </div>
+    <section class="card" aria-labelledby="h-tc-mx">
+      <div class="card-head">
+        <h2 id="h-tc-mx">Equipment by level</h2>
+        <span class="desc">One row per equipment type; each cell: the level's finish (actual when complete, else planned), its delay against the baseline finish and how many units are done. Select a cell or a name for its equipment</span>
+        <div class="tools"><button class="btn" type="button" id="tc-csv">Download CSV</button></div>
+      </div>
+      <div class="legend pr-legend"><span><i class="pr-k c-done"></i>Complete</span><span><i class="pr-k c-prog"></i>In progress</span><span><i class="pr-k c-over"></i>Overdue</span><span><i class="pr-k c-todo"></i>Not started</span><span><b class="pr-late">+12d</b> late vs baseline</span><span><b class="pr-early">−3d</b> early</span>
+        <span>· Level tags:</span><span><i class="lvt lv-red"></i>L1</span><span><i class="lvt lv-yellow"></i>L2</span><span><i class="lvt lv-green"></i>L3</span><span><i class="lvt lv-blue"></i>L4</span><span><i class="lvt lv-white"></i>L5</span></div>
+      <div id="tc-matrix"></div>
     </section>
   </div>
   </div>

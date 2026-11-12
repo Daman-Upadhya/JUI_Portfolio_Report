@@ -3,7 +3,7 @@
    activity in detail. app.js owns the drawer too: while this module has it open the drawer carries
    data-owner="act", and the close / back / Escape handlers below run first and stop app.js's.
    Rows are calculation.py _proc_activity() records plus a "where" label (material › stage).
-   window.JUIActDrill.open({ eyebrow, title, sub, rows }) */
+   window.JUIActDrill.open({ eyebrow, title, sub, rows, whereLabel?, status?, act? }) */
 (function () {
   "use strict";
   var P = JSON.parse(document.getElementById("data").textContent), meta = P.meta || {}, LOC = meta.locale || "en-IN", DASH = "—";
@@ -58,7 +58,9 @@
   }
   function open(ctx) {
     D.ctx = ctx; D.act = null; D.q = ""; D.s = ctx.status || ""; D.all = false;
-    show(); renderList(); $("dw-close").focus();
+    show(); renderList();
+    if (ctx.act) { D.act = ctx.act; renderAct(); }  // straight to one activity (one of ctx.rows), with the list behind Back
+    $("dw-close").focus();
   }
   function back() { D.act = null; renderList(); $("dw-close").focus(); }
 
@@ -108,7 +110,7 @@
     });
     $("ad-csv").addEventListener("click", function () {
       function q(v) { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
-      var text = "﻿" + CSV.map(function (x) { return q(x[1]); }).join(",") + "\n" + D.list.map(function (a) {
+      var text = "﻿" + CSV.map(function (x) { return q(x[0] === "where" && D.ctx.whereLabel || x[1]); }).join(",") + "\n" + D.list.map(function (a) {
         return CSV.map(function (x) { return q(x[0] === "overdue" ? (a.overdue ? "Yes" : "No") : a[x[0]]); }).join(",");
       }).join("\n");
       var el = document.createElement("a");
@@ -128,7 +130,7 @@
     if (!rows.length) { $("ad-table").innerHTML = '<div class="empty">No activities match this search or status.</div>'; return; }
     $("ad-table").innerHTML = '<div class="tbl-wrap"><table><thead><tr>' + COLS.map(function (c) {
       var s = c.k === D.sort.k ? (D.sort.dir === "asc" ? "ascending" : "descending") : "none";
-      return '<th class="' + (c.r ? "r " : "") + 'sortable" data-k="' + c.k + '" aria-sort="' + s + '" tabindex="0">' + esc(c.label) + "</th>";
+      return '<th class="' + (c.r ? "r " : "") + 'sortable" data-k="' + c.k + '" aria-sort="' + s + '" tabindex="0">' + esc(c.k === "where" && D.ctx.whereLabel || c.label) + "</th>";
     }).join("") + "</tr></thead><tbody>" + shown.map(function (a, i) {
       return '<tr class="clickable" tabindex="0" data-i="' + i + '">' + COLS.map(function (c) { return '<td class="' + (c.r ? "r " : "") + (c.cls || "") + '">' + (c.f ? c.f(a) : esc(a[c.k])) + "</td>"; }).join("") + "</tr>";
     }).join("") + "</tbody></table></div>" +
@@ -174,7 +176,7 @@
         "<div><dt>Days to planned finish</dt><dd>" + (a.plannedFinish ? (a.overdue ? '<span class="late">' + days(-diff(a.plannedFinish, todayIso())) + " past</span>" : days(diff(a.plannedFinish, todayIso()))) : DASH) + "</dd></div>") +
       "</dl>";
     h += '<div class="sec-h">Details</div><dl class="dl">' +
-      [["Material › stage", a.where], ["WBS", a.wbs], ["Task ID", a.taskId], ["Status", a.status], ["Location", a.location], ["Trade", a.trade], ["Owner", a.owner]].map(function (x) {
+      [[D.ctx.whereLabel || "Material › stage", a.where], ["WBS", a.wbs], ["Task ID", a.taskId], ["Status", a.status], ["Location", a.location], ["Trade", a.trade], ["Owner", a.owner]].map(function (x) {
         return "<div><dt>" + x[0] + "</dt><dd>" + (x[1] ? esc(x[1]) : DASH) + "</dd></div>";
       }).join("") + "</dl>";
     $("dw-body").innerHTML = h;

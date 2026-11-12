@@ -134,17 +134,19 @@
     var cols = ST.map(function (_, s) { return s; }).filter(function (s) { return list.some(function (r) { return I[r.k].cells[s]; }); });
     var span = cols.length + 4, bands = [];
     cols.forEach(function (s) { var b = bands[bands.length - 1]; if (b && b.p === SP[s]) b.n++; else bands.push({ p: SP[s], n: 1 }); });
+    // each phase's columns: tinted in its colour, with a divider where the next phase starts
+    function pc(s, i) { return " ph" + SP[s] + (i && SP[cols[i - 1]] !== SP[s] ? " gs" : ""); }
     var h = '<div class="tbl-wrap"><table><thead><tr class="mp-band"><th class="it" rowspan="2">Material</th><th class="r" rowspan="2">Done</th>' +
-      bands.map(function (b) { return '<th class="ph ph' + b.p + '" colspan="' + b.n + '">' + esc(PH[b.p]) + "</th>"; }).join("") + '<th class="r" rowspan="2">Finish</th><th class="r" rowspan="2">Delay</th></tr><tr>' +
-      cols.map(function (s) { return '<th class="st ph' + SP[s] + '">' + esc(ST[s]) + "</th>"; }).join("") + "</tr></thead><tbody>";
+      bands.map(function (b, i) { return '<th class="ph ph' + b.p + (i ? " gs" : "") + '" colspan="' + b.n + '">' + esc(PH[b.p]) + "</th>"; }).join("") + '<th class="r" rowspan="2">Finish</th><th class="r" rowspan="2">Delay</th></tr><tr>' +
+      cols.map(function (s, i) { return '<th class="st' + pc(s, i) + '">' + esc(ST[s]) + "</th>"; }).join("") + "</tr></thead><tbody>";
     groupRows(list, span).forEach(function (r) {
       if (typeof r === "string") { h += r; return; }
       var it = I[r.k];
       h += '<tr class="' + (it.kind === "docs" ? "mp-docs" : r.depth ? "mp-docr" : "") + '">' + nameCell(r) + '<td class="r">' + fmtI(it.done) + "/" + fmtI(it.n) + "</td>" +
-        cols.map(function (s) {
+        cols.map(function (s, i) {
           var c = it.cells[s];
-          if (!c) return '<td class="pc"></td>';
-          return '<td class="pc"><div class="pcell drill ' + cellClass(c) + '" role="button" tabindex="0" data-dk="' + r.k + '" data-ds="' + s + '" title="' + esc(tip(r.k, s)) + '"><span class="d">' + fmtD(c.finish) + '</span><span class="x">' + fmtDelay(c.delay) + "</span>" +
+          if (!c) return '<td class="pc' + pc(s, i) + '"></td>';
+          return '<td class="pc' + pc(s, i) + '"><div class="pcell drill ' + cellClass(c) + '" role="button" tabindex="0" data-dk="' + r.k + '" data-ds="' + s + '" title="' + esc(tip(r.k, s)) + '"><span class="d">' + fmtD(c.finish) + '</span><span class="x">' + fmtDelay(c.delay) + "</span>" +
             (c.n > 1 ? '<span class="k">' + c.done + "/" + c.n + " done</span>" : "") + "</div></td>";
         }).join("") + '<td class="r">' + fmtD(it.finish) + '</td><td class="r">' + (fmtDelay(it.delay) || DASH) + "</td></tr>";
     });

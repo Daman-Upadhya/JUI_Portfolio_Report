@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 
 from . import DATA_DIR, DEFAULTS_FILE, DIST_DIR, ROOT, TEMPLATE_DIR
@@ -229,6 +230,10 @@ class Assets:
         self.actdrill_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "actdrill.js"))
         # the MEP procurement page (project.json display.mepProcurement)
         self.mep_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "mep.js"))
+        # the Milestones page (project.json display.milestones)
+        self.ms_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "milestones.js"))
+        # the Commissioning page (project.json display.commissioning)
+        self.tc_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "commissioning.js"))
         self.tabs_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "tabs.js"))
         # per-viewer "hide this visual" buttons; last, once every title has its info icon
         self.cardhide_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "cardhide.js"))
@@ -445,6 +450,33 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
                sum(x["stage"] == len(p["stages"]) - 1 for x in a), key))
         return p
 
+    def milestones(tree):
+        """The Milestones page (project.json display.milestones): the project milestones WBS branch."""
+        p = assets.calc.milestones(tree, data, today)
+        if not p:
+            log("::warning title=%s milestones branch not found::display.milestones.path matches no WBS branch" % key)
+            return None
+        assets.calc._write_csv(os.path.join(DATA_DIR, key, "scurve", "milestones.csv"), p["items"], assets.calc.MILESTONE_COLUMNS)
+        c = Counter(x["msStatus"] for x in p["items"])
+        log("%s: milestones %s: %d in %d groups (%d complete, %d on track, %d at risk, %d delayed) -> data/%s/scurve/milestones.csv"
+            % (key, p["branch"], len(p["items"]), len(p["groups"]), c["complete"], c["ontrack"], c["risk"], c["delayed"], key))
+        return p
+
+    def commissioning(tree):
+        """The Commissioning page (project.json display.commissioning): level-wise tracking of the
+        testing & commissioning WBS branch, one row per phase, discipline and equipment type."""
+        p = assets.calc.commissioning(tree, data, today)
+        if not p:
+            log("::warning title=%s commissioning branch not found::display.commissioning.path matches no WBS branch" % key)
+            return None
+        assets.calc._write_csv(os.path.join(DATA_DIR, key, "scurve", "commissioning.csv"), assets.calc.commissioning_csv_rows(p),
+                               assets.calc.COMMISSIONING_COLUMNS)
+        a = p["activities"]
+        log("%s: commissioning %s: %d phases, %d equipment types, %d activities (%d complete, %d overdue, %d milestones left out) by level %s -> data/%s/scurve/commissioning.csv"
+            % (key, p["branch"], len(p["phases"]), len(p["items"]), len(a), sum(x["group"] == "complete" for x in a), sum(x["overdue"] for x in a), p["milestonesSkipped"],
+               ", ".join("%s %d" % (l["key"], sum(x["stage"] == k for x in a)) for k, l in enumerate(p["levels"])), key))
+        return p
+
     def wbs(tree):
         """The WBS page (project.json display.wbs): the master schedule's whole parentGUID tree,
         parents included. Too big to embed, so it goes to dist/<key>/wbs.json, which the page
@@ -489,6 +521,10 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         for t in m["facts"]["tasks"]:
             t["wa"] = wa.get(str(t.get("id")), "")
         log("%s: S-curve: %d of %d tasks sit under an area WBS (%s)" % (key, sum(1 for t in m["facts"]["tasks"] if t["wa"]), len(m["facts"]["tasks"]), ", ".join(sorted(names))))
+        if data.get("milestones"):
+            m["milestones"] = milestones(tree)
+        if data.get("commissioning"):
+            m["commissioning"] = commissioning(tree)
         if data.get("wbs") or data.get("procurement") or data.get("mepProcurement"):
             if data.get("wbs"):
                 m["wbs"] = wbs(tree)
@@ -533,7 +569,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
     }
     payload = {"meta": meta, "project": public_project(cfg), "data": strip_private(data), "metrics": metrics}
 
-    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.wbs_js, assets.actdrill_js, assets.procui_js, assets.proc_js, assets.mep_js, assets.tabs_js, assets.cardhide_js)))
+    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.wbs_js, assets.actdrill_js, assets.procui_js, assets.proc_js, assets.mep_js, assets.tc_js, assets.ms_js, assets.tabs_js, assets.cardhide_js)))
     page = I.fill(page, {
         "TITLE": cfg.get("title") or key, "EYEBROW": data.get("eyebrow", "JUI Portfolio"),
         "GENERATED_AT": fmt_when(now), "BUILD_ID": build_id, "LOGIC_HASH": assets.logic_hash,
@@ -556,16 +592,10 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         "scurveBaselinePct": st.get("baselinePct"), "scurveActualPct": st.get("actualPct"), "scurvePlannedPct": st.get("plannedPct"),
         "scurveTasks": st.get("tasks"), "scurveComplete": st.get("complete"),
     }
-    # the landing card: phase progress, the S-curve and one key figure per page
+    # the landing card: the S-curve and finish variance
     sc = (metrics or {}).get("scurve") or {}
     if sc.get("facts"):
         summary["portfolio"] = assets.calc.portfolio_scurve(sc, today)
-        acts = [a for k in ("procurement", "mep") for a in (sc.get(k) or {}).get("activities") or []]
-        if acts:
-            summary["procurement"] = {"steps": len(acts), "complete": sum(a["group"] == "complete" for a in acts)}
-    wt = ((metrics or {}).get("workforce") or {}).get("totals") or {}
-    if wt.get("days"):
-        summary["workforce"] = {"avgDaily": wt.get("avgDaily"), "last": wt.get("last"), "trades": wt.get("trades")}
     write(os.path.join(out_dir, "build.json"), json.dumps(summary, indent=2, ensure_ascii=False) + "\n")
     log("%s: %s (%s) -> dist/%s/index.html %d KB" % (key, state, origin or "no data", key, len(page.encode("utf-8")) // 1024))
     return summary

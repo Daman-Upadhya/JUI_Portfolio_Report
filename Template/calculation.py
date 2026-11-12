@@ -854,6 +854,207 @@ def procurement_csv_rows(p: dict) -> list[dict]:
              "item": p["items"][a["item"]]["name"], "stage": p["stages"][a["stage"]]} for a in p["activities"]]
 
 
+# ============================================================================= Milestones page
+# The project milestones WBS branch (project.json display.milestones, e.g. Project Milestones >
+# Core and Shell / Payment Milestones / MEP Fitout Works > Phase-1 > milestone):
+#
+#   Group     the branch's child WBS node; Sub = any WBS levels between it and the milestone
+#   Date      a milestone has one date: its finish, or its start for a start milestone
+#             (baseline, forecast = planned, actual)
+#   Done      status complete, an actual date, or 100%
+#   Slip      days from the baseline date to the actual date (done) or forecast date
+#   Status    done = complete; forecast date passed and not done, or slip > delayDays = delayed;
+#             slip 1..delayDays = at risk; else on track
+
+def milestones(tree: dict, data: dict, today: date) -> dict | None:
+    cfg = data.get("milestones") or {}
+    path = [re.compile(p, re.I) for p in cfg.get("path") or []]
+    if not path:
+        return None
+    N, S = tree["nodes"], tree["strings"]
+    kids: dict[int, list] = {}
+    for i, n in enumerate(N):
+        kids.setdefault(n[0], []).append(i)
+    root = next((i for i, n in enumerate(N) if n[2] and path[0].search(n[3])), None)
+    for rx in path[1:]:
+        root = None if root is None else next((c for c in kids.get(root, []) if N[c][2] and rx.search(N[c][3])), None)
+    if root is None:
+        return None
+    for k in kids:
+        kids[k] = sorted(kids[k], key=lambda c: _natural(N[c][4]))
+    groups_cfg = data.get("statusGroups") or {}
+    late = int(cfg.get("delayDays", 14))
+    groups, items = [], []
+
+    def walk(nodes, group, trail):
+        for c in nodes:
+            if N[c][2]:
+                walk(kids.get(c, []), group, trail + [N[c][3]])
+                continue
+            a = _proc_activity(tree, c, 0, 0, groups_cfg, today)
+            for k in ("item", "stage"):
+                a.pop(k)
+            tt = S["taskType"][N[c][8]] if N[c][8] >= 0 else ""
+            base = a["baselineFinish"] or a["baselineStart"]
+            fc = a["plannedFinish"] or a["plannedStart"]
+            act = a["actualFinish"] or a["actualStart"]
+            done = a["group"] == "complete" or bool(act) or a["pct"] >= 100
+            end = act if done and act else fc
+            slip = (date.fromisoformat(end) - date.fromisoformat(base)).days if end and base else None
+            overdue = not done and bool(fc) and fc < today.isoformat()
+            status = "complete" if done else "delayed" if overdue or (slip or 0) > late else "risk" if (slip or 0) > 0 else "ontrack"
+            if group not in groups:
+                groups.append(group)
+            items.append({**a, "msGroup": group, "sub": " › ".join(trail), "type": tt, "baseline": base,
+                          "forecast": fc, "actual": act if done else None, "date": end, "slip": slip, "done": done,
+                          "overdue": overdue, "msStatus": status})
+
+    for c in kids.get(root, []):
+        if N[c][2]:
+            walk(kids.get(c, []), N[c][3], [])
+    direct = [c for c in kids.get(root, []) if not N[c][2]]  # milestones straight under the branch
+    if direct:
+        walk(direct, cfg.get("other") or "Other", [])
+    return {"title": cfg.get("title") or N[root][3], "branch": N[root][3], "groups": groups, "delayDays": late,
+            "items": items, "today": today.isoformat()}
+
+
+MILESTONE_COLUMNS = ["msGroup", "sub", "taskId", "name", "type", "status", "msStatus", "baseline", "forecast", "actual", "slip",
+                     "overdue", "pct", "wbs", "location", "trade", "owner"]
+
+
+# ============================================================================= Commissioning page
+# Level-wise tracking of the testing & commissioning WBS branch (project.json display.commissioning),
+# e.g. Testing and Commissioning > Phase - 1 > L2 Commisioning > Electrical > RMU > RMU-1:
+#
+#   Phase      the branch's child WBS nodes (GIS, Phase - 1, ...)
+#   Level      a phase's child, by the first of display.commissioning.levels whose pattern matches its
+#              name (L2 pre-requisites, L2 ... L5 IST); none matches = "Other"
+#   Discipline a level's child (Electrical, HVAC, ...); equipment straight under a level = "General"
+#   Type       a discipline's child (RMU, ACC- Chillers); its leaves are the equipment (RMU-1, RMU-2)
+#              tested at that level. An activity straight under a discipline or level is its own type,
+#              named without its "TC-L2 - GIS -" prefix (display.commissioning.strip)
+#   Milestones start / end milestone activities (task type) are left out: they are not equipment tests
+#
+# One row per phase + discipline + type (case ignored), so a type reads across the levels; a cell
+# (type x level) is summed like a procurement cell (counts, latest finish, largest delay).
+
+def commissioning(tree: dict, data: dict, today: date) -> dict | None:
+    cfg = data.get("commissioning") or {}
+    path = [re.compile(p, re.I) for p in cfg.get("path") or []]
+    if not path:
+        return None
+    N = tree["nodes"]
+    kids: dict[int, list] = {}
+    for i, n in enumerate(N):
+        kids.setdefault(n[0], []).append(i)
+    def leaves(i):
+        out = []
+        for c in kids.get(i, []):
+            out += leaves(c) if N[c][2] else [c]
+        return out
+
+    # the branch: of the nodes matching path[0] (a small security T&C branch can match too), the largest
+    roots = [i for i, n in enumerate(N) if n[2] and path[0].search(n[3])]
+    root = max(roots, key=lambda i: len(leaves(i)), default=None)
+    for rx in path[1:]:
+        root = None if root is None else next((c for c in kids.get(root, []) if N[c][2] and rx.search(N[c][3])), None)
+    if root is None:
+        return None
+    for k in kids:
+        kids[k] = sorted(kids[k], key=lambda c: _natural(N[c][4]))
+    levels = [{k: l.get(k) for k in ("key", "label", "name", "tag")} for l in cfg.get("levels") or []]
+    lrx = [re.compile(l["pattern"], re.I) for l in cfg.get("levels") or []]
+    strip = re.compile(cfg["strip"], re.I) if cfg.get("strip") else None
+    general = cfg.get("general") or "General"
+    groups = data.get("statusGroups") or {}
+
+    def level(name):
+        return next((k for k, rx in enumerate(lrx) if rx.search(name)), len(levels))
+
+    tokens = re.compile(r"\b(?:PH\s*-?\s*\d+|L\s*-?\s*\d)\b", re.I)
+
+    def clean(name):
+        """An activity or node standing as an equipment type: without its prefix and its phase and level
+        tags, so "PH-1 L2 Start Electrical" and "PH-1 L3 Start Electrical" share the row "Start Electrical"."""
+        s = tokens.sub(" ", strip.sub("", name) if strip else name)
+        s = re.sub(r"\s*-\s*(?=-|$)", "", " ".join(s.split())).strip(" -")
+        return s or name
+
+    items, index, acts, discs = [], {}, [], []
+    S = tree["strings"]
+    skipped = 0
+
+    def add(i, phase, disc, typ, wbs, lv):
+        nonlocal skipped
+        if N[i][8] >= 0 and "milestone" in S["taskType"][N[i][8]].lower():  # start / end milestones are not tests
+            skipped += 1
+            return
+        k = (phase, disc.lower(), typ.lower())
+        if k not in index:
+            index[k] = len(items)
+            items.append({"phase": phase, "disc": disc, "name": typ, "wbs": wbs})
+        if disc not in discs:
+            discs.append(disc)
+        a = _proc_activity(tree, i, index[k], lv, groups, today)
+        acts.append(a)
+
+    phases = []
+    for ph in kids.get(root, []):
+        if not N[ph][2]:  # an activity straight under the branch
+            add(ph, general, general, clean(N[ph][3]), N[ph][4], level(N[ph][3]))
+            continue
+        pn = N[ph][3]
+        phases.append(pn)
+        for ln in kids.get(ph, []):
+            if not N[ln][2]:  # an activity straight under the phase: its level from its own name
+                add(ln, pn, general, clean(N[ln][3]), N[ln][4], level(N[ln][3]))
+                continue
+            lv = level(N[ln][3])
+            for d in kids.get(ln, []):
+                if not N[d][2]:
+                    add(d, pn, general, clean(N[d][3]), N[d][4], lv)
+                    continue
+                if not any(N[c][2] for c in kids.get(d, [])):  # only activities under it (a floor's pre-requisites, SOO): one type
+                    for a in kids.get(d, []):
+                        add(a, pn, general, clean(N[d][3]), N[d][4], lv)
+                    continue
+                for t in kids.get(d, []):
+                    if not N[t][2]:
+                        add(t, pn, N[d][3], clean(N[t][3]), N[t][4], lv)
+                        continue
+                    for a in leaves(t):
+                        add(a, pn, N[d][3], N[t][3], N[t][4], lv)
+    phases = [p for p in phases if any(i["phase"] == p for i in items)]
+    if general in discs:  # General (pre-requisites, SOO, IST) after the disciplines
+        discs.remove(general)
+        discs.append(general)
+    if general in [i["phase"] for i in items] and general not in phases:
+        phases.append(general)
+    # rows grouped by phase, then discipline, then first appearance
+    order = sorted(range(len(items)), key=lambda k: (phases.index(items[k]["phase"]), discs.index(items[k]["disc"]), k))
+    remap = {old: new for new, old in enumerate(order)}
+    items = [items[k] for k in order]
+    for a in acts:
+        a["item"] = remap[a["item"]]
+    if any(a["stage"] == len(levels) for a in acts):
+        levels.append({"key": "Other", "label": "Other", "name": "Not a known level", "tag": "other"})
+    _proc_cells(items, acts)
+    for it in items:  # equipment count: the most units any level tests
+        it["units"] = max((c["n"] for c in it["cells"].values()), default=0)
+    return {"title": cfg.get("title") or N[root][3], "branch": N[root][3], "phases": phases, "disciplines": discs,
+            "levels": levels, "items": items, "activities": acts, "milestonesSkipped": skipped, "today": today.isoformat()}
+
+
+COMMISSIONING_COLUMNS = ["phase", "discipline", "type", "level", "wbs", "taskId", "name", "status", "pct", "baselineStart", "baselineFinish",
+                         "plannedStart", "plannedFinish", "actualStart", "actualFinish", "finish", "overdue", "delay", "location", "trade", "owner"]
+
+
+def commissioning_csv_rows(p: dict) -> list[dict]:
+    return [{**a, "phase": p["items"][a["item"]]["phase"], "discipline": p["items"][a["item"]]["disc"],
+             "type": p["items"][a["item"]]["name"], "level": p["levels"][a["stage"]]["label"]} for a in p["activities"]]
+
+
 # ============================================================================= MEP procurement page
 # Material-wise tracking of a WBS branch whose activity NAMES carry the stage, scope, discipline and
 # material (project.json display.mepProcurement), e.g.
@@ -1039,23 +1240,13 @@ def mep_procurement_csv_rows(p: dict) -> list[dict]:
 
 
 def portfolio_scurve(m: dict, today: date) -> dict | None:
-    """The landing card's slice of an S-curve payload: progress per construction phase (actual,
-    planned and baseline % of the phase's weightage due today), the project's month-by-month
+    """The landing card's slice of an S-curve payload: the project's month-by-month
     cumulative curves (baseline, planned, actual up to today) with each month's baseline and actual
     increments, and the baseline vs working plan dates."""
     facts = [f for f in ((m or {}).get("facts") or {}).get("tasks") or [] if f["bs"]]
     total = sum(f["w"] for f in facts)
     if not total:
         return None
-    phases = {}
-    for f in facts:
-        p = phases.setdefault(f["ph"] or "No phase", {"name": f["ph"] or "No phase", "n": 0, "w": 0.0, "e": 0.0, "b": 0.0, "p": 0.0})
-        p["n"] += 1; p["w"] += f["w"]; p["e"] += f["e"]
-        p["b"] += _baseline_to(f, today); p["p"] += _baseline_to(f, today, "ps", "pe", "pr")
-    ph = [{"name": p["name"], "n": p["n"], "share": round(100 * p["w"] / total, 2), "actual": round(100 * p["e"] / p["w"], 2),
-           "planned": round(100 * p["p"] / p["w"], 2), "baseline": round(100 * p["b"] / p["w"], 2)}
-          for p in sorted(phases.values(), key=lambda p: -p["w"]) if p["w"]]
-
     dates = [d for f in facts for d in (f["bs"], f["be"], f["ps"], f["pe"], f["as"], f["ax"]) if d] + [today.isoformat()]
     lo, hi = date.fromisoformat(min(dates)), date.fromisoformat(max(dates))
     months = [date(lo.year, lo.month, 1)]
@@ -1087,7 +1278,7 @@ def portfolio_scurve(m: dict, today: date) -> dict | None:
              "bm": [round(100 * x / total, 3) for x in inc["b"][:-1]], "am": [round(100 * x / total, 3) for x in inc["a"][:-1]]}
     be = max((f["be"] for f in facts if f["be"]), default=None)
     pe = max((f["pe"] for f in facts if f["pe"]), default=None)
-    return {"phases": ph, "curve": curve, "baselineStart": min(f["bs"] for f in facts), "baselineFinish": be, "plannedFinish": pe,
+    return {"curve": curve, "baselineStart": min(f["bs"] for f in facts), "baselineFinish": be, "plannedFinish": pe,
             "finishVariance": (date.fromisoformat(pe) - date.fromisoformat(be)).days if be and pe else None}
 
 

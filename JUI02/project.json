@@ -17,6 +17,26 @@
     "tokenKey": "JUI02"
   },
   "display": {
+    "_milestones": "Milestones page: the project milestones WBS branch. path: a WBS node name pattern, then each child step; its child nodes are the groups (Core and Shell, Payment Milestones, ...). A milestone slipping more than delayDays against its baseline date (or past its forecast date and not done) is Delayed; 1..delayDays is At risk",
+    "milestones": {
+      "title": "Project milestones",
+      "path": ["^Project\\s*Milestones?$"],
+      "delayDays": 14
+    },
+    "_commissioning": "Commissioning page: level-wise tracking of the testing & commissioning WBS branch. path: a WBS node name pattern, then each child step. Under it: phase > level > discipline > equipment type > equipment. levels: in column order; a level node takes the FIRST level whose pattern matches its name (so pre-requisites come before L2); tag is the data-centre commissioning tag colour (L1 red, L2 yellow, L3 green, L4 blue, L5 white). strip: removed from an activity's name when it stands as its own equipment type",
+    "commissioning": {
+      "title": "Testing & commissioning tracker",
+      "path": ["^Testing\\s*(and|&)\\s*Commission"],
+      "strip": "^\\s*TC\\s*-\\s*(PH\\s*\\d+\\s*-\\s*)?L\\s*\\d\\s*-\\s*(GIS\\s*-\\s*)?",
+      "levels": [
+        {"key": "L1", "label": "L1", "name": "Factory witness test", "tag": "red", "pattern": "\\bL\\s*-?\\s*1\\b|factory|\\bFAT\\b|\\bFWT\\b"},
+        {"key": "L2P", "label": "L2 pre-req", "name": "L2 pre-requisites", "tag": "yellow-pre", "pattern": "pre\\s*-?\\s*requisit"},
+        {"key": "L2", "label": "L2", "name": "Installation verification", "tag": "yellow", "pattern": "\\bL\\s*-?\\s*2\\b"},
+        {"key": "L3", "label": "L3", "name": "Pre-functional & start-up", "tag": "green", "pattern": "\\bL\\s*-?\\s*3\\b"},
+        {"key": "L4", "label": "L4", "name": "Functional performance test", "tag": "blue", "pattern": "\\bL\\s*-?\\s*4\\b"},
+        {"key": "L5", "label": "L5", "name": "Integrated systems test (IST)", "tag": "white", "pattern": "\\bL\\s*-?\\s*5\\b|\\bIST\\b"}
+      ]
+    },
     "_subtradeColumn": "JUI02 has no Subtrade custom field: the task's VisiLean trade is used in its place, and the page calls it Trade",
     "subtradeColumn": "trade",
     "subtradeLabel": "Trade",
