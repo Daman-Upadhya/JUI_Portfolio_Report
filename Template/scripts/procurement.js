@@ -26,7 +26,7 @@
   function fmtDelayT(d) { return d == null ? "no baseline" : d > 0 ? d + " days late" : d < 0 ? -d + " days early" : "on time"; }
 
   var I = M.items, A = M.activities, ST = M.stages;
-  var F = { part: "", show: "all", q: "" };
+  var F = { part: "", show: "all", q: "", cr: "" };
 
   /* ---------- overview: KPI cards and the stage flow ---------- */
   function stats(items) {
@@ -64,12 +64,23 @@
   $("pr-part").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { F.part = b.getAttribute("data-v"); render(); } });
   $("pr-show").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { F.show = b.getAttribute("data-v"); render(); } });
   var qt;
-  $("pr-reset").addEventListener("click", function () { F.part = ""; F.show = "all"; F.q = ""; $("pr-q").value = ""; render(); });
+  $("pr-reset").addEventListener("click", function () { F.part = ""; F.show = "all"; F.q = ""; $("pr-q").value = ""; setCrit(""); $("pr-crit").value = ""; render(); });
+  /* Critical slicer (the Critical Activity custom field): items and their cells rebuilt from those activities */
+  var I0 = I, A0 = A;
+  UI.critOptions($("pr-crit"), $("pr-crit-fp"), A0, "");
+  function setCrit(v) {
+    F.cr = v;
+    var c = v ? UI.critCut(I0, A0, v) : { items: I0, acts: A0 };
+    I = c.items; A = c.acts;
+  }
+  $("pr-crit").addEventListener("change", function () { setCrit(this.value); render(); });
+
   $("pr-q").addEventListener("input", function () { clearTimeout(qt); qt = setTimeout(function () { F.q = $("pr-q").value.trim().toLowerCase(); render(); }, 150); });
 
   function inView() {
     return I.filter(function (it) {
       if (F.part && it.part !== F.part) return false;
+      if (F.cr && !it.n) return false;
       if (F.show === "open" && it.done >= it.n) return false;
       if (F.show === "overdue" && !it.overdue) return false;
       if (F.show === "late" && !(it.delay > 0)) return false;

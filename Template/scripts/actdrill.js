@@ -48,7 +48,15 @@
 
   var D = { ctx: null, act: null, list: [], q: "", s: "", sort: { k: "plannedFinish", dir: "asc" }, all: false, opener: null, hist: [] };
   // ctx.cols / ctx.csv: the list's columns and CSV fields in place of the procurement ones
-  function cols() { return (D.ctx && D.ctx.cols) || COLS; }
+  // without ctx.whereLabel (the procurement pages) the first column is the activity name, its material › stage under it
+  var NAME_COL = { k: "name", label: "Activity name", cls: "wrap", f: function (a) { return "<b>" + esc(a.name) + "</b>" + (a.where ? '<span class="it-sub">' + esc(a.where) + "</span>" : ""); } };
+  function cols() {
+    if (D.ctx && D.ctx.cols) return D.ctx.cols;
+    if (D.ctx && D.ctx.whereLabel) return COLS;
+    return COLS.filter(function (c) { return c.k !== "where"; }).map(function (c) { return c.k === "name" ? NAME_COL : c; });
+  }
+  // late against the plan is the same set as overdue: one card and one filter then
+  function lateToo() { return !(D.ctx && D.ctx.vs === "plan"); }
   function csvCols() { return (D.ctx && D.ctx.csv) || CSV; }
   function mine() { return $("drawer").getAttribute("data-owner") === "act" && !$("drawer").hidden; }
   function close() {
@@ -81,7 +89,7 @@
     var mx = rows.reduce(function (m, a) { return a.delay != null && (m == null || a.delay > m) ? a.delay : m; }, null);
     return '<div class="sum">' + sumCell(fmtI(rows.length), "Activities") + sumCell(fmtI(n(function (a) { return a.group === "complete"; })), "Complete") +
       sumCell(fmtI(n(function (a) { return a.group === "started"; })), "Started") + sumCell(fmtI(n(function (a) { return a.group === "notStarted"; })), "Not started") +
-      sumCell(fmtI(n(function (a) { return a.overdue; })), "Overdue", "late") + sumCell(fmtI(n(function (a) { return a.delay > 0; })), vs("Late vs baseline"), "late") +
+      sumCell(fmtI(n(function (a) { return a.overdue; })), "Overdue", "late") + (lateToo() ? sumCell(fmtI(n(function (a) { return a.delay > 0; })), vs("Late vs baseline"), "late") : "") +
       sumCell(mx == null ? DASH : (mx > 0 ? "+" : "") + fmtI(mx) + "d", "Largest delay", mx > 0 ? "late" : "") + "</div>";
   }
   function filtered() {
@@ -107,7 +115,7 @@
     $("dw-sub").textContent = c.sub || "";
     $("dw-body").innerHTML = summary(c.rows) +
       '<div class="dw-tools"><input class="dw-search" id="ad-q" type="search" placeholder="Search activity, ID, WBS, location or owner" value="' + esc(D.q) + '" aria-label="Search these activities">' +
-      '<div class="seg" id="ad-s" role="group" aria-label="Status">' + FILTERS.map(function (f) {
+      '<div class="seg" id="ad-s" role="group" aria-label="Status">' + FILTERS.filter(function (f) { return f[0] !== "late" || lateToo(); }).map(function (f) {
         var k = c.rows.filter(function (a) { return pass(a, f[0]); }).length;
         return '<button type="button" data-v="' + f[0] + '" aria-pressed="' + (D.s === f[0]) + '">' + vs(f[1]) + " " + fmtI(k) + "</button>";
       }).join("") + "</div>" + '<button class="btn" type="button" id="ad-csv">Download CSV</button></div>' +

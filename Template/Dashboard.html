@@ -357,17 +357,17 @@ td.pc { padding: 3px !important; }
 .ms-d2 .ms-lab { padding-left: 52px; }
 .ms-gh.ms-d0 .ms-lab { padding-left: 10px; }
 .ms-mk.sum { width: 10px; height: 10px; margin: -5px 0 0 -5px; opacity: .85; }
-.ms-lbl { position: absolute; top: 50%; transform: translateY(-50%); font-size: 10.5px; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; z-index: 2; }
-.ms-lbl.r { margin-left: 11px; }
-.ms-lbl.l { transform: translate(calc(-100% - 11px), -50%); }
-.ms-lbl.up { top: calc(50% - 19px); transform: none; }
-.ms-lbl.up.ur { transform: translateX(-100%); }
-.ms-lbl.b { color: var(--faint); }
-.ms-lbl.f { color: var(--ms); font-weight: 650; }
+.mt-lbl { position: absolute; top: 50%; transform: translateY(-50%); font-size: 10.5px; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; z-index: 2; }
+.mt-lbl.r { margin-left: 11px; }
+.mt-lbl.l { transform: translate(calc(-100% - 11px), -50%); }
+.mt-lbl.up { top: calc(50% - 19px); transform: none; }
+.mt-lbl.up.ur { transform: translateX(-100%); }
+.mt-lbl.b { color: var(--faint); }
+.mt-lbl.f { color: var(--ms); font-weight: 650; }
 .ms-sl { position: absolute; top: calc(50% - 16px); transform: translateX(-50%); font-size: 10px; line-height: 1; white-space: nowrap; pointer-events: none; z-index: 2; padding: 1px 3px; border-radius: 3px; background: var(--card); }
 .ms-slt { color: var(--ms); font-weight: 750; }
 .ms-slt.ok { color: var(--good); font-weight: 600; }
-.ms-gh .ms-lbl, .ms-gh .ms-sl { opacity: .85; }
+.ms-gh .mt-lbl, .ms-gh .ms-sl { opacity: .85; }
 .ms-mk { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; transform: rotate(45deg); border-radius: 2px; background: var(--ms); box-shadow: 0 0 0 2px var(--card); z-index: 3; }
 .ms-mk.base { background: var(--card); border: 2px solid var(--faint); box-shadow: none; z-index: 2; }
 .ms-mk.drill { cursor: pointer; } .ms-mk.drill:hover, .ms-mk.drill:focus-visible { transform: rotate(45deg) scale(1.3); outline: none; }
@@ -1300,6 +1300,10 @@ tr.cp-sel td { background: var(--brand-soft); }
 #cp-roots td:nth-child(4) { white-space: normal; min-width: 130px; }
 .legend i.cp-k-plan { border: 1.5px dashed var(--faint); background: transparent; box-sizing: border-box; }
 .legend i.cp-k-tg { width: 0; height: 11px; border-left: 2px dashed var(--muted); border-radius: 0; }
+
+/* No explanatory lines on any page: page descriptions, the small lines under KPI cards and tiles, notes
+   under charts and bars, and hints. Card explanations stay behind their info icons; data lines stay */
+.pv-desc, .kp-s, .sx-s, .sx-gnote, .sx-cnote, .sx-cs, .sx-wnote, .hint { display: none !important; }
 </style>
 </head>
 <body>
@@ -1338,11 +1342,12 @@ tr.cp-sel td { background: var(--brand-soft); }
   <!-- ======================================================= page 1: quantity tracking -->
   <div class="page" id="pg-qty" role="tabpanel" aria-labelledby="tab-qty">
   <section class="fbar" id="filters" aria-label="Filters">
-    <div class="fp" role="group" aria-label="Area"><span>Area</span><div class="fchips" id="f-area-chips"></div><select id="f-area" hidden></select></div>
+    <label class="fp"><span>Area</span><select id="f-area"></select></label>
     <div class="fp"><span>Sub-location</span><div class="ms" id="f-sub"></div></div>
     <div class="fp"><span>Subtrade</span><div class="ms" id="f-subtrade"></div></div>
     <label class="fp"><span>Unit</span><select id="f-unit"></select></label>
     <label class="fp"><span>Status</span><select id="f-status"></select></label>
+    <label class="fp" id="f-crit-fp" hidden><span>Critical</span><select id="f-crit"></select></label>
     <div class="fp"><span>% complete</span><div class="ms" id="f-pc"></div></div>
     <label class="fp"><span>Search</span><input id="f-q" type="search" placeholder="Activity name or ID" autocomplete="off"></label>
     <button class="btn reset" id="reset" type="button">Clear all filters</button>
@@ -1386,10 +1391,11 @@ tr.cp-sel td { background: var(--brand-soft); }
   <!-- ======================================================= page 2: progress and S-curve -->
   <div class="page" id="pg-scurve" role="tabpanel" aria-labelledby="tab-scurve" hidden>
   <section class="fbar" id="s-filters" aria-label="S-curve filters">
-    <div class="fp" role="group" aria-label="Area"><span>Area</span><div class="fchips" id="s-f-area-chips"></div><select id="s-f-area" hidden></select></div>
+    <label class="fp"><span>Area</span><select id="s-f-area"></select></label>
     <label class="fp"><span>Sub-location</span><select id="s-f-sub"></select></label>
     <label class="fp"><span>S-curve group</span><select id="s-f-grp"></select></label>
     <label class="fp"><span>Phase</span><select id="s-f-ph"></select></label>
+    <label class="fp" id="s-f-crit-fp" hidden><span>Critical</span><select id="s-f-crit"></select></label>
     <button class="btn reset" id="s-reset" type="button">Clear all filters</button>
   </section>
 
@@ -1403,7 +1409,7 @@ tr.cp-sel td { background: var(--brand-soft); }
     <div class="sx-row">
       <div class="sx-panel"><div class="sx-h">Progress</div><div id="s-gauge"></div></div>
       <div class="sx-panel"><div class="sx-h">Complete as of today</div><div id="s-trio"></div></div>
-      <div class="sx-panel"><div class="sx-h">Weighted tasks</div><div id="s-kpis"></div></div>
+      <div class="sx-panel"><div class="sx-h">Activities</div><div id="s-kpis"></div></div>
     </div>
   </section>
 
@@ -1422,10 +1428,10 @@ tr.cp-sel td { background: var(--brand-soft); }
   <section class="card sx-m3d" id="m3d-card" aria-labelledby="h-m3d">
     <div class="card-head">
       <h2 id="h-m3d">Progress on the site model</h2>
-      <span class="desc">3D model: the site built from the BIM model (IFC), simplified for the web; drag to turn, scroll to zoom, right-drag to pan, and use the chips to show or hide a category. Each building carries a ring of its earned weightage in the master schedule; the ring's colour compares it with what the baseline says is due by today (green on or ahead, amber up to 5 points behind, red further behind) and the faint arc behind shows that baseline share. Hover or focus a ring for the building's storeys and dates;</span>
+      <span class="desc">3D model: the site built from the BIM model (IFC), simplified for the web; drag to turn, scroll to zoom, right-drag to pan, and use the chips to show or hide a category. Each building carries a ring of its earned weightage in the master schedule; the ring's colour compares it with what the baseline says is due by today (green on or ahead, amber up to 5% behind, red further behind) and the faint arc behind shows that baseline share. Hover or focus a ring for the building's storeys and dates;</span>
       <div class="tools"><div class="seg" id="m3d-views" role="group" aria-label="View"></div></div>
     </div>
-    <div class="legend" id="m3d-legend"><span><i class="bc-good m3-k"></i>On or ahead of the baseline</span><span><i class="bc-warn m3-k"></i>Up to 5 points behind</span><span><i class="bc-bad m3-k"></i>Further behind</span><span><i class="m3-k-due"></i>Baseline due by today</span></div>
+    <div class="legend" id="m3d-legend"><span><i class="bc-good m3-k"></i>On or ahead of the baseline</span><span><i class="bc-warn m3-k"></i>Up to 5% behind</span><span><i class="bc-bad m3-k"></i>Further behind</span><span><i class="m3-k-due"></i>Baseline due by today</span></div>
     <div class="m3d-wrap">
       <div id="m3d"></div>
     </div>
@@ -1469,7 +1475,7 @@ tr.cp-sel td { background: var(--brand-soft); }
   <!-- ======================================================= page 3: site progress drawings -->
   <div class="page" id="pg-site" role="tabpanel" aria-labelledby="tab-site" hidden>
   <section class="fbar" aria-label="Site progress filters">
-    <div class="fp" role="group" aria-label="Area"><span>Area</span><div class="fchips" id="sp-area-chips"></div></div>
+    <label class="fp"><span>Area</span><select id="sp-area"></select></label>
     <button class="btn reset" id="sp-reset" type="button">Clear all filters</button>
   </section>
 
@@ -1552,6 +1558,7 @@ tr.cp-sel td { background: var(--brand-soft); }
       <div class="fp"><span>Part</span><div class="seg" id="pr-part" role="group" aria-label="Part"></div></div>
       <div class="fp"><span>Show</span><div class="seg" id="pr-show" role="group" aria-label="Which items"></div></div>
       <div class="fp pv-q"><span>Search</span><input class="search" id="pr-q" type="search" placeholder="Material or agency" aria-label="Search items"></div>
+      <label class="fp" id="pr-crit-fp" hidden><span>Critical</span><select id="pr-crit"></select></label>
       <button class="btn pv-reset" type="button" id="pr-reset">Reset</button>
     </div>
     <section class="card" aria-labelledby="h-pr-mx">
@@ -1577,6 +1584,7 @@ tr.cp-sel td { background: var(--brand-soft); }
       <div class="fp"><span>Scope</span><div class="seg" id="mp-part" role="group" aria-label="Scope"></div></div>
       <div class="fp"><span>Show</span><div class="seg" id="mp-show" role="group" aria-label="Which materials"></div></div>
       <div class="fp pv-q"><span>Search</span><input class="search" id="mp-q" type="search" placeholder="Material or drawing" aria-label="Search materials"></div>
+      <label class="fp" id="mp-crit-fp" hidden><span>Critical</span><select id="mp-crit"></select></label>
       <button class="btn pv-reset" type="button" id="mp-reset">Reset</button>
       <div class="fp pv-wide"><span>Discipline</span><div class="seg" id="mp-disc" role="group" aria-label="Discipline"></div></div>
     </div>
@@ -1614,6 +1622,7 @@ tr.cp-sel td { background: var(--brand-soft); }
       <div class="fp"><span>Group</span><div class="seg" id="ms-group" role="group" aria-label="Group"></div></div>
       <div class="fp pv-q"><span>Search</span><input class="search" id="ms-q" type="search" placeholder="Milestone or ID" aria-label="Search milestones"></div>
       <label class="fp ms-chk"><input type="checkbox" id="ms-base" checked> Baseline</label>
+      <label class="fp" id="ms-crit-fp" hidden><span>Critical</span><select id="ms-crit"></select></label>
       <button class="btn pv-reset" type="button" id="ms-reset">Reset</button>
     </div>
     <section class="card" aria-labelledby="h-ms-tl">
@@ -1714,6 +1723,7 @@ tr.cp-sel td { background: var(--brand-soft); }
       <div class="fp"><span>Level</span><div class="seg" id="tc-level" role="group" aria-label="Commissioning level"></div></div>
       <div class="fp"><span>Show</span><div class="seg" id="tc-show" role="group" aria-label="Which equipment types"></div></div>
       <div class="fp pv-q"><span>Search</span><input class="search" id="tc-q" type="search" placeholder="Equipment type" aria-label="Search equipment types"></div>
+      <label class="fp" id="tc-crit-fp" hidden><span>Critical</span><select id="tc-crit"></select></label>
       <button class="btn pv-reset" type="button" id="tc-reset">Reset</button>
       <div class="fp pv-wide"><span>Discipline</span><div class="seg" id="tc-disc" role="group" aria-label="Discipline"></div></div>
     </div>

@@ -28,7 +28,7 @@
   };
   var ORDER = ["complete", "ontrack", "risk", "delayed"], WORST = ["delayed", "risk", "ontrack", "complete"];
   function pill(k) { return '<span class="pill ms-' + k + '">' + ST[k].l + "</span>"; }
-  var TODAY = M.today, F = { status: "", group: "", q: "", base: true };
+  var TODAY = M.today, F = { status: "", group: "", q: "", base: true, cr: "" };
   var SHUT = new Set();  // collapsed timeline groups and sub-groups ("group" or "group › sub")
   var open = R.filter(function (r) { return !r.done; }).length;
   $("n-ms").textContent = fmtI(R.filter(function (r) { return r.msStatus === "delayed"; }).length) + " delayed";
@@ -39,7 +39,7 @@
   function inView(skipStatus) {
     var q = F.q;
     return R.filter(function (r) {
-      return (skipStatus || !F.status || r.msStatus === F.status) && (!F.group || r.msGroup === F.group) &&
+      return (skipStatus || !F.status || r.msStatus === F.status) && (!F.group || r.msGroup === F.group) && (!F.cr || r.critical === F.cr) &&
         (!q || (r.name + " " + r.taskId + " " + r.msGroup + " " + r.sub).toLowerCase().indexOf(q) >= 0);
     });
   }
@@ -76,7 +76,9 @@
   $("ms-base").addEventListener("change", function () { F.base = $("ms-base").checked; render(); });
   var qt;
   $("ms-q").addEventListener("input", function () { clearTimeout(qt); qt = setTimeout(function () { F.q = $("ms-q").value.trim().toLowerCase(); render(); }, 150); });
-  $("ms-reset").addEventListener("click", function () { F = { status: "", group: "", q: "", base: true }; $("ms-q").value = ""; $("ms-base").checked = true; render(); });
+  $("ms-reset").addEventListener("click", function () { F = { status: "", group: "", q: "", base: true, cr: "" }; $("ms-q").value = ""; $("ms-base").checked = true; $("ms-crit").value = ""; render(); });
+  UI.critOptions($("ms-crit"), $("ms-crit-fp"), R, "");  // the Critical Activity custom field
+  $("ms-crit").addEventListener("change", function () { F.cr = this.value; render(); });
 
   function tip(r) {
     return r.name + "\n" + r.msGroup + (r.sub ? " › " + r.sub : "") + "\nBaseline " + fmtD(r.baseline) + " · " + (r.actual ? "actual " : "forecast ") + fmtD(r.date) +
@@ -112,7 +114,7 @@
       var mk = "", showB = F.base && b != null;
       function lbl(d, kind, side, extra) {
         var p = px(d), up = side === "r" ? p > 86 : p < 10;
-        return '<span class="ms-lbl ' + kind + " " + (up ? "up" + (side === "r" ? " ur" : " ul") : side) + '" style="left:' + x(d) + '">' + fmtD(iso(d)) + (extra || "") + "</span>";
+        return '<span class="mt-lbl ' + kind + " " + (up ? "up" + (side === "r" ? " ur" : " ul") : side) + '" style="left:' + x(d) + '">' + fmtD(iso(d)) + (extra || "") + "</span>";
       }
       var sl = showB && e != null ? e - b : null;
       var slTxt = sl == null || sl === 0 ? "" : '<b class="ms-slt">' + (sl > 0 ? "+" : "−") + fmtI(Math.abs(sl)) + "d</b>";

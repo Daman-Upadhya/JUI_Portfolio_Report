@@ -189,5 +189,43 @@
     return acts.filter(function (a) { return ss.has(a.stage) && partOf(a) === pt; });
   }
 
-  window.JUIProcUI = { flowAttr: flowAttr, flowRows: flowRows, kpis: kpis, flow: flow, stageCounts: stageCounts, standardKpis: standardKpis, setupSwitch: setupSwitch, icon: ICON };
+  /* the Critical slicer ("Yes" / "No", the Critical Activity custom field): the activities with that value,
+     and every item with its cells (stage counts, latest finish and baseline, largest delay) and totals rebuilt
+     from them as calculation.py _proc_cells does; same item indexes, so a.item still points at its item.
+     A MEP "doc" activity also counts on its parent docs row (rollup) */
+  function critCut(items, acts, val) {
+    var keep = acts.filter(function (a) { return a.critical === val; }), by = {};
+    keep.forEach(function (a) {
+      (by[a.item] = by[a.item] || []).push(a);
+      var it = items[a.item];
+      if (it.kind === "doc" && it.parent != null) (by[it.parent] = by[it.parent] || []).push(a);
+    });
+    function mx(a, b) { return a == null ? b : b == null ? a : a > b ? a : b; }
+    return { acts: keep, items: items.map(function (it, k) {
+      var mine = by[k] || [], cells = {}, o = {};
+      mine.forEach(function (a) {
+        var c = cells[a.stage] || (cells[a.stage] = { n: 0, done: 0, started: 0, overdue: 0, finish: null, baseline: null, delay: null });
+        c.n++; c.done += a.group === "complete"; c.started += a.group === "started"; c.overdue += a.overdue ? 1 : 0;
+        c.finish = mx(c.finish, a.finish); c.baseline = mx(c.baseline, a.baselineFinish); c.delay = mx(c.delay, a.delay);
+      });
+      for (var key in it) o[key] = it[key];
+      o.cells = cells; o.n = mine.length;
+      o.done = mine.filter(function (a) { return a.group === "complete"; }).length;
+      o.overdue = mine.filter(function (a) { return a.overdue; }).length;
+      o.finish = mine.reduce(function (m, a) { return mx(m, a.finish); }, null);
+      o.delay = mine.reduce(function (m, a) { return mx(m, a.delay); }, null);
+      if ("units" in it) o.units = Object.keys(cells).reduce(function (m, s) { return Math.max(m, cells[s].n); }, 0);
+      return o;
+    }) };
+  }
+  // the slicer's select: "All activities / Critical (n) / Not critical (n)", hidden when no activity carries the field
+  function critOptions(sel, fp, acts, value) {
+    var y = acts.filter(function (a) { return a.critical === "Yes"; }).length, n = acts.filter(function (a) { return a.critical === "No"; }).length;
+    fp.hidden = !y && !n;
+    sel.innerHTML = '<option value="">All activities</option><option value="Yes">Critical (' + y.toLocaleString() + ')</option><option value="No">Not critical (' + n.toLocaleString() + ")</option>";
+    sel.value = value || "";
+  }
+
+  window.JUIProcUI = { flowAttr: flowAttr, flowRows: flowRows, kpis: kpis, flow: flow, stageCounts: stageCounts, standardKpis: standardKpis, setupSwitch: setupSwitch, icon: ICON,
+    critCut: critCut, critOptions: critOptions };
 })();

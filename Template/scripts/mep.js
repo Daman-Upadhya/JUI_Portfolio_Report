@@ -28,9 +28,10 @@
   function day(iso) { return iso ? Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5 : null; }
 
   var I = M.items, A = M.activities, ST = M.stages, PH = M.phases, SP = M.stagePhase, TODAY = M.today;
-  var F = { view: /[?&#]view=timeline/.test(location.href) ? "timeline" : "matrix", part: "", disc: "", show: "all", q: "" }, open = {};
-  var byItem = I.map(function () { return []; });
-  A.forEach(function (a) { byItem[a.item].push(a); });
+  var F = { view: /[?&#]view=timeline/.test(location.href) ? "timeline" : "matrix", part: "", disc: "", show: "all", q: "", cr: "" }, open = {};
+  var byItem;
+  function index() { byItem = I.map(function () { return []; }); A.forEach(function (a) { byItem[a.item].push(a); }); }
+  index();
   function acts(k) {  // a doc row's activities are its documents'
     return I[k].kind === "docs" ? I[k].children.reduce(function (o, c) { return o.concat(byItem[c]); }, []) : byItem[k];
   }
@@ -39,6 +40,7 @@
   function keep(it) {
     if (F.part && it.part !== F.part) return false;
     if (F.disc && it.disc !== F.disc) return false;
+    if (F.cr && !it.n) return false;
     if (F.show === "open" && it.done >= it.n) return false;
     if (F.show === "overdue" && !it.overdue) return false;
     if (F.show === "late" && !(it.delay > 0)) return false;
@@ -94,7 +96,17 @@
     $("mp-" + key).addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { F[key] = b.getAttribute("data-v"); render(); } });
   });
   var qt;
-  $("mp-reset").addEventListener("click", function () { F.part = ""; F.disc = ""; F.show = "all"; F.q = ""; open = {}; $("mp-q").value = ""; render(); });
+  $("mp-reset").addEventListener("click", function () { F.part = ""; F.disc = ""; F.show = "all"; F.q = ""; open = {}; $("mp-q").value = ""; setCrit(""); $("mp-crit").value = ""; render(); });
+  /* Critical slicer (the Critical Activity custom field): items and their cells rebuilt from those activities */
+  var I0 = I, A0 = A;
+  UI.critOptions($("mp-crit"), $("mp-crit-fp"), A0, "");
+  function setCrit(v) {
+    F.cr = v;
+    var c = v ? UI.critCut(I0, A0, v) : { items: I0, acts: A0 };
+    I = c.items; A = c.acts; index();
+  }
+  $("mp-crit").addEventListener("change", function () { setCrit(this.value); render(); });
+
   $("mp-q").addEventListener("input", function () { clearTimeout(qt); qt = setTimeout(function () { F.q = $("mp-q").value.trim().toLowerCase(); render(); }, 150); });
   $("mp-body").addEventListener("click", function (e) {
     var t = e.target.closest("[data-open]");

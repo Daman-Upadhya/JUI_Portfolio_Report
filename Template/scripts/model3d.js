@@ -42,7 +42,7 @@
     var d = q.a - (q.b || 0);
     return !q.a && !q.b ? "idle" : d >= -0.05 ? "good" : d >= -5 ? "warn" : "bad";
   }
-  var BAND = { good: "on or ahead of the baseline", warn: "up to 5 points behind the baseline", bad: "more than 5 points behind the baseline", idle: "not started" };
+  var BAND = { good: "on or ahead of the baseline", warn: "up to 5% behind the baseline", bad: "more than 5% behind the baseline", idle: "not started" };
   /* a building with "units" (DC: DC01 ... DC4A) gets a ring per unit, each over the building's storeys */
   var defs = [];
   (CFG.buildings || []).forEach(function (b) {

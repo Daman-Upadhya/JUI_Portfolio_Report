@@ -23,7 +23,7 @@
 
   var I = M.items, A = M.activities, LV = M.levels;
   var TAG = { red: "Red tag", yellow: "Yellow tag", "yellow-pre": "Yellow tag", green: "Green tag", blue: "Blue tag", white: "White tag", other: "No tag" };
-  var F = { phase: "", disc: "", level: "", show: "all", q: "" };
+  var F = { phase: "", disc: "", level: "", show: "all", q: "", cr: "" };
   var open = I.filter(function (it) { return it.done < it.n; }).length;
   $("n-tc").textContent = fmtI(open) + " open";
   $("tc-title").textContent = M.title;
@@ -53,6 +53,7 @@
     return I.filter(function (it) {
       if (!skipPhase && F.phase && it.phase !== F.phase) return false;
       if (F.disc && it.disc !== F.disc) return false;
+      if (F.cr && !it.n) return false;
       if (F.level !== "" && !it.cells[F.level]) return false;
       if (F.show === "open" && it.done >= it.n) return false;
       if (F.show === "overdue" && !it.overdue) return false;
@@ -78,7 +79,17 @@
     $(x[0]).addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { F[x[1]] = b.getAttribute("data-v"); render(); } });
   });
   var qt;
-  $("tc-reset").addEventListener("click", function () { F = { phase: "", disc: "", level: "", show: "all", q: "" }; $("tc-q").value = ""; render(); });
+  $("tc-reset").addEventListener("click", function () { F = { phase: "", disc: "", level: "", show: "all", q: "", cr: "" }; $("tc-q").value = ""; setCrit(""); $("tc-crit").value = ""; render(); });
+  /* Critical slicer (the Critical Activity custom field): items and their cells rebuilt from those activities */
+  var I0 = I, A0 = A;
+  UI.critOptions($("tc-crit"), $("tc-crit-fp"), A0, "");
+  function setCrit(v) {
+    F.cr = v;
+    var c = v ? UI.critCut(I0, A0, v) : { items: I0, acts: A0 };
+    I = c.items; A = c.acts;
+  }
+  $("tc-crit").addEventListener("change", function () { setCrit(this.value); render(); });
+
   $("tc-q").addEventListener("input", function () { clearTimeout(qt); qt = setTimeout(function () { F.q = $("tc-q").value.trim().toLowerCase(); render(); }, 150); });
 
   /* ---------- overview: KPI cards, one card per level, phase x level grid ---------- */

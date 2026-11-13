@@ -46,7 +46,7 @@ TASK_COLUMNS = [
     "subLocation", "organisation", "owner", "emailID", "unit", "quantityUnits", "totalQuantity",
     "actualQuantity", "variance", "percentComplete", "plannedStartDate", "plannedEndDate",
     "actualStartDate", "actualEndDate", "scheduleStart", "scheduleFinish", "forecastFinish", "forecastSource", "plannedDuration", "plannedCompletionWeek",
-    "actualCompletionWeek", "parentGUID", "taskPriority", "description", "notes",
+    "actualCompletionWeek", "parentGUID", "taskPriority", "description", "notes", "critical", "criticalSource",
 ]
 # never published next to the page (personal data / free text that may hold it)
 PRIVATE_COLUMNS = ("emailID", "description", "notes")
@@ -174,6 +174,12 @@ def table_raw(rows: list[dict]) -> list[dict]:
     return out
 
 
+def critical_flag(cf, data: dict) -> str | None:
+    """The task custom field data.criticalField ("Critical Activity"): "Yes", "No", or None when not set."""
+    v = str((cf or {}).get(data.get("criticalField", "Critical Activity")) or "").strip().lower()
+    return "Yes" if v in ("yes", "y", "true", "1") else "No" if v in ("no", "n", "false", "0") else None
+
+
 def subtrade_raw(r: dict, data: dict):
     """The subtrade value: the task column data.subtradeColumn when set (e.g. "trade"), else the
     custom field data.subtradeField."""
@@ -216,6 +222,7 @@ def table_tasks(rows: list[dict], data: dict) -> list[dict]:
         t.update({
             "subtrade": subtrade or data.get("noSubtrade", "Unassigned"),
             "lapPlan": lap or None,
+            "critical": critical_flag(cf, data), "criticalSource": "task" if critical_flag(cf, data) else None,
             "elementId": re.sub(r"\s+", "", str(cf.get(data.get("elementIdField", "Element ID")) or "")) or None,
             "joinKey": join_key(area, sub, subtrade, lap),
             "unit": clean_label(r.get("quantityUnits"), unit_alias) or data.get("noUnit", "No unit"),
@@ -361,6 +368,7 @@ def compute(tables: dict, data: dict, today: date) -> dict:
             "tr": t.get("trade") or None, "loc": t.get("location") or None,
             "pri": t.get("taskPriority") or None, "wk": t.get("plannedCompletionWeek") or None,
             "ss": t.get("scheduleStart"), "sf": t.get("scheduleFinish"),
+            "cr": t.get("critical"),
             "h": t.get("_history") or [],
         })
     groups = Counter(f["g"] for f in facts)
@@ -397,6 +405,19 @@ def apply_forecast(metrics: dict, tasks: list[dict], join_rows: list[dict] | Non
         f["fc"], f["fs"] = fc, src
     metrics["totals"]["forecastBaseline"] = sum(1 for t in tasks if t["forecastSource"] == "baseline")
     metrics["totals"]["forecastSchedule"] = sum(1 for t in tasks if t["forecastSource"] == "schedule")
+
+
+def apply_critical(metrics: dict, tasks: list[dict], join_rows: list[dict] | None) -> None:
+    """A Table 2 activity without its own Critical Activity field takes the master schedule's: "Yes" when
+    any master activity with the same join key (area | sub-location | subtrade | LAP Plan) is critical,
+    "No" when it matches only non-critical ones (criticalSource "master"); unmatched stays unset."""
+    by = {r["joinKey"]: r["masterCritical"] for r in join_rows or [] if r.get("match") == "both"}
+    for f, t in zip(metrics["facts"]["tasks"], tasks):
+        if t.get("critical") or t.get("joinKey") not in by:
+            continue
+        t["critical"], t["criticalSource"] = ("Yes" if by[t["joinKey"]] else "No"), "master"
+        f["cr"] = t["critical"]
+    metrics["totals"]["critical"] = sum(1 for t in tasks if t.get("critical") == "Yes")
 
 
 def project_status(metrics: dict) -> str | None:
@@ -448,7 +469,7 @@ SCURVE_COLUMNS = [
     "subtrade", "lapPlan", "joinKey", "sCurveGroup", "constructionPhase", "trade", "organisation",
     "owner", "weightage", "percentComplete", "earnedWeightage", "baselineStartDate",
     "baselineEndDate", "plannedStartDate", "plannedEndDate", "actualStartDate", "actualEndDate",
-    "parentGUID",
+    "parentGUID", "critical",
 ]
 SCURVE_DAY_COLUMNS = ["date", "guid", "taskId", "taskName", "area", "subLocation", "sCurveGroup", "constructionPhase"]
 JOIN_COLUMNS = [
@@ -498,6 +519,7 @@ def scurve_master(rows: list[dict], data: dict) -> list[dict]:
             "joinKey": join_key(area, sub, subtrade, lap),
             "sCurveGroup": _clean(cf.get(gf)) or blank, "constructionPhase": _clean(cf.get(pf)) or blank,
             "weightage": w, "percentComplete": pc, "earnedWeightage": w * pc / 100,
+            "critical": critical_flag(cf, data),
         })
         out.append(t)
     out.sort(key=lambda t: (t["baselineStartDate"] or "9", str(t.get("taskId") or "")))
@@ -554,9 +576,10 @@ def join_masters(master: list[dict], linked: list[dict] | None) -> list[dict]:
         if not k:
             continue
         g = m2.setdefault(k, {"area": t["area"], "subLocation": t["subLocation"], "subtrade": t["subtrade"], "lapPlan": t["lapPlan"],
-                              "masterTasks": 0, "weightage": 0.0, "earnedWeightage": 0.0, "baselineStart": None, "baselineEnd": None,
+                              "masterTasks": 0, "masterCritical": 0, "weightage": 0.0, "earnedWeightage": 0.0, "baselineStart": None, "baselineEnd": None,
                               "masterActualStart": None, "masterActualEnd": None})
         g["masterTasks"] += 1
+        g["masterCritical"] += t.get("critical") == "Yes"
         g["weightage"] += t["weightage"]
         g["earnedWeightage"] += t["earnedWeightage"]
         for f, v, pick in (("baselineStart", t.get("baselineStartDate"), min), ("baselineEnd", t.get("baselineEndDate"), max),
@@ -685,7 +708,7 @@ def wbs_tree(rows: list[dict]) -> dict:
         d = parse_date(v)
         return (d - WBS_EPOCH).days if d else None
 
-    nodes, placed = [], set()
+    nodes, placed, crit = [], set(), []
     pending = sorted(roots, key=order)
     # a parent loop (never seen in practice) leaves guids unreachable from a root: they become roots
     while pending:
@@ -701,9 +724,10 @@ def wbs_tree(rows: list[dict]) -> dict:
                           round(max(0.0, min(100.0, num(r.get("percentComplete")))), 1), ref("taskType", r.get("taskType")),
                           *[day(r.get(k)) for k in WBS_DATES],
                           ref("location", r.get("location")), ref("trade", r.get("trade")), ref("owner", r.get("owner"))])
+            crit.append(critical_flag(r.get("customField"), {}))
             stack += [(c, i, lv + 1) for c in sorted(kids.get(g, []), key=order, reverse=True)]
         pending = sorted((g for g in latest if g not in placed), key=order)[:1]
-    return {"epoch": WBS_EPOCH.isoformat(), "columns": WBS_NODE, "strings": strings, "nodes": nodes}
+    return {"epoch": WBS_EPOCH.isoformat(), "columns": WBS_NODE, "strings": strings, "nodes": nodes, "critical": crit}
 
 
 def wbs_csv_rows(tree: dict) -> list[dict]:
@@ -771,7 +795,7 @@ def _proc_activity(tree: dict, i: int, item: int, stage: int, groups: dict, toda
     return {"item": item, "stage": stage, "name": n[3], "taskId": n[5], "status": status, "group": g,
             "pct": n[7], "baselineStart": bs, "baselineFinish": be, "plannedStart": ps, "plannedFinish": pe,
             "actualStart": ast, "actualFinish": ae, "finish": finish, "overdue": overdue, "delay": delay,
-            "wbs": n[4], **{k: (S[k][n[j]] if n[j] >= 0 else "") for k, j in (("location", 15), ("trade", 16), ("owner", 17))}}
+            "wbs": n[4], "critical": (tree.get("critical") or [None] * (i + 1))[i], **{k: (S[k][n[j]] if n[j] >= 0 else "") for k, j in (("location", 15), ("trade", 16), ("owner", 17))}}
 
 
 def _proc_cells(items: list[dict], acts: list[dict]) -> None:
@@ -888,8 +912,10 @@ FOURD_PATCHES = [
      '      if (!eVS[i]) return ["unl", "Not linked", "--m-unlinked"];\n',
      '      if (!eVS[i]) return ["unl", "Not linked", "--m-unlinked"];\n'
      '      if (eVS[i] === "notready" && eHas[i] && eEnd[i] > today) return ["nrf", "Not Ready \\u00b7 not due yet", "--m-notdue"];\n', 1),
+    # no "Not linked" entry in the legend (its elements still show, in light grey)
     ("legend order", 'status: [...VS_ORDER, "unl"]',
-     'status: [...VS_ORDER.flatMap(k => k === "notready" ? [k, "nrf"] : [k]), "unl"]', 1),
+     'status: VS_ORDER.flatMap(k => k === "notready" ? [k, "nrf"] : [k])', 1),
+    ("plan legend", 'plan: ["dn", "ip", "ns", "unl"]', 'plan: ["dn", "ip", "ns"]', 1),
 ]
 
 
@@ -1374,9 +1400,15 @@ def compute_scurve(tables: dict, data: dict, today: date) -> dict:
     """Page payload. facts.tasks: every weighted task with its baseline rate (br, per day over
     [bs, be]) and earned rate (ar, per day over [as, ax]); summing them reproduces the two daily
     tables for any filter, so the page never re-derives."""
-    facts = []
+    facts, other = [], []
     for t in tables["master"]:
         if t["weightage"] <= 0:
+            # every other child activity, for the Overview's activity counts (no weight, so no S-curve share)
+            done = t["percentComplete"] >= 100
+            other.append({"id": t.get("taskId"), "n": t.get("taskName"), "a": t["area"], "sl": t["subLocation"], "grp": t["sCurveGroup"],
+                          "ph": t["constructionPhase"], "s": t.get("status"), "cr": t.get("critical"), "pc": t["percentComplete"],
+                          "bs": t.get("baselineStartDate"), "be": t.get("baselineEndDate"), "ps": t.get("plannedStartDate"),
+                          "pe": t.get("plannedEndDate"), "as": t.get("actualStartDate"), "ax": t.get("actualEndDate") if done else None})
             continue
         bs, be = t.get("baselineStartDate"), t.get("baselineEndDate")
         if bs and be and be < bs:
@@ -1390,7 +1422,7 @@ def compute_scurve(tables: dict, data: dict, today: date) -> dict:
         adays = (w[1] - w[0]).days + 1 if w else 0
         facts.append({
             "id": t.get("taskId"), "n": t.get("taskName"), "a": t["area"], "sl": t["subLocation"],
-            "grp": t["sCurveGroup"], "ph": t["constructionPhase"], "s": t.get("status"),
+            "grp": t["sCurveGroup"], "ph": t["constructionPhase"], "s": t.get("status"), "cr": t.get("critical"),
             "w": round(t["weightage"], 6), "e": round(t["earnedWeightage"], 6), "pc": t["percentComplete"],
             "bs": bs if bdays else None, "be": be if bdays else None, "br": round(t["weightage"] / bdays, 6) if bdays else 0,
             "ps": ps if pdays else None, "pe": pe if pdays else None, "pr": round(t["weightage"] / pdays, 6) if pdays else 0,
@@ -1418,7 +1450,7 @@ def compute_scurve(tables: dict, data: dict, today: date) -> dict:
         },
         "range": {"from": min(dates) if dates else None, "to": max(dates) if dates else None},
         "join": {"linked": tables["linked"], "rows": join},
-        "facts": {"tasks": facts},
+        "facts": {"tasks": facts, "other": other},
     }
 
 

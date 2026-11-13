@@ -70,15 +70,13 @@
   var areas = [];
   PR.slides.forEach(function (s) { if (s.area && areas.indexOf(s.area) < 0) areas.push(s.area); });
   function pills() {
-    $("sp-area-chips").innerHTML = areas.map(function (a) {
+    $("sp-area").innerHTML = '<option value="">All areas</option>' + areas.map(function (a) {
       var n = PR.slides.filter(function (s) { return s.area === a; }).length;
-      return '<button type="button" class="fchip" data-v="' + esc(a) + '" aria-pressed="' + (F.a === a) + '" title="' + esc(n + " drawing" + (n === 1 ? "" : "s")) + '">' + esc(a) + "</button>";
+      return '<option value="' + esc(a) + '"' + (F.a === a ? " selected" : "") + ">" + esc(a) + " (" + n + ")</option>";
     }).join("");
-    $("sp-area-chips").querySelectorAll(".fchip").forEach(function (b) {
-      b.addEventListener("click", function () { var v = b.getAttribute("data-v"); F.a = F.a === v ? "" : v; render(); var x = $("sp-area-chips").querySelector('[data-v="' + v.replace(/"/g, '\\"') + '"]'); if (x) x.focus(); });
-    });
     $("sp-reset").disabled = !F.a;
   }
+  $("sp-area").addEventListener("change", function () { F.a = this.value; render(); });
   $("sp-reset").addEventListener("click", function () { F.a = ""; render(); });
 
   /* ---------- a drawing: the picture, the DPR's own mark-up, and a chip per pour ---------- */
@@ -116,7 +114,7 @@
     var vs = g.pct != null && g.plan != null ? g.pct - g.plan : null;
     var side = !s.subtrade ? '<div class="empty">No subtrade in the data matches this slide’s title.</div>' :
       '<div class="sp-big">' + fmtP(g.pct) + '</div><div class="sp-sub">of scope achieved · plan to date <b>' + fmtP(g.plan) + "</b>" +
-      (vs == null ? "" : ' <span class="' + (vs < -0.05 ? "neg" : "pos") + '">' + (Math.abs(vs) < 0.05 ? "on plan" : (vs > 0 ? "+" : "−") + Math.abs(vs).toFixed(1).replace(/\.0$/, "") + " pts") + "</span>") + "</div>" +
+      (vs == null ? "" : ' <span class="' + (vs < -0.05 ? "neg" : "pos") + '">' + (Math.abs(vs) < 0.05 ? "on plan" : (vs > 0 ? "+" : "−") + Math.abs(vs).toFixed(1).replace(/\.0$/, "") + "%") + "</span>") + "</div>" +
       '<div class="sp-bar pk-' + g.status + '"><i style="width:' + Math.max(0, Math.min(100, g.pct || 0)) + '%"></i><b style="left:' + Math.max(0, Math.min(100, g.plan || 0)) + '%"></b></div>' +
       '<div class="sp-rows">' + kv("Scope", [fmtN(g.tq) + " " + U, "", ""]) + kv("Plan to date", [fmtN(g.ptd), "", ""]) + kv("Actual to date", ["<b>" + fmtN(g.aq) + "</b>", "", ""]) +
       '<div class="sp-sep"></div>' + kv("Start", d.start) + kv("Finish", d.fin) + (d.fc ? kv("Forecast", d.fc) : "") +

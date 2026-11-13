@@ -351,6 +351,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         m["scurve"] = scurve(tables["tasks"])
         # forecast finish: the master schedule's baseline end via the join, else Schedule Finish
         assets.calc.apply_forecast(m, tables["tasks"], ((m["scurve"] or {}).get("join") or {}).get("rows"))
+        assets.calc.apply_critical(m, tables["tasks"], ((m["scurve"] or {}).get("join") or {}).get("rows"))
         assets.calc.write_tables(tables, os.path.join(DATA_DIR, key), os.path.join(out_dir, "tables"))
         log("%s: forecast finish from the JUI-1A baseline for %d activities, from Schedule Finish for %d"
             % (key, m["totals"]["forecastBaseline"], m["totals"]["forecastSchedule"]))
@@ -585,7 +586,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         blank = data.get("noLocation", "Unassigned")
         names = {t["a"] for t in m["facts"]["tasks"] if t.get("a") and t["a"] != blank}
         wa = assets.calc.wbs_areas(tree, names)
-        for t in m["facts"]["tasks"]:
+        for t in m["facts"]["tasks"] + m["facts"].get("other", []):
             t["wa"] = wa.get(str(t.get("id")), "")
         log("%s: S-curve: %d of %d tasks sit under an area WBS (%s)" % (key, sum(1 for t in m["facts"]["tasks"] if t["wa"]), len(m["facts"]["tasks"]), ", ".join(sorted(names))))
         if data.get("fourD"):

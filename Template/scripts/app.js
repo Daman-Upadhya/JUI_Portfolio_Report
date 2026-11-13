@@ -129,7 +129,7 @@
   var STATUS = { complete: "Complete", started: "Started", notStarted: "Not started" };
 
   /* ---------- filters ---------- */
-  var F = { a: "", sl: "", st: "", u: "", s: "", pc: "", q: "" };
+  var F = { a: "", sl: "", st: "", u: "", s: "", cr: "", pc: "", q: "" };
   /* % complete bands: "lo-hi" on VisiLean's percentComplete; a range ending at 100 has no upper limit */
   var PC_BANDS = [["0-0", "0%"], ["1-25", "1–25%"], ["26-50", "26–50%"], ["51-75", "51–75%"], ["76-99", "76–99%"], ["100-100", "100%"]];
   function pcRange(v) {
@@ -144,7 +144,7 @@
     if (!r) return "";
     return r[0] === r[1] ? r[0] + "% complete" : r[1] >= 100 ? r[0] + "% complete or more" : r[0] + "–" + r[1] + "% complete";
   }
-  var SEL = { a: "f-area", u: "f-unit", s: "f-status", q: "f-q" };
+  var SEL = { a: "f-area", u: "f-unit", s: "f-status", cr: "f-crit", q: "f-q" };
   /* sub-location, subtrade and % complete take several values: kept "|"-joined in F and in the URL */
   var MULTI = { sl: "f-sub", st: "f-subtrade", pc: "f-pc" };
   function vals(k) { return F[k] ? F[k].split("|") : []; }
@@ -173,6 +173,7 @@
   /* Area as a row of pill slicers; the hidden select stays the single source of the value */
   function chipSlicer(selId, boxId) {
     var sel = $(selId), box = $(boxId);
+    if (!box) return;  // the area slicer is a dropdown now
     box.innerHTML = Array.prototype.filter.call(sel.options, function (o) { return o.value; }).map(function (o) {
       return '<button type="button" class="fchip" data-v="' + esc(o.value) + '" aria-pressed="' + (sel.value === o.value) + '" title="' + esc(o.textContent) + '">' + esc(o.value) + "</button>";
     }).join("");
@@ -249,6 +250,10 @@
     multiSelect("st", Array.from(countBy(T, "st").entries()).sort(function (a, b) { return a[0].localeCompare(b[0]); }).map(function (e) { return [e[0], e[0], e[1]]; }), "All " + stl + "s");
     options("f-unit", byCountDesc(countBy(T, "u")).map(function (e) { return [e[0], e[0] + " (" + e[1] + ")"]; }), "All units", F.u);
     options("f-status", [["complete", "Complete"], ["started", "Started"], ["notStarted", "Not started"], ["overdue", "Overdue"]], "All statuses", F.s);
+    // Critical Activity (task custom field, or the master schedule's through the join): only when known
+    var crn = countBy(T, "cr");
+    $("f-crit-fp").hidden = !crn.get("Yes") && !crn.get("No");
+    options("f-crit", [["Yes", "Critical (" + fmtI(crn.get("Yes") || 0) + ")"], ["No", "Not critical (" + fmtI(crn.get("No") || 0) + ")"]], "All activities", F.cr);
     F.pc = vals("pc").filter(pcRange).join("|");
     var pcItems = PC_BANDS.map(function (b) { var r = pcRange(b[0]); return [b[0], b[1], T.filter(function (t) { return pcIn(t, r); }).length]; });
     vals("pc").forEach(function (v) {  // custom ranges join the list as their own boxes
@@ -271,6 +276,7 @@
     if (stSet && !stSet[t.st]) return false;
     if (F.u && t.u !== F.u) return false;
     if (F.s === "overdue" ? !t.od : (F.s && t.g !== F.s)) return false;
+    if (F.cr && t.cr !== F.cr) return false;
     if (pcR.length && !pcR.some(function (r) { return pcIn(t, r); })) return false;
     if (F.q) {
       var q = F.q.toLowerCase();
@@ -690,7 +696,7 @@
       var d = r.a - r.b, idle = r.b < 0.05 && r.a < 0.05, tone = idle ? "idle" : d >= -0.05 ? "good" : d >= -5 ? "warn" : "bad";
       function line(cls, l, v) { return '<div class="qp-l"><span>' + l + '</span><span class="qp-t ' + cls + '"><i style="width:' + Math.max(0, Math.min(100, v || 0)).toFixed(1) + '%"></i></span><b>' + pf(v) + "</b></div>"; }
       return '<div class="qp qp-' + tone + '"><div class="qp-head"><span class="qp-ic"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + phIcon(r.name) + "</svg></span>" +
-        '<div class="qp-n"><b>' + esc(r.name) + "</b><small>" + fmtI(r.n) + " tasks · " + pf(100 * r.w / W) + ' of the weightage</small></div><span class="qp-d">' + (idle ? "not due yet" : Math.abs(d) < 0.05 ? "on baseline" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1).replace(/\.0$/, "") + " pts") + "</span></div>" +
+        '<div class="qp-n"><b>' + esc(r.name) + "</b><small>" + fmtI(r.n) + " tasks · " + pf(100 * r.w / W) + ' of the weightage</small></div><span class="qp-d">' + (idle ? "not due yet" : Math.abs(d) < 0.05 ? "on baseline" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1).replace(/\.0$/, "") + "%") + "</span></div>" +
         '<div class="qp-body">' + ring(r.a, r.b, tone) + '<div class="qp-bars">' + line("act", "Actual", r.a) + line("plan", "Planned", r.p) + line("base", "Baseline", r.b) + "</div></div></div>";
     }).join("") + "</div>";
   }
@@ -742,7 +748,7 @@
   function pkCard(g) {
     var st = g.status, U = esc(g.u), noUnit = g.u === ((P.data && P.data.noUnit) || "No unit");
     var d = g.pct != null && g.ptdPct != null ? g.pct - g.ptdPct : null;
-    var vs = d == null ? "" : Math.abs(d) < 0.05 ? "on plan" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1).replace(/\.0$/, "") + " pts";
+    var vs = d == null ? "" : Math.abs(d) < 0.05 ? "on plan" : (d > 0 ? "+" : "−") + Math.abs(d).toFixed(1).replace(/\.0$/, "") + "%";
     function kv(l, v, cls, sub) { return '<div class="pk-kv"><span>' + l + '</span><span class="' + (cls || "") + '">' + v + (sub ? '<small class="' + (cls || "") + '">' + sub + "</small>" : "") + "</span></div>"; }
     var dates = "";
     if (g.asMin) dates += kv("Started", fmtD(g.asMin, true));

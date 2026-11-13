@@ -16,7 +16,7 @@
   function fmtN(v) { return v == null || !isFinite(v) ? DASH : (Math.abs(v) >= 1000 ? nf0 : nf2).format(Math.abs(v) < 0.005 ? 0 : v); }
   function fmtI(v) { return v == null ? DASH : nf0.format(v); }
   function fmtP(v, dp) { return v == null || !isFinite(v) ? DASH : v.toFixed(dp == null ? 1 : dp).replace(/\.0+$/, "") + "%"; }
-  function fmtPts(v) { if (v == null || !isFinite(v)) return DASH; var a = Math.abs(v) < 0.05 ? 0 : v; return (a > 0 ? "+" : a < 0 ? "−" : "") + Math.abs(a).toFixed(1).replace(/\.0$/, "") + " pts"; }
+  function fmtPts(v) { if (v == null || !isFinite(v)) return DASH; var a = Math.abs(v) < 0.05 ? 0 : v; return (a > 0 ? "+" : a < 0 ? "−" : "") + Math.abs(a).toFixed(1).replace(/\.0$/, "") + "%"; }
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function fmtD(iso, short) { if (!iso) return DASH; var p = iso.slice(0, 10).split("-"); return +p[2] + " " + MON[+p[1] - 1] + " " + (short ? p[0].slice(2) : p[0]); }
   function fmtM(iso) { var p = iso.split("-"); return MON[+p[1] - 1] + " " + p[0].slice(2); }
@@ -36,7 +36,7 @@
 
   /* ---------- hash: this page's keys sit beside the quantity page's ---------- */
   var HK = { a: "sa", sl: "ssl", grp: "sg", ph: "sph", wa: "swa" };  // wa: area WBS, set from Progress by area
-  var F = { a: "", sl: "", grp: "", ph: "", wa: "" };
+  var F = { a: "", sl: "", grp: "", ph: "", cr: "", wa: "" };
   try {
     var hp = new URLSearchParams(location.hash.slice(1));
     Object.keys(HK).forEach(function (k) { if (hp.get(HK[k])) F[k] = hp.get(HK[k]); });
@@ -59,10 +59,11 @@
     $("n-scurve").textContent = "no data";
     return;
   }
+  var OTHER = M.facts.other || [];  // child activities without a weightage: counted in the Activities panel only
   var T = M.facts.tasks, TODAY = M.today, TN = dnum(TODAY), J = M.join || { rows: [] };
 
   /* ---------- filters ---------- */
-  var SEL = { a: "s-f-area", sl: "s-f-sub", grp: "s-f-grp", ph: "s-f-ph" };
+  var SEL = { a: "s-f-area", sl: "s-f-sub", grp: "s-f-grp", ph: "s-f-ph", cr: "s-f-crit" };
   function countBy(rows, key) { var m = new Map(); rows.forEach(function (r) { m.set(r[key], (m.get(r[key]) || 0) + 1); }); return m; }
   function byCount(m) { return Array.from(m.entries()).sort(function (a, b) { return b[1] - a[1] || String(a[0]).localeCompare(String(b[0])); }); }
   function options(id, entries, all, value) {
@@ -72,6 +73,7 @@
   /* Area as a row of pill slicers; the hidden select stays the single source of the value */
   function chipSlicer(selId, boxId) {
     var sel = $(selId), box = $(boxId);
+    if (!box) return;  // the area slicer is a dropdown now
     box.innerHTML = Array.prototype.filter.call(sel.options, function (o) { return o.value; }).map(function (o) {
       return '<button type="button" class="fchip" data-v="' + esc(o.value) + '" aria-pressed="' + (sel.value === o.value) + '" title="' + esc(o.textContent) + '">' + esc(o.value) + "</button>";
     }).join("");
@@ -93,9 +95,13 @@
     options("s-f-sub", subs, F.a ? "All in " + F.a : "All sub-locations", F.sl);
     options("s-f-grp", byCount(countBy(T, "grp")), "All groups", F.grp);
     options("s-f-ph", byCount(countBy(T, "ph")), "All phases", F.ph);
+    var crn = countBy(T, "cr");  // the Critical Activity custom field
+    $("s-f-crit-fp").hidden = !crn.get("Yes") && !crn.get("No");
+    $("s-f-crit").innerHTML = '<option value="">All activities</option><option value="Yes">Critical (' + fmtI(crn.get("Yes") || 0) + ')</option><option value="No">Not critical (' + fmtI(crn.get("No") || 0) + ")</option>";
+    $("s-f-crit").value = F.cr;
     $("s-reset").disabled = !Object.keys(F).some(function (k) { return F[k]; });
   }
-  function matches(t) { return (!F.wa || t.wa === F.wa) && (!F.a || t.a === F.a) && (!F.sl || t.sl === F.sl) && (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph); }
+  function matches(t) { return (!F.wa || t.wa === F.wa) && (!F.a || t.a === F.a) && (!F.sl || t.sl === F.sl) && (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph) && (!F.cr || t.cr === F.cr); }
   Object.keys(SEL).forEach(function (k) { $(SEL[k]).addEventListener("change", function () { F[k] = this.value; if (k === "a") F.sl = ""; render(); }); });
   $("s-reset").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k] = ""; }); render(); });
 
@@ -128,7 +134,7 @@
     var d = a - (p || 0);
     return d >= -0.05 ? "good" : d >= -5 ? "warn" : "bad";
   }
-  var BAND_WORD = { good: "on or ahead of the baseline", warn: "up to 5 points behind", bad: "more than 5 points behind", idle: "not started" };
+  var BAND_WORD = { good: "on or ahead of the baseline", warn: "up to 5% behind", bad: "more than 5% behind", idle: "not started" };
   function clampP(v) { return Math.max(0, Math.min(100, v || 0)); }
   function ring(pct, b) {
     var r = 40, c = 2 * Math.PI * r, v = clampP(pct);
@@ -146,7 +152,7 @@
         '<span class="bl-val"><b>' + fmtP(r.a) + "</b> vs " + fmtP(r.p) + '</span><span class="bl-chev" aria-hidden="true">&#8250;</span></button>';
     }).join("") + "</div>" +
       (rows.length > limit ? '<button type="button" class="btn bl-more">' + (all ? "Show the first " + limit : "Show all " + fmtI(rows.length)) + "</button>" : "") +
-      (opts.legend ? '<div class="bl-legend"><span><i class="bc-good"></i>on or ahead of the baseline</span><span><i class="bc-warn"></i>up to 5 points behind</span><span><i class="bc-bad"></i>further behind</span><span><i class="bc-idle"></i>not started</span><span><i class="tk"></i>baseline today</span></div>' : "");
+      (opts.legend ? '<div class="bl-legend"><span><i class="bc-good"></i>on or ahead of the baseline</span><span><i class="bc-warn"></i>up to 5% behind</span><span><i class="bc-bad"></i>further behind</span><span><i class="bc-idle"></i>not started</span><span><i class="tk"></i>baseline today</span></div>' : "");
     el.querySelectorAll(".bl-row").forEach(function (b) { b.addEventListener("click", function () { opts.onRow(shown[+b.getAttribute("data-i")]); }); });
     var more = el.querySelector(".bl-more");
     if (more) more.addEventListener("click", function () { el._all = !all; planBars(el, rows, opts); });
@@ -192,10 +198,10 @@
   function isDelayed(t) { return delayOf(t) != null; }
   var WT_R = [];
   var WT_SETS = {
-    done: ["Completed tasks", function (t) { return t.pc >= 100; }],
-    mid: ["Tasks in progress", function (t) { return t.pc > 0 && t.pc < 100; }],
-    none: ["Tasks not started", function (t) { return !(t.pc > 0); }],
-    late: ["Delayed tasks", isDelayed],
+    done: ["Completed activities", function (t) { return t.pc >= 100; }],
+    mid: ["Activities in progress", function (t) { return t.pc > 0 && t.pc < 100; }],
+    none: ["Activities not started", function (t) { return !(t.pc > 0); }],
+    late: ["Delayed activities", isDelayed],
   };
   /* the activity drawer (actdrill.js) for a set of weighted tasks; "delay" is days late against the plan */
   function drillTasks(key) {
@@ -207,8 +213,8 @@
         actualFinish: grp === "complete" ? t.ax || null : null, finish: grp === "complete" ? t.ax || t.pe : t.pe,
         overdue: d != null, delay: d, wbs: "", location: [t.a, t.sl].filter(Boolean).join(" › "), trade: "", owner: "" };
     });
-    window.JUIActDrill.open({ eyebrow: "Weighted tasks", title: WT_SETS[key][0], status: key === "late" ? "overdue" : "",
-      sub: fmtI(rows.length) + " of " + fmtI(WT_R.length) + " weighted tasks in view" + (key === "late" ? " · delay counted from the missed planned start or finish" : ""),
+    window.JUIActDrill.open({ eyebrow: "Activities", title: WT_SETS[key][0], status: key === "late" ? "overdue" : "",
+      sub: fmtI(rows.length) + " of " + fmtI(WT_R.length) + " activities in view" + (key === "late" ? " · delay counted from the missed planned start or finish" : ""),
       whereLabel: "Area › sub-location", vs: "plan", rows: rows });
   }
   function onWt(e) {
@@ -282,7 +288,7 @@
       var gap = a - b;
       $("s-gauge").innerHTML = '<div class="sx-gauge bc-' + band(a, b) + '"><svg viewBox="0 0 200 200" aria-hidden="true"><circle class="g-trk" cx="100" cy="100" r="' + Rr + '"/>' + arc(b, "g-base") + arc(a, "g-act") + tick(b, "g-tb") + tick(pl, "g-tp") +
         '<text x="100" y="102" text-anchor="middle" class="g-big">' + fmtP(a) + '</text><text x="100" y="124" text-anchor="middle" class="g-cap">EARNED</text></svg>' +
-        '<div class="sx-gnote"><span class="' + (gap < -0.05 ? "neg" : "pos") + '">' + fmtPts(gap).replace("pts", "points") + (gap < -0.05 ? " behind" : gap > 0.05 ? " ahead of" : " on") + "</span> the baseline (" + fmtP(b) + " due today)</div>" +
+        '<div class="sx-gnote"><span class="' + (gap < -0.05 ? "neg" : "pos") + '">' + fmtPts(gap) + (gap < -0.05 ? " behind" : gap > 0.05 ? " ahead of" : " on") + "</span> the baseline (" + fmtP(b) + " due today)</div>" +
         '<div class="sx-gk"><span><i class="k-base"></i>Baseline ' + fmtP(b) + '</span><span><i class="k-plan"></i>Plan ' + fmtP(pl) + "</span></div></div>";
     }
 
@@ -299,6 +305,7 @@
     /* weighted tasks: one stacked bar by % complete; Delayed below it (a task is delayed when its
        planned start has passed and it has not started, or its planned finish has passed and it is not
        complete). Each row opens its activities. */
+    R = R.concat(OTHER.filter(matches));
     var done = R.filter(function (t) { return t.pc >= 100; }).length, mid = R.filter(function (t) { return t.pc > 0 && t.pc < 100; }).length, none = R.length - done - mid;
     var late = R.filter(isDelayed).length;
     var pc = function (v) { return R.length ? 100 * v / R.length : 0; };
@@ -306,13 +313,13 @@
     var row = function (r) {
       return '<button type="button" class="sx-wr' + (r[0] === "w-late" ? " is-late" : "") + '" data-wt="' + r[3] + '" title="Open these ' + fmtI(r[2]) + ' activities"><i class="' + r[0] + '"></i><span>' + r[1] + "</span><b>" + fmtI(r[2]) + "</b><small>" + fmtP(pc(r[2])) + "</small></button>";
     };
-    $("s-kpis").innerHTML = '<div class="sx-wt"><div class="sx-wv">' + fmtI(R.length) + '<small> tasks</small></div><div class="sx-ws">total weightage ' + fmtN(W) + "</div>" +
+    $("s-kpis").innerHTML = '<div class="sx-wt"><div class="sx-wv">' + fmtI(R.length) + '<small> activities</small></div><div class="sx-ws">total weightage ' + fmtN(W) + "</div>" +
       '<div class="sx-stack"><i class="w-done" style="width:' + pc(done).toFixed(2) + '%"></i><i class="w-mid" style="width:' + pc(mid).toFixed(2) + '%"></i><i class="w-none" style="width:' + pc(none).toFixed(2) + '%"></i></div>' +
       '<div class="sx-wl">' + [["w-done", "Completed", done, "done"], ["w-mid", "In progress", mid, "mid"], ["w-none", "Not started", none, "none"]].map(row).join("") +
       '<div class="sx-wsep"></div>' + row(["w-late", "Delayed", late, "late"]) +
       '<div class="sx-wnote">Planned start passed and not started, or planned finish passed and not complete</div></div></div>';
 
-    $("s-inview").textContent = fmtI(R.length) + " weighted tasks in view";
+    $("s-inview").textContent = fmtI(R.length - OTHER.filter(matches).length) + " weighted tasks in view";
     $("n-scurve").textContent = S ? fmtP(a) + " vs " + fmtP(b) : "";
     $("n-scurve").className = "n" + (S && a - b < -0.05 ? " bad" : "");
   }
@@ -322,7 +329,7 @@
     var el = $("s-arear");
     if (!el) return;
     // every area whatever the area filter (the other filters still apply); the selected area is highlighted
-    var R = T.filter(function (t) { return (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph); });
+    var R = T.filter(function (t) { return (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph) && (!F.cr || t.cr === F.cr); });
     // the area is the task's area WBS (build.py: the nearest WBS parent named like an area), so an area
     // holds every activity of its WBS branches whatever their location field says
     var OTHER = "Not under an area WBS", m = new Map(), W = 0;
