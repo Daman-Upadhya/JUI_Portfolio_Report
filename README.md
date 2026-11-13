@@ -267,6 +267,69 @@ The feed has one row per activity with, for each reporting day, `plannedWorkers`
   `workforce_trade_month.csv` (per trade and month: reporting days, planned and actual man-days,
   average daily workforce).
 
+## 4D viewer page
+
+The VisiLean 4D link viewer (JUI01 only) in a tab. It shows model elements, drawn as their bounding
+boxes, linked to the master schedule activities that build them. You can colour them by 4D plan,
+VisiLean status, module, level or group, play the date slider, and select an element to see its
+activities.
+
+- **Source**: `JUI/fourd/JUI01_4D_Viewer.html`, made by the `visilean-4d-link` skill
+  (`.claude/skills/visilean-4d-link/`; run `/visilean-4d-link`). Its element ↔ activity links
+  come from the linked IFC and do not change at refresh.
+- **Refresh**: each build copies the viewer to `dist/JUI/4d/index.html`, changing only its embedded
+  task list. The refresh sets each activity's title, planned start and finish, and status (as a
+  VisiLean API value) from the JUI-1A master schedule, matched on the activity code (`wbsId`),
+  and sets the snapshot date to the data date. The viewer code is untouched. The build log
+  reports how many activities were refreshed and how many were not found.
+- **Loading**: the dashboard page loads the viewer in a frame only when the tab is first opened
+  (about 3 MB, needs three.js from jsdelivr), passes the light/dark theme into it, and links it
+  full screen.
+- **Overview card**: in a project with `display.fourD`, the same viewer replaces "Progress on
+  the site model" on the Overview, shown in its embed mode (`4d/#embed`). The build appends
+  `Template/scripts/fourd-embed.js` to the published copy for this. The card shows only the 3D
+  view, coloured by VisiLean status today, with Building and Level slicers and a legend on the page
+  that drive the viewer through messages. The site-model card (`model3d.js`) then stays hidden and
+  does not load its model.
+- **Config**: `display.fourD` in `project.json` (`viewer`: path from the repository root, `out`:
+  folder under `dist/<key>/`, `title`). A project without it has no tab.
+- **New model or link rules**: re-run the skill, replace `JUI/fourd/JUI01_4D_Viewer.html` with its
+  new viewer, and rebuild. The hand-off folders `jui01_dashboard_data/` and `visilean-4d-link/` in
+  the repository root are ignored by git; only the viewer file is committed.
+
+## Critical path page
+
+The **Critical path** tab analyses the master schedule's logic. It is hidden at present
+(`display.logic.page: false`); the network is still built, and every activity drawer (Overview weighted
+tasks, Milestones, Procurement, MEP, Commissioning) lists the activity's predecessors and successors,
+each of which opens in turn. Set `page` to `true` to show the tab again. Each build fetches a third feed for
+the S-curve's project, `type=taskRelationship` (same token; cached as `.cache/<scurve key>-REL.json.gz`),
+which gives every activity's predecessors and successors with type (FS / SS / FF / SF) and lag.
+`calculation.py` `schedule_logic()` schedules the network again in calendar days:
+
+- **Plan:** each activity keeps its planned finish. It starts on its planned start, or later when
+  its predecessors' planned dates don't allow that start (a gap of up to `calendarGap` days counts
+  as following them). Milestones follow their predecessors.
+- **Two forward passes:**
+  - *Plan through its logic*: actual dates for work done or started, and open work on its plan.
+    This shows where the planned dates break their own links.
+  - *Forecast*: the same, but open work cannot start or finish before today. This adds the effect
+    of overdue work.
+- **Backward pass:** float is measured from the target finish (`target`: planned or baseline).
+  Critical means float ≤ 0. Negative float is how far an activity's chain runs past the target.
+- **Driving path:** the chain of predecessors that set each forecast date, traced back from the
+  activity that sets the forecast finish.
+- **Root causes:** delayed activities (planned start passed and not started, or planned finish
+  passed and not complete) that no late predecessor pushed. Their impact is the activities they
+  push later.
+- **Logic health:** open ends, leads, lags, non-FS and SF links, high float, long durations,
+  out-of-sequence progress, and logic loops. A link that closes a loop is left out of the
+  analysis and listed for review.
+
+The network (about 4 MB) is published as `dist/<key>/logic.json` and loaded only when the tab
+opens. The full table is `data/<key>/scurve/schedule_logic.csv`. Settings live in `project.json`
+under `display.logic`: `target`, `nearCritical`, `highFloat`, `longDuration` and `calendarGap`.
+
 ## What the page shows
 
 The page follows the VisiLean dashboard design (masthead, pill tabs, a filter bar of pill

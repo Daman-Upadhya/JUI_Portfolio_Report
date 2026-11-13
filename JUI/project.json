@@ -17,6 +17,10 @@
     "tokenKey": "JUI"
   },
   "display": {
+    "_fourD": "4D viewer page: the VisiLean 4D link viewer made by the visilean-4d-link skill (.claude/skills/), published as it is to dist/JUI/<out>/; each build refreshes its activity status and planned dates from the master schedule. Replace the file after re-running the skill",
+    "fourD": {"title": "4D model link", "viewer": "JUI/fourd/JUI01_4D_Viewer.html", "out": "4d"},
+    "_logic": "Critical path page (page: false hides the tab; the activity drawers still list each activity's predecessors and successors): the master schedule's relationships (type=taskRelationship, same project and token as the S-curve) scheduled from today, see calculation.py schedule_logic. target: the finish float is measured against (planned | baseline); nearCritical: float up to this many days; highFloat / longDuration: logic check limits in days; calendarGap: a planned start up to this many days after its predecessors allow still follows them",
+    "logic": {"page": false, "title": "Critical path & delay impact", "target": "planned", "nearCritical": 10, "highFloat": 44, "longDuration": 44, "calendarGap": 3},
     "_milestones": "Milestones page: the project milestones WBS branch. path: a WBS node name pattern, then each child step; its child nodes are the groups (Core and Shell, Payment Milestones, ...). A milestone slipping more than delayDays against its baseline date (or past its forecast date and not done) is Delayed; 1..delayDays is At risk",
     "milestones": {
       "title": "Project milestones",

@@ -9,7 +9,8 @@
   var S = P.metrics && P.metrics.scurve, CFG = P.data && P.data.model3d, LOC = (P.meta || {}).locale || "en-IN", DASH = "—";
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-  if (!S || S.unavailable || !CFG || !(CFG.views || []).length || !$("m3d")) { if ($("m3d-card")) $("m3d-card").hidden = true; return; }
+  // the linked 4D model (fourd.js) takes this card's place when the project has one
+  if (!S || S.unavailable || S.fourD || !CFG || !(CFG.views || []).length || !$("m3d")) { if ($("m3d-card")) $("m3d-card").hidden = true; return; }
 
   var nf0 = new Intl.NumberFormat(LOC, { maximumFractionDigits: 0 });
   function fmtP(v) { return v == null || !isFinite(v) ? DASH : (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, "") + "%"; }

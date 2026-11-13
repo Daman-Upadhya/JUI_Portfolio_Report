@@ -1,0 +1,473 @@
+<meta charset="utf-8">
+<title>__VL_TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen tool - control rail left, 3D model centre, details drawer right; stacks on phones. */
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --ink:#2b3237; --muted:#626e76; --faint:#7e8c96; --line:#e0e5e9; --inset:#f4f6f9;
+  --brand:#1793e6; --brand-tint:#e6f3fd; --scene:#eef1f4; --grid:#d5dce2;
+  --good:#008344; --good-bg:#e4fbf3; --open:#c27d00; --open-bg:#fef5e5; --bad:#d13636; --bad-bg:#ffecec; --inert:#626e76; --inert-bg:#eef1f4;
+  /* VisiLean task status palette (status lifecycle) */
+  --vl-unscheduled:#b9e3dc; --vl-unassigned:#e6df37; --vl-notready:#e6735f; --vl-ready:#76d64d; --vl-forceready:#9eb52e;
+  --vl-start:#4c1462; --vl-alert:#d8ab30; --vl-stopped:#cc2b2b; --vl-completed:#4bad3a; --vl-rejected:#6a4dc4; --vl-approved:#1f4a14;
+  /* 3D marks */
+  --m-done:var(--vl-completed); --m-prog:var(--vl-start); --m-late:var(--vl-stopped); --m-unlinked:#a7b2ba; --m-pending:#d3dadf; --m-ghost:#9aa6b0; --m-sel:#1793e6;
+  --q1:#2a78d6; --q2:#00a37a; --q3:#eda100; --q4:#e34948; --q5:#7a5af5; --q6:#0fa3b1; --q7:#d6619b; --q8:#6b7a86;
+  --q9:#8bb631; --q10:#c45a1c; --q11:#3f51b5; --q12:#9c6b3e;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --ease:cubic-bezier(.2,0,0,1); --r-lg:12px; --r-xl:16px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1216; --card:#161b20; --ink:#f4f6f8; --muted:#c2ccd3; --faint:#99aab6; --line:#2d353d; --inset:#1b2127;
+  --brand:#45a9eb; --brand-tint:rgba(69,169,235,.14); --scene:#11161b; --grid:#273039;
+  --good:#52c88f; --good-bg:rgba(0,164,85,.16); --open:#f9c566; --open-bg:rgba(245,158,0,.16); --bad:#ff8e8e; --bad-bg:rgba(255,67,67,.16); --inert:#99aab6; --inert-bg:#232a31;
+  --vl-approved:#3f8a2e; --m-unlinked:#5d6a74; --m-pending:#8794a0; --m-ghost:#6f7d88; --m-sel:#45a9eb; --scene:#2a3038;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1216; --card:#161b20; --ink:#f4f6f8; --muted:#c2ccd3; --faint:#99aab6; --line:#2d353d; --inset:#1b2127;
+  --brand:#45a9eb; --brand-tint:rgba(69,169,235,.14); --scene:#11161b; --grid:#273039;
+  --good:#52c88f; --good-bg:rgba(0,164,85,.16); --open:#f9c566; --open-bg:rgba(245,158,0,.16); --bad:#ff8e8e; --bad-bg:rgba(255,67,67,.16); --inert:#99aab6; --inert-bg:#232a31;
+  --vl-approved:#3f8a2e; --m-unlinked:#5d6a74; --m-pending:#8794a0; --m-ghost:#6f7d88; --m-sel:#45a9eb; --scene:#2a3038;
+  color-scheme:dark}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased;overflow:hidden}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;gap:12px;box-sizing:border-box}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;min-width:0}
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--brand)}
+h1{font-size:18px;font-weight:600;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.meta{color:var(--muted);font-size:12px}
+.meta b{font-weight:500;color:var(--ink)}
+.main{display:grid;grid-template-columns:300px minmax(0,1fr) 340px;gap:12px;min-height:0}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);min-height:0;overflow:auto}
+.rail{padding:14px;display:flex;flex-direction:column;gap:18px}
+.sec{display:flex;flex-direction:column;gap:8px}
+.sec h2{margin:0;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.seg{display:flex;flex-wrap:wrap;gap:4px;background:var(--inset);padding:3px;border-radius:10px}
+.seg button{flex:1 1 auto;border:0;background:transparent;color:var(--muted);font:500 12px var(--font);padding:6px 8px;border-radius:8px;cursor:pointer;transition:background .12s var(--ease),color .12s var(--ease)}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--muted);font:500 12px var(--font);padding:4px 9px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--brand-tint);border-color:var(--brand);color:var(--ink)}
+select,input[type=search]{width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--card);color:var(--ink);font:13px var(--font);padding:7px 9px;border-radius:9px}
+input[type=range]{width:100%;accent-color:var(--brand)}
+.daterow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.date{white-space:nowrap;font-size:20px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:6px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 12px var(--font);padding:6px 10px;border-radius:9px;cursor:pointer}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn:active,.chip:active,.seg button:active{transform:scale(.985)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.legend{display:flex;flex-direction:column;gap:2px}
+.lg{display:grid;grid-template-columns:14px minmax(0,1fr) auto;align-items:center;gap:8px;padding:5px 6px;border-radius:8px;cursor:pointer;border:0;background:transparent;color:var(--ink);font:13px var(--font);text-align:left}
+.lg:hover{background:var(--inset)}
+.lg[aria-pressed="false"]{opacity:.42}
+.sw{width:12px;height:12px;border-radius:3px}
+.num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.view{position:relative;border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--line);background:var(--scene);min-height:0}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.overlay{position:absolute;left:12px;top:12px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
+.tag{pointer-events:auto;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted)}
+.tag b{color:var(--ink);font-weight:600}
+.viewbtns{position:absolute;right:12px;top:12px;display:flex;gap:6px}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px}
+.drawer{padding:14px;display:flex;flex-direction:column;gap:14px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:12.5px}
+.kv dt{color:var(--faint)} .kv dd{margin:0;overflow-wrap:anywhere}
+.mono{font-family:var(--mono);font-size:11.5px}
+.tasks{display:flex;flex-direction:column;gap:6px}
+.task{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:grid;gap:4px;cursor:pointer;background:var(--card);text-align:left;color:var(--ink);font:inherit}
+.task:hover{border-color:var(--brand)}
+.task .t{font-size:12.5px;font-weight:500}
+.task .d{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px 2px 6px;border-radius:999px;color:var(--ink);background:color-mix(in srgb,var(--c) 20%,transparent)}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.empty{color:var(--muted);font-size:13px;margin:0}
+.active-list{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow:auto}
+.ai{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;border:0;background:transparent;text-align:left;padding:5px 6px;border-radius:8px;cursor:pointer;color:var(--ink);font:12px var(--font)}
+.ai:hover{background:var(--inset)}
+.ai span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:1100px){.main{grid-template-columns:280px minmax(0,1fr)} .drawer-wrap{grid-column:1/-1;max-height:40dvh}}
+@media (max-width:760px){
+  body{overflow:auto} .app{height:auto;min-height:100%} .main{grid-template-columns:minmax(0,1fr)}
+  .view{height:58dvh;order:-1} .drawer-wrap{max-height:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header>
+    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+      <span class="eyebrow">VisiLean · 4D link check</span>
+      <h1 id="title">__VL_HEADING__</h1>
+    </div>
+    <span class="meta" id="meta"></span>
+  </header>
+  <div class="main">
+    <aside class="panel rail" aria-label="Controls">
+      <div class="sec">
+        <h2>Colour by</h2>
+        <div class="seg" id="mode" role="group" aria-label="Colour by">
+          <button data-m="plan" aria-pressed="true">4D plan</button>
+          <button data-m="status">Status</button>
+          <button data-m="module">Module</button>
+          <button data-m="level">Level</button>
+          <button data-m="group">Group</button>
+          <button data-m="link">Link</button>
+        </div>
+      </div>
+      <div class="sec" id="dateSec">
+        <h2>Schedule date</h2>
+        <div class="daterow"><span class="date" id="dateLabel">—</span>
+          <div class="btns"><button class="btn" id="startBtn" title="Jump to the first linked activity">Start</button><button class="btn" id="todayBtn">Today</button><button class="btn primary" id="playBtn">Play</button></div></div>
+        <input type="range" id="date" aria-label="Schedule date">
+        <div class="daterow num"><span id="dMinLabel"></span><span id="dMaxLabel"></span></div>
+        <label class="daterow hint" for="speed"><span>Playback speed</span>
+          <select id="speed" style="width:auto">
+            <option value="1">1 day / sec</option>
+            <option value="3">3 days / sec</option>
+            <option value="7" selected>1 week / sec</option>
+            <option value="14">2 weeks / sec</option>
+            <option value="30">1 month / sec</option>
+          </select></label>
+        <p class="hint" id="dateHint">Elements build up as their linked activities reach their planned finish.</p>
+      </div>
+      <div class="sec">
+        <h2>Legend</h2>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="sec">
+        <h2>Find activity or element</h2>
+        <input type="search" id="q" placeholder="Activity ID, work package or GUID" aria-label="Find activity, work package or GUID">
+        <p class="hint" id="qHint">e.g. CS-DC-C-1FL-DC1-170 or 1F-DC1-Columns</p>
+      </div>
+      <div class="sec">
+        <h2>Building</h2>
+        <div class="chips" id="bld"></div>
+      </div>
+      <div class="sec">
+        <h2>Level</h2>
+        <select id="lvl" aria-label="Level"></select>
+        <label class="hint" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="ghost" checked> Show hidden elements as ghosts</label>
+      </div>
+      <div class="sec">
+        <h2 id="activeTitle">Activities in progress</h2>
+        <div class="active-list" id="activeList"></div>
+      </div>
+    </aside>
+    <section class="view" aria-label="3D model">
+      <canvas id="c"></canvas>
+      <div class="overlay"><span class="tag" id="countTag"></span><span class="tag" id="isoTag" hidden></span></div>
+      <div class="viewbtns"><button class="btn" id="clearBtn" hidden>Clear selection</button><button class="btn" id="fitBtn">Fit view</button></div>
+      <div class="loading" id="loading">Loading model…</div>
+    </section>
+    <div class="panel drawer-wrap"><div class="drawer" id="drawer"></div></div>
+  </div>
+</div>
+
+<script type="application/json" id="vl-data">/*__VL_DATA__*/null</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const D = JSON.parse(document.getElementById("vl-data").textContent);
+const N = D.meta.count, A = 10;                      // attr stride: b m s l g w st c loc fl
+const at = (i, k) => D.attr[i * A + k];
+const DAY = 86400000;
+const fmt = d => d ? new Date(d * DAY).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
+const fmtS = d => d ? new Date(d * DAY).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—";
+const $ = id => document.getElementById(id);
+$("meta").innerHTML = `<b>${D.meta.project}</b> · ${D.meta.model} · schedule snapshot <b>${D.meta.snapshot}</b> · ${N.toLocaleString("en-IN")} elements`;
+
+// ---- VisiLean status lifecycle (API value -> VisiLean status)
+const VS = {   // key: [label, css var, lifecycle rank]
+  unscheduled: ["Unscheduled", "--vl-unscheduled", 0], unassigned: ["Unassigned", "--vl-unassigned", 1],
+  notready: ["Not Ready", "--vl-notready", 2], ready: ["Ready", "--vl-ready", 3], forceready: ["Force Ready", "--vl-forceready", 3],
+  start: ["Start", "--vl-start", 4], alert: ["Alert", "--vl-alert", 4], stopped: ["Stopped", "--vl-stopped", 4],
+  completed: ["Completed", "--vl-completed", 5], rejected: ["Rejected", "--vl-rejected", 5], approved: ["Approved", "--vl-approved", 6] };
+const VS_ORDER = ["unscheduled", "unassigned", "notready", "ready", "forceready", "start", "alert", "stopped", "completed", "rejected", "approved"];
+const vsOf = T => {
+  if (!T[2]) return "unscheduled";
+  return ({ UNPLANNED: "unassigned", NOT_READY: "notready", START_MILESTONE_NOT_COMMITTED: "notready", END_MILESTONE_NOT_COMMITTED: "notready",
+    READY: "ready", START_MILESTONE_COMMITTED: "ready", END_MILESTONE_COMMITTED: "ready", OVERRIDDEN_READY: "forceready",
+    STARTED: "start", START_MILESTONE_STARTED: "start", WARNING: "alert", STOPPED: "stopped",
+    COMPLETE: "completed", END_MILESTONE_COMPLETED: "completed", END_MILESTONE_UNDER_REVIEW: "completed",
+    QUALITY_CHECKED_REJECTED: "rejected", QUALITY_CHECKED_COMPLETE: "approved" })[T[4]] || "notready";
+};
+// element status = roll-up of its activities: a stop / alert / rejection shows first; otherwise the element is
+// approved or completed only when all its activities are, in progress once any has started, else its least-ready activity
+function rollup(keys) {
+  if (!keys.length) return "";
+  for (const k of ["stopped", "alert", "rejected"]) if (keys.includes(k)) return k;
+  if (keys.every(k => k === "approved")) return "approved";
+  if (keys.every(k => VS[k][2] >= 5)) return "completed";
+  if (keys.some(k => VS[k][2] >= 4)) return "start";
+  return keys.reduce((a, k) => VS[k][2] < VS[a][2] ? k : a, keys[0]);
+}
+
+// ---- per-element schedule window + status from linked tasks
+const eStart = new Int32Array(N), eEnd = new Int32Array(N), eHas = new Uint8Array(N), eVS = new Array(N);
+let dMin = 1e9, dMax = 0;
+for (let i = 0; i < N; i++) {
+  const ts = D.wpTasks[at(i, 5)] || [];
+  let s = 1e9, e = 0;
+  for (const t of ts) { const T = D.tasks[t]; if (T[2]) s = Math.min(s, T[2]); if (T[3]) e = Math.max(e, T[3]); }
+  if (ts.length && e) { eHas[i] = 1; eStart[i] = s; eEnd[i] = e; dMin = Math.min(dMin, s); dMax = Math.max(dMax, e); }
+  eVS[i] = rollup(ts.map(t => vsOf(D.tasks[t])));
+}
+const today = Math.floor(Date.now() / DAY);
+
+// ---- state
+const st = { mode: "plan", date: Math.min(Math.max(today, dMin), dMax), bld: new Set(), lvl: "", ghost: true,
+             hidden: new Set(), iso: null, isoLabel: "", sel: -1 };
+const dict = D.dict;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const Q = Array.from({ length: 12 }, (_, i) => `--q${i + 1}`);
+
+function category(i) {                       // -> [key, label, cssVar] ; key "ghost" = not drawn solid
+  const m = st.mode;
+  if (m === "plan" || m === "status") {
+    if (m === "status") {
+      if (!eVS[i]) return ["unl", "Not linked", "--m-unlinked"];
+      const v = VS[eVS[i]]; return [eVS[i], v[0], v[1]];
+    }
+    if (!eHas[i]) return ["unl", "Not linked", "--m-unlinked"];
+    const d = st.date;
+    if (d < eStart[i]) return ["ns", "Not started (plan)", null];
+    if (d <= eEnd[i]) return ["ip", "In progress (plan)", "--vl-start"];
+    return ["dn", "Completed (plan)", "--vl-completed"];
+  }
+  const k = m === "module" ? 1 : m === "level" ? 3 : m === "group" ? 4 : 6;
+  const v = dict[["b", "m", "s", "l", "g", "w", "st"][k]][at(i, k)] || "(none)";
+  if (m === "link") return [v, v, { "Linked": "--m-done", "No schedule task": "--m-prog", "Unassigned": "--m-late" }[v] || "--m-unlinked"];
+  return [v, v, null];
+}
+const ORDER = { plan: ["dn", "ip", "ns", "unl"], status: [...VS_ORDER, "unl"] };
+
+// ---- three.js scene
+const canvas = $("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 1, 5000);
+const controls = new OrbitControls(camera, canvas); controls.enableDamping = true; controls.dampingFactor = .12;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a96a0, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(-120, 260, 160); scene.add(sun);
+const geo = new THREE.BoxGeometry(1, 1, 1).translate(.5, .5, .5);
+const solid = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff }), N);
+const ghost = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: .05, depthWrite: false }), N);
+solid.instanceMatrix.setUsage(THREE.DynamicDrawUsage); ghost.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(ghost, solid);
+const selBox = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x1793e6 }));
+selBox.visible = false; scene.add(selBox);
+const grid = new THREE.GridHelper(400, 40); grid.position.set(150, 0, -170); scene.add(grid);
+
+const M = new THREE.Matrix4(), Z = new THREE.Matrix4().makeScale(0, 0, 0), P = new THREE.Vector3(), S = new THREE.Vector3(), Qn = new THREE.Quaternion();
+const boxOf = i => { const b = D.box; const o = i * 6; return [b[o] / 10, b[o + 1] / 10, b[o + 2] / 10, b[o + 3] / 10, b[o + 4] / 10, b[o + 5] / 10]; };
+function setM(mesh, i, on) {
+  if (!on) { mesh.setMatrixAt(i, Z); return; }
+  const [x, y, z, dx, dy, dz] = boxOf(i); P.set(x, y, z); S.set(dx, dy, dz); M.compose(P, Qn, S); mesh.setMatrixAt(i, M);
+}
+function inFilter(i) {
+  if (st.bld.size && !st.bld.has(dict.b[at(i, 0)])) return false;
+  if (st.lvl && dict.l[at(i, 3)] !== st.lvl) return false;
+  if (st.iso && !st.iso.has(i)) return false;
+  return true;
+}
+const C = new THREE.Color();
+let lastCounts = new Map(), visibleIdx = [];
+function render() {
+  const pal = new Map(); let qi = 0;
+  const counts = new Map(); visibleIdx = [];
+  for (let i = 0; i < N; i++) {
+    const [key, label, v] = category(i);
+    if (!counts.has(key)) counts.set(key, { label, v, n: 0 });
+    const ok = inFilter(i);
+    if (ok) counts.get(key).n++;
+    const show = ok && v !== null && !st.hidden.has(key) || (ok && v === null && !st.hidden.has(key) && false);
+    let colVar = v === null && st.iso ? "--m-pending" : v;          // isolated set: show not-started elements too
+    if (v === null && st.iso) counts.get(key).v = "--m-pending";
+    if (colVar === undefined || (st.mode !== "plan" && st.mode !== "status" && st.mode !== "link")) {
+      if (!pal.has(key)) pal.set(key, key === "(none)" ? "--m-unlinked" : Q[qi++ % Q.length]);
+      colVar = pal.get(key); counts.get(key).v = colVar;
+    }
+    const drawSolid = ok && colVar && !st.hidden.has(key);
+    setM(solid, i, drawSolid);
+    setM(ghost, i, !drawSolid && st.ghost && (ok || !!st.iso || st.bld.size || st.lvl));
+    if (drawSolid) { C.set(css(colVar)); solid.setColorAt(i, C); visibleIdx.push(i); }
+  }
+  solid.instanceMatrix.needsUpdate = true; ghost.instanceMatrix.needsUpdate = true;
+  if (solid.instanceColor) solid.instanceColor.needsUpdate = true;
+  ghost.material.color.set(css("--m-ghost"));
+  lastCounts = counts; drawLegend(counts);
+  $("countTag").innerHTML = `<b>${visibleIdx.length.toLocaleString("en-IN")}</b> shown`;
+  $("isoTag").hidden = !st.iso; if (st.iso) $("isoTag").innerHTML = `Isolated: <b>${st.isoLabel}</b>`;
+  $("clearBtn").hidden = !(st.iso || st.sel >= 0);
+  drawActive();
+}
+function drawLegend(counts) {
+  const L = $("legend"); L.textContent = "";
+  let keys = [...counts.keys()];
+  if (ORDER[st.mode]) keys = ORDER[st.mode].filter(k => counts.has(k));
+  else keys.sort((a, b) => counts.get(b).n - counts.get(a).n);
+  for (const k of keys) {
+    const c = counts.get(k);
+    const b = document.createElement("button"); b.className = "lg"; b.setAttribute("aria-pressed", String(!st.hidden.has(k)));
+    const sw = c.v ? `background:var(${c.v})` : `background:transparent;border:1px dashed var(--m-ghost)`;
+    b.innerHTML = `<span class="sw" style="${sw}"></span><span>${c.label}</span><span class="num">${c.n.toLocaleString("en-IN")}</span>`;
+    b.title = "Show / hide this group";
+    b.onclick = () => { st.hidden.has(k) ? st.hidden.delete(k) : st.hidden.add(k); render(); };
+    L.appendChild(b);
+  }
+}
+function drawActive() {
+  const sec = $("activeList"); sec.textContent = "";
+  const d = st.date; const seen = new Map();
+  for (const i of (st.iso ? [...st.iso] : Array.from({ length: N }, (_, i) => i))) {
+    if (!inFilter(i)) continue;
+    for (const t of D.wpTasks[at(i, 5)] || []) { const T = D.tasks[t]; if (T[2] <= d && d <= T[3]) seen.set(t, (seen.get(t) || 0) + 1); }
+  }
+  $("activeTitle").textContent = `Activities in progress on ${fmtS(d)} (${seen.size})`;
+  if (!seen.size) { sec.innerHTML = `<p class="empty">No linked activity is planned to run on this date for the current filter.</p>`; return; }
+  [...seen.entries()].sort((a, b) => D.tasks[a[0]][3] - D.tasks[b[0]][3]).slice(0, 60).forEach(([t, n]) => {
+    const T = D.tasks[t]; const b = document.createElement("button"); b.className = "ai";
+    b.innerHTML = `<span title="${T[0]} · ${VS[vsOf(T)][0]}"><span class="sw" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(${VS[vsOf(T)][1]})"></span>${T[1]}</span><span class="num">${n}</span>`;
+    b.onclick = () => isolateTask(t); sec.appendChild(b);
+  });
+}
+
+// ---- camera
+function fit(idx) {
+  const list = idx && idx.length ? idx : visibleIdx.length ? visibleIdx : [...Array(N).keys()];
+  const bb = new THREE.Box3();
+  for (const i of list) { const [x, y, z, dx, dy, dz] = boxOf(i); bb.expandByPoint(P.set(x, y, z)); bb.expandByPoint(P.set(x + dx, y + dy, z + dz)); }
+  const c = bb.getCenter(new THREE.Vector3()), r = Math.max(bb.getSize(new THREE.Vector3()).length() / 2, 8);
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * .9;
+  controls.target.copy(c); camera.position.copy(c).add(new THREE.Vector3(-.55, .55, .62).normalize().multiplyScalar(dist));
+  camera.near = dist / 200; camera.far = dist * 20; camera.updateProjectionMatrix();
+}
+function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(canvas);
+function setBg() { renderer.setClearColor(css("--scene")); grid.material.color?.set?.(css("--grid")); selBox.material.color.set(css("--m-sel")); }
+
+// ---- selection / details
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let down = null;
+canvas.addEventListener("pointerdown", e => down = [e.clientX, e.clientY]);
+canvas.addEventListener("pointerup", e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+  const r = canvas.getBoundingClientRect(); mouse.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(mouse, camera); const hit = ray.intersectObject(solid)[0];
+  select(hit ? hit.instanceId : -1);
+});
+const pill = T => { const v = VS[vsOf(T)]; return `<span class="pill" style="--c:var(${v[1]})">${v[0]}</span>`; };
+function select(i) {
+  st.sel = i; const dr = $("drawer");
+  if (i < 0) { selBox.visible = false; drawerIntro(); $("clearBtn").hidden = !st.iso; return; }
+  const [x, y, z, dx, dy, dz] = boxOf(i); selBox.position.set(x, y, z); selBox.scale.set(dx, dy, dz); selBox.visible = true;
+  const g = k => dict[k][at(i, ["b", "m", "s", "l", "g", "w", "st", "c", "loc", "fl"].indexOf(k))] || "—";
+  const ts = D.wpTasks[at(i, 5)] || [];
+  dr.innerHTML = `
+    <div class="sec"><span class="eyebrow">Selected element</span><h1 style="font-size:15px;overflow-wrap:anywhere">${D.name[i] || "—"}</h1>
+      <span class="mono" style="color:var(--muted)">${D.guid[i]} · ${g("c")}</span></div>
+    <dl class="kv">
+      <dt>Work package</dt><dd><b>${g("w")}</b></dd><dt>Building</dt><dd>${g("b")}</dd><dt>Module</dt><dd>${g("m")}</dd>
+      <dt>Sub-zone</dt><dd>${g("s")}</dd><dt>Level</dt><dd>${g("l")}</dd><dt>Group</dt><dd>${g("g")}</dd>
+      <dt>Location</dt><dd>${g("loc")}</dd><dt>Link status</dt><dd>${g("st")}</dd>
+      ${dict.fl[at(i, 9)] ? `<dt>Check</dt><dd style="color:var(--open)">${g("fl")}</dd>` : ""}
+      <dt>Plan window</dt><dd>${eHas[i] ? `${fmt(eStart[i])} → ${fmt(eEnd[i])}` : "—"}</dd>
+    </dl>
+    <div class="sec"><h2>Linked VisiLean activities (${ts.length})</h2><div class="tasks" id="tl"></div>
+      ${ts.length ? `<button class="btn" id="isoWp">Show all elements in ${g("w")}</button>` : `<p class="empty">This element has no matching schedule activity.</p>`}</div>`;
+  const tl = $("tl");
+  for (const t of ts) {
+    const T = D.tasks[t];
+    const b = document.createElement("button"); b.className = "task"; b.title = "Show every element linked to this activity";
+    b.innerHTML = `<span class="t">${T[1]}</span><span class="d"><span class="mono">${T[0]}</span><span>${fmtS(T[2])} → ${fmtS(T[3])}</span>${pill(T)}</span>`;
+    b.onclick = () => isolateTask(t); tl.appendChild(b);
+  }
+  if ($("isoWp")) $("isoWp").onclick = () => isolate(new Set([...Array(N).keys()].filter(j => at(j, 5) === at(i, 5))), g("w"));
+  $("clearBtn").hidden = false;
+}
+function drawerIntro() {
+  $("drawer").innerHTML = `<div class="sec"><span class="eyebrow">How to check</span>
+    <p class="hint" style="font-size:13px;color:var(--ink)">Select an element to see its link properties and the VisiLean activities it belongs to. Select an activity to isolate every element linked to it.</p>
+    <p class="hint">Use <b>4D plan</b> with the date slider to watch the structure build in schedule order, and <b>Status</b> to compare against what site has reported.</p>
+    <p class="hint">Elements are drawn as their bounding boxes, so curved and sloping members look blocky. ${D.meta.skipped} site-wide sheets are not drawn.</p></div>`;
+}
+function isolate(set, label) { st.iso = set; st.isoLabel = label; st.hidden.clear(); render(); fit([...set]); }
+function isolateTask(t) {
+  const set = new Set(); for (let j = 0; j < N; j++) if ((D.wpTasks[at(j, 5)] || []).includes(t)) set.add(j);
+  isolate(set, `${D.tasks[t][0]} · ${set.size} elements`);
+}
+$("clearBtn").onclick = () => { st.iso = null; select(-1); render(); fit(); };
+$("fitBtn").onclick = () => fit();
+
+// ---- controls
+$("mode").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  st.mode = b.dataset.m; st.hidden.clear();
+  for (const x of $("mode").children) x.setAttribute("aria-pressed", String(x === b));
+  $("dateSec").style.opacity = (st.mode === "plan" || st.mode === "status") ? 1 : .45;
+  $("dateHint").textContent = st.mode === "status" ? "Colours show each element's VisiLean status on the snapshot date, rolled up from its linked activities. The slider only changes the activity list."
+    : "Elements build up as their linked activities reach their planned finish.";
+  render();
+});
+const slider = $("date"); slider.min = dMin; slider.max = dMax; slider.value = st.date;
+const setDate = d => { st.date = +d; slider.value = d; $("dateLabel").textContent = fmt(st.date); render(); };
+slider.addEventListener("input", () => setDate(slider.value));
+$("todayBtn").onclick = () => setDate(Math.min(Math.max(today, dMin), dMax));
+$("startBtn").onclick = () => setDate(dMin);
+$("dMinLabel").textContent = fmtS(dMin); $("dMaxLabel").textContent = fmtS(dMax);
+let timer = null, played = false;
+$("playBtn").onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; $("playBtn").textContent = "Play"; return; }
+  if (st.mode !== "plan") $("mode").querySelector('[data-m="plan"]').click();   // the simulation runs on planned dates
+  if (st.date >= dMax || !played) setDate(dMin);                                   // first play always starts at the beginning
+  played = true;
+  $("playBtn").textContent = "Pause";
+  let acc = 0;                                   // 10 ticks a second; advance by the chosen days-per-second
+  timer = setInterval(() => {
+    if (st.date >= dMax) { $("playBtn").click(); return; }
+    acc += (+$("speed").value) / 10;
+    if (acc >= 1) { const step = Math.floor(acc); acc -= step; setDate(Math.min(dMax, st.date + step)); }
+  }, 100);
+};
+const bWrap = $("bld");
+for (const b of dict.b.filter(Boolean).sort()) {
+  const c = document.createElement("button"); c.className = "chip"; c.textContent = b; c.setAttribute("aria-pressed", "false");
+  c.onclick = () => { st.bld.has(b) ? st.bld.delete(b) : st.bld.add(b); c.setAttribute("aria-pressed", String(st.bld.has(b))); render(); fit(); };
+  bWrap.appendChild(c);
+}
+const LV = ["SS", "GF", "1F", "2F", "3F", "4F", "TF", "AT"];
+const LVS = [...LV.filter(l => dict.l.includes(l)), ...dict.l.filter(l => l && !LV.includes(l)).sort()];
+$("lvl").innerHTML = `<option value="">All levels</option>` + LVS.map(l => `<option value="${l}">${{ SS: "Substructure (GIS)", GF: "GF / substructure", AT: "Above terrace", TF: "Terrace" }[l] || l}</option>`).join("");
+$("lvl").onchange = e => { st.lvl = e.target.value; render(); };
+$("ghost").onchange = e => { st.ghost = e.target.checked; render(); };
+$("q").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const q = e.target.value.trim().toUpperCase(); if (!q) { $("clearBtn").click(); return; }
+  const set = new Set();
+  const tIx = D.tasks.findIndex(T => T[0].toUpperCase() === q);
+  for (let j = 0; j < N; j++) {
+    if (D.guid[j].toUpperCase() === q || (dict.w[at(j, 5)] || "").toUpperCase() === q || (tIx >= 0 && (D.wpTasks[at(j, 5)] || []).includes(tIx))) set.add(j);
+  }
+  $("qHint").textContent = set.size ? `${set.size.toLocaleString("en-IN")} elements found` : `Nothing matches “${e.target.value.trim()}”. Check the activity ID or work package spelling.`;
+  if (set.size === 1) { st.iso = null; render(); const j = [...set][0]; select(j); fit([j]); }
+  else if (set.size) isolate(set, e.target.value.trim());
+});
+addEventListener("keydown", e => { if (e.key === "Escape") $("clearBtn").click(); });
+
+const reTheme = () => { setBg(); render(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", reTheme);
+new MutationObserver(reTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+// ---- start
+$("dateLabel").textContent = fmt(st.date);
+setBg(); resize(); render(); fit(); drawerIntro(); $("loading").hidden = true;
+(function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
+</script>

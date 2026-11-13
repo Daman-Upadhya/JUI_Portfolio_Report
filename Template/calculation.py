@@ -640,10 +640,8 @@ def _natural(s) -> list:
     return [(0, int(x), "") if x.isdigit() else (1, 0, x.lower()) for x in re.split(r"(\d+)", str(s or "")) if x]
 
 
-def wbs_tree(rows: list[dict]) -> dict:
-    """{"nodes": [[...WBS_NODE]] in tree (depth-first) order, "strings": {field: [values]}}.
-    Dates are days since WBS_EPOCH; status, taskType, location, trade and owner are indexes into
-    strings (-1 = blank); parentRow is the parent's row index (-1 = root). No guid leaves here."""
+def latest_rows(rows: list[dict]) -> dict:
+    """{guid: the feed row with the latest historyDateTime} (the feed repeats a task once per history event)."""
     latest: dict[str, dict] = {}
     for r in rows:
         g = r.get("guid")
@@ -652,6 +650,14 @@ def wbs_tree(rows: list[dict]) -> dict:
         seen = latest.get(g)
         if seen is None or (parse_dt(r.get("historyDateTime")) or datetime.min) > (parse_dt(seen.get("historyDateTime")) or datetime.min):
             latest[g] = r
+    return latest
+
+
+def wbs_tree(rows: list[dict]) -> dict:
+    """{"nodes": [[...WBS_NODE]] in tree (depth-first) order, "strings": {field: [values]}}.
+    Dates are days since WBS_EPOCH; status, taskType, location, trade and owner are indexes into
+    strings (-1 = blank); parentRow is the parent's row index (-1 = root). No guid leaves here."""
+    latest = latest_rows(rows)
     kids: dict[str, list] = {}
     roots = []
     for g, r in latest.items():
@@ -852,6 +858,81 @@ PROCUREMENT_COLUMNS = ["part", "group", "item", "stage", "wbs", "taskId", "name"
 def procurement_csv_rows(p: dict) -> list[dict]:
     return [{**a, "part": p["items"][a["item"]]["part"], "group": p["items"][a["item"]]["group"],
              "item": p["items"][a["item"]]["name"], "stage": p["stages"][a["stage"]]} for a in p["activities"]]
+
+
+# ============================================================================= 4D viewer page
+# The VisiLean 4D link viewer (project.json display.fourD; made by the visilean-4d-link skill) is
+# published as it is, except its embedded task list: each row [ActivityID, title, plannedStartDay,
+# plannedEndDay, API status] (days since 1970) is refreshed from the master schedule, matched on the
+# activity code (the WBS tree's wbsId). The element <-> activity links stay as the skill made them.
+
+FOURD_API_STATUS = {
+    "not ready": "NOT_READY", "ready": "READY", "forced ready": "OVERRIDDEN_READY", "force ready": "OVERRIDDEN_READY",
+    "started": "STARTED", "complete": "COMPLETE", "completed": "COMPLETE", "not committed": "UNPLANNED",
+    "milestone started": "START_MILESTONE_STARTED", "milestone completed": "END_MILESTONE_COMPLETED",
+    "milestone at under review": "END_MILESTONE_UNDER_REVIEW", "quality checked": "QUALITY_CHECKED_COMPLETE",
+    "stopped": "STOPPED", "alert": "WARNING", "warning": "WARNING",
+}
+_FOURD_DATA = re.compile(r'(<script type="application/json" id="vl-data">)(.*?)(</script>)', re.S)
+
+
+# Colour changes to the published copy (the source file stays as the skill made it), each an exact
+# text replacement expected `count` times; one that no longer matches a new viewer is skipped and
+# reported, and that viewer is published as it is.
+#   Status mode: an element rolled up to Not Ready whose planned finish is still ahead (not due yet)
+#   is grey, the colour "Not linked" had; "Not linked" turns a lighter grey.
+FOURD_PATCHES = [
+    ("not-linked colour (light)", "--m-unlinked:#a7b2ba;", "--m-unlinked:#dde2e6; --m-notdue:#a7b2ba;", 1),
+    ("not-linked colour (dark)", "--m-unlinked:#5d6a74;", "--m-unlinked:#8a959e; --m-notdue:#5d6a74;", 2),
+    ("not ready, not due yet",
+     '      if (!eVS[i]) return ["unl", "Not linked", "--m-unlinked"];\n',
+     '      if (!eVS[i]) return ["unl", "Not linked", "--m-unlinked"];\n'
+     '      if (eVS[i] === "notready" && eHas[i] && eEnd[i] > today) return ["nrf", "Not Ready \\u00b7 not due yet", "--m-notdue"];\n', 1),
+    ("legend order", 'status: [...VS_ORDER, "unl"]',
+     'status: [...VS_ORDER.flatMap(k => k === "notready" ? [k, "nrf"] : [k]), "unl"]', 1),
+]
+
+
+def fourd_patch(html: str) -> tuple[str, list[str]]:
+    """The viewer with FOURD_PATCHES applied; and the names of those that did not match."""
+    skipped = []
+    for name, old, new, count in FOURD_PATCHES:
+        if html.count(old) != count:
+            skipped.append(name)
+            continue
+        html = html.replace(old, new)
+    return html, skipped
+
+
+def fourd_refresh(html: str, tree: dict, snapshot: str) -> tuple[str, dict]:
+    """The viewer with its task list refreshed from the WBS tree; and counts for the log and the page."""
+    m = _FOURD_DATA.search(html)
+    if not m:
+        raise ValueError("4D viewer: no vl-data block")
+    d = json.loads(m.group(2))
+    N, S = tree["nodes"], tree["strings"]
+    by = {n[4]: n for n in N if not n[2] and n[4]}
+    epoch = (WBS_EPOCH - date(1970, 1, 1)).days
+    ps_i, pe_i = 9 + WBS_DATES.index("plannedStartDate"), 9 + WBS_DATES.index("plannedEndDate")
+    updated = changed = 0
+    missing = []
+    for t in d.get("tasks") or []:
+        n = by.get(t[0])
+        if n is None:
+            missing.append(t[0])
+            continue
+        status = FOURD_API_STATUS.get((S["status"][n[6]] if n[6] >= 0 else "").strip().lower(), t[4])
+        changed += status != t[4]
+        t[1] = n[3] or t[1]
+        t[2] = n[ps_i] + epoch if n[ps_i] is not None else None
+        t[3] = n[pe_i] + epoch if n[pe_i] is not None else None
+        t[4] = status
+        updated += 1
+    d["meta"]["snapshot"] = snapshot
+    text = json.dumps(d, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    out = html[:m.start(2)] + text + html[m.end(2):]
+    return out, {"tasks": len(d.get("tasks") or []), "updated": updated, "statusChanged": changed, "missing": missing[:20],
+                 "missingCount": len(missing), "elements": d["meta"].get("count"), "snapshot": snapshot}
 
 
 # ============================================================================= Milestones page
@@ -1829,3 +1910,385 @@ def bim_links(meta: dict, tasks: list[dict], data: dict, today: date, boxes: lis
             "levels": list((pc.get("levels") or {}).keys()) if pc else [],
             "levelZ": dict(pc.get("levels") or {}) if pc else {}, "levelNames": dict(pc.get("levelNames") or {}) if pc else {},
             "cuts": cfg.get("cuts") or [], "stats": dict(stats)}
+
+
+# ============================================================================= Critical path page
+# The master schedule's logic: the type=taskRelationship feed (each activity's predecessors with
+# type FS / SS / FF / SF and lag in days) over its task feed, scheduled again in calendar days:
+#
+#   Dates     days since WBS_EPOCH. A planned finish is the day after the last working day (a 1-day
+#             task runs ps..ps+1), so duration = finish - start, and FS lag 0 starts on that finish
+#   Plan      each activity keeps its planned finish; its start is the later of its planned start and
+#             what its predecessors' planned dates allow (up to calendarGap days counts as following
+#             the logic). A milestone has no duration and follows its predecessors
+#   Forward   complete: actual dates. started: finishes on its planned finish (or later when an FF / SF
+#             predecessor holds it). not started: starts on its start above, or later when a
+#             predecessor holds it (FS pred finish + lag, SS pred start + lag, FF pred finish + lag -
+#             duration, SF pred start + lag - duration). Run twice: "plan" as it stands, and "forecast"
+#             where open work cannot start or finish before today. plan - planned dates = where the
+#             planned dates break their own logic; forecast - plan = what overdue work adds
+#   Backward  latest finish from the target (the planned project finish, or the baseline) back through
+#             the open successors; total float = latest finish - forecast finish. Critical: <= 0;
+#             negative = how far its chain runs past the target
+#   Driver    the predecessor that sets an activity's forecast start (or finish); the driving path is
+#             the chain of drivers back from the activity that sets the forecast project finish
+#   Delayed   open, and its planned start has passed while not started, or its planned finish has
+#             passed (as on the Overview). A root cause: delayed, and not pushed there by a predecessor
+#             that overdue work has itself pushed; its impact is every activity it pushes later
+#   Loops     a link that closes a loop (found depth first in planned start order) is left out
+
+LOGIC_TYPES = ("FS", "SS", "FF", "SF")
+LOGIC_STATES = ("complete", "started", "notStarted")
+LOGIC_WHY = ("actual", "plan", "today", "logic")  # what sets an activity's forecast start (finish when started)
+LOGIC_ACT = ["taskId", "name", "group", "parent", "status", "state", "pct", "milestone",
+             "bs", "be", "ps", "pe", "as", "ae", "es", "ef", "lf", "tf", "driver", "why", "pf", "dur"]
+
+
+def schedule_logic(rows: list[dict], rel: list[dict], data: dict, today: date) -> tuple[dict, dict] | None:
+    """-> (summary for the page, detail for dist/<key>/logic.json), or None without relationships."""
+    cfg = data.get("logic") or {}
+    near, high, long_ = int(cfg.get("nearCritical", 10)), int(cfg.get("highFloat", 44)), int(cfg.get("longDuration", 44))
+    latest = latest_rows(rows)
+    groups = data.get("statusGroups") or {}
+    T = (today - WBS_EPOCH).days
+    ids, seen = [], set()
+    for r in rel or []:
+        g = r.get("Guid") if isinstance(r, dict) else None
+        if g in latest and g not in seen and latest[g].get("parent") is not True:
+            seen.add(g)
+            ids.append(g)
+    if not ids:
+        return None
+    idx = {g: i for i, g in enumerate(ids)}
+    n = len(ids)
+
+    S = {"group": [], "parent": [], "status": []}
+    ix = {k: {} for k in S}
+
+    def ref(kind, v):
+        v = _clean(v) or "—"
+        if v not in ix[kind]:
+            ix[kind][v] = len(S[kind])
+            S[kind].append(v)
+        return ix[kind][v]
+
+    days_of: dict = {}
+
+    def day(v):  # the same few thousand dates repeat over 150,000 fields: parse each once
+        if v not in days_of:
+            d = parse_date(v)
+            days_of[v] = (d - WBS_EPOCH).days if d else None
+        return days_of[v]
+
+    def ancestors(g):
+        out, x, seen_ = [], latest[g].get("parentGUID"), {g}
+        while x and x in latest and x not in seen_:
+            seen_.add(x)
+            out.append(x)
+            x = latest[x].get("parentGUID")
+        return out
+
+    A, state = [], []
+    for g in ids:
+        r = latest[g]
+        st = _clean(r.get("status"))
+        pc = round(max(0.0, min(100.0, num(r.get("percentComplete")))), 1)
+        sg = groups.get(st) or ("complete" if re.search(r"complet|quality checked", st, re.I) else
+                                "started" if re.search(r"start", st, re.I) else "notStarted")
+        if pc >= 100:
+            sg = "complete"
+        tt = _clean(r.get("taskType")).lower()
+        ms = 0 if "milestone" not in tt else 1 if "start" in tt else 2
+        anc = ancestors(g)
+        grp = latest[anc[-2]].get("taskName") if len(anc) >= 2 else latest[anc[0]].get("taskName") if anc else ""
+        par = latest[anc[0]].get("taskName") if anc else ""
+        A.append([_clean(r.get("taskId")), _clean(r.get("taskName")), ref("group", grp), ref("parent", par), ref("status", st),
+                  LOGIC_STATES.index(sg), pc, ms, *[day(r.get(k)) for k in WBS_DATES], None, None, None, None, -1, 0])
+        state.append(sg)
+
+    preds = [[] for _ in range(n)]
+    succs = [[] for _ in range(n)]
+    links, unknown, done_rows = [], 0, set()
+    for r in rel:
+        s = idx.get(r.get("Guid")) if isinstance(r, dict) else None
+        if s is None or s in done_rows:
+            continue
+        done_rows.add(s)
+        for p in r.get("Predecessor") or []:
+            pi = idx.get(p.get("PredecessorId"))
+            if pi is None or pi == s:
+                unknown += 1
+                continue
+            t = str(p.get("Predecessor_type") or "FS").upper()
+            k = len(links)
+            links.append([pi, s, LOGIC_TYPES.index(t) if t in LOGIC_TYPES else 0, int(round(num(p.get("LagDuration"))))])
+            preds[s].append(k)
+            succs[pi].append(k)
+
+    # order: depth first in planned start order; a link that closes a loop (it points back in time,
+    # e.g. DC-1 -> DC-2 after DC-2 -> DC-3 -> DC-4 -> DC-1) is left out of the analysis and reported
+    BIG = 10 ** 7
+
+    def when(i):
+        return (A[i][10] if A[i][10] is not None else A[i][11] if A[i][11] is not None else BIG, i)
+
+    out_sorted = [sorted(succs[i], key=lambda k: when(links[k][1])) for i in range(n)]
+    mark, post, loop_links = [0] * n, [], set()
+    for s0 in sorted(range(n), key=when):
+        if mark[s0]:
+            continue
+        mark[s0] = 1
+        stack = [(s0, 0)]
+        while stack:
+            i, j = stack[-1]
+            if j < len(out_sorted[i]):
+                stack[-1] = (i, j + 1)
+                k = out_sorted[i][j]
+                s = links[k][1]
+                if mark[s] == 1:
+                    loop_links.add(k)
+                elif not mark[s]:
+                    mark[s] = 1
+                    stack.append((s, 0))
+            else:
+                mark[i] = 2
+                post.append(i)
+                stack.pop()
+    order = post[::-1]
+    if loop_links:
+        preds = [[k for k in ks if k not in loop_links] for ks in preds]
+        succs = [[k for k in ks if k not in loop_links] for ks in succs]
+
+    # Each activity keeps its planned finish. Its start is the later of its planned start and what its
+    # predecessors' planned dates allow (VisiLean's planned start can sit before that: Delivery-1 planned
+    # from 14 Oct, FS after a fabrication planned to 23 Dec); a planned start up to calendarGap days after
+    # the logic (a weekend or holiday between) follows it. Duration = planned finish - that start; a
+    # milestone has none and is reached when its predecessors allow (its own date only without them).
+    # Two passes over these:
+    #   plan      actual dates for work done or started, open work on its plan: it moves only where
+    #             the planned dates break their own logic
+    #   forecast  the same, and open work no earlier than today: what overdue work adds
+    gap = int(cfg.get("calendarGap", 3))
+    PS, dur = [None] * n, [0] * n
+    for i in order:
+        ps, pe = A[i][10], A[i][11]
+        lg = None
+        for k in preds[i]:
+            p, _, t, lag = links[k]
+            c = A[p][11] if t == 0 else PS[p] if t == 1 else None
+            if c is not None:
+                lg = c + lag if lg is None else max(lg, c + lag)
+        if A[i][7]:
+            PS[i] = lg if lg is not None else ps if ps is not None else pe
+            continue
+        lo = ps if lg is None else lg if ps is None or ps - lg <= gap else max(ps, lg)
+        if pe is not None and lo is not None:
+            lo = min(lo, pe)
+        PS[i] = lo
+        dur[i] = max(0, pe - lo) if pe is not None and lo is not None else 0
+
+    def forward(progress):  # progress False: actual dates still count, but open work is not held to today
+        ES, EF, drv, why = [None] * n, [None] * n, [-1] * n, [1] * n
+        for i in order:
+            a = A[i]
+            ps, pe, ast, aen = a[10], a[11], a[12], a[13]
+            d = dur[i]
+            if state[i] == "complete":
+                es = ast if ast is not None else ps if ps is not None else pe if pe is not None else T
+                ef = aen if aen is not None else pe if pe is not None else es
+                ES[i], EF[i], why[i] = es, max(es, ef), 0
+                continue
+            if state[i] == "started":
+                es = ast if ast is not None else min(ps, T) if ps is not None else T
+                ef, w = (pe, 1) if pe is not None and (pe >= T or not progress) else (T, 2)
+                for k in preds[i]:
+                    p, _, t, lag = links[k]
+                    if t in (2, 3) and ES[p] is not None:
+                        c = (EF[p] if t == 2 else ES[p]) + lag
+                        if c > ef:
+                            ef, w, drv[i] = c, 3, p
+                ES[i], EF[i], why[i] = es, max(es, ef), w
+                continue
+            # its floor: its start above (none for a milestone with predecessors), and today in the forecast
+            fl, w = (None if a[7] and preds[i] else PS[i]), 1
+            if progress and (fl is None or fl < T):
+                fl, w = T, 2
+            best, bp = None, -1
+            for k in preds[i]:
+                p, _, t, lag = links[k]
+                if ES[p] is None:
+                    continue
+                c = (EF[p] if t in (0, 2) else ES[p]) + lag - (d if t in (2, 3) else 0)
+                if best is None or c > best:
+                    best, bp = c, p
+            if bp >= 0 and (fl is None or best > fl or (best == fl and state[bp] != "complete")):
+                es, w, drv[i] = best, 3, bp
+            else:
+                es = fl if fl is not None else T
+            if progress and es < T:
+                es = T
+            ES[i], EF[i], why[i] = es, es + d, w
+        return ES, EF, drv, why
+
+    _, EFp, _, _ = forward(False)
+    ES, EF, drv, why = forward(True)
+
+    open_ = [i for i in range(n) if state[i] != "complete"]
+    PF = max((EF[i] for i in open_), default=max(EF))
+    pp = max((a[11] for a in A if a[11] is not None), default=None)
+    bf = max((a[9] for a in A if a[9] is not None), default=None)
+    # float against the target finish (the planned finish, as a P6 "finish by" date; or the baseline):
+    # negative float = how far the activity's chain runs past it
+    target = cfg.get("target", "planned")
+    TG = (bf if target == "baseline" else pp) or PF
+    LF, TF = [None] * n, [None] * n
+    for i in reversed(order):
+        if state[i] == "complete":
+            continue
+        lf = TG
+        for k in succs[i]:
+            _, s, t, lag = links[k]
+            if state[s] == "complete" or LF[s] is None:
+                continue
+            ls = LF[s] - dur[s]
+            if t == 0 and state[s] == "notStarted":
+                lf = min(lf, ls - lag)
+            elif t == 1 and state[s] == "notStarted" and state[i] == "notStarted":
+                lf = min(lf, ls - lag + dur[i])
+            elif t == 2:
+                lf = min(lf, LF[s] - lag)
+            elif t == 3 and state[i] == "notStarted":
+                lf = min(lf, LF[s] - lag + dur[i])
+        LF[i], TF[i] = lf, lf - EF[i]
+
+    for i in range(n):
+        A[i][14:22] = [ES[i], EF[i], LF[i], TF[i], drv[i], why[i], EFp[i], dur[i]]
+    PL = max(x for x in EFp if x is not None)  # the plan's finish through its own logic
+
+    # the driving path: back from the open activity that sets the forecast finish (no open successor first)
+    ends = [i for i in open_ if EF[i] == PF]
+    end = min(ends, key=lambda i: (any(state[links[k][1]] != "complete" for k in succs[i]), TF[i] or 0, i)) if ends else None
+    path, x, seen_ = [], end, set()
+    while x is not None and x >= 0 and x not in seen_:
+        seen_.add(x)
+        path.append(x)
+        x = drv[x]
+    path.reverse()
+    on_path = set(path)
+
+    def delayed(i):
+        a = A[i]
+        return state[i] != "complete" and ((state[i] == "notStarted" and a[10] is not None and a[10] < T) or (a[11] is not None and a[11] < T))
+
+    kids: dict[int, list] = {}
+    for i in open_:
+        if drv[i] >= 0:
+            kids.setdefault(drv[i], []).append(i)
+
+    def push(i):  # days today's progress moves its finish, against the plan through its logic
+        return EF[i] - EFp[i]
+
+    # a root cause: delayed, and not pushed there by a predecessor that progress has itself pushed
+    # down each driver tree at once (a driver comes before what it drives): activities pushed, largest push, on the path
+    cnt, mxp, hit = [0] * n, [0] * n, [False] * n
+    for i in reversed(order):
+        if state[i] == "complete":
+            continue
+        mxp[i] = max(mxp[i], push(i))
+        hit[i] = hit[i] or i in on_path
+        d = drv[i]
+        if d >= 0:
+            cnt[d] += cnt[i] + (push(i) > 0)
+            mxp[d] = max(mxp[d], mxp[i])
+            hit[d] = hit[d] or hit[i]
+    roots = []
+    for i in open_:
+        if delayed(i) and not (drv[i] >= 0 and push(drv[i]) > 0):
+            # [activity, activities it pushes later, the largest push among them (or its own), on the driving path, days its chain runs past the target]
+            roots.append([i, cnt[i], mxp[i], 1 if hit[i] else 0, max(0, -TF[i]) if TF[i] is not None else 0])
+    roots.sort(key=lambda r: (-r[3], -r[4], -r[1], -(r[2] or 0)))
+
+    lags = [l[3] for l in links if l[3]]
+    tcount = Counter(LOGIC_TYPES[l[2]] for l in links)
+    has_pred = [bool(preds[i]) for i in range(n)]
+    has_succ = [bool(succs[i]) for i in range(n)]
+    leaves = [g for g, r in latest.items() if r.get("parent") is not True]
+    no_logic = sum(1 for g in leaves if g not in idx)
+    oos = sum(1 for p, s, t, _ in links if t == 0 and state[s] != "notStarted" and state[p] != "complete")
+    open_work = [i for i in open_ if not A[i][7]]
+
+    def check(key, label, value, base, limit, note, kind="pct"):
+        pct = 100.0 * value / base if base else 0.0
+        ok = value == 0 if kind == "zero" else pct <= limit
+        return {"key": key, "label": label, "n": value, "of": base, "pct": round(pct, 1), "limit": limit, "kind": kind, "ok": ok, "note": note}
+
+    health = [
+        check("noPred", "Open activities without a predecessor", sum(1 for i in open_ if not has_pred[i] and A[i][7] != 1), len(open_), 5,
+              "start milestones left out; each should hang off earlier work"),
+        check("noSucc", "Open activities without a successor", sum(1 for i in open_ if not has_succ[i] and A[i][7] != 2), len(open_), 5,
+              "finish milestones left out; an open end lets a delay go unseen"),
+        check("leads", "Leads (negative lag)", sum(1 for l in links if l[3] < 0), len(links), 0, "a successor starting before its predecessor allows", "zero"),
+        check("lags", "Links with a lag", sum(1 for l in links if l[3] > 0), len(links), 5, "lags hide work and waiting time in the logic"),
+        check("fs", "Links that are not finish-to-start", len(links) - tcount["FS"], len(links), 10, "at least 90% FS is the usual target"),
+        check("sf", "Start-to-finish links", tcount["SF"], len(links), 0, "rarely right; check each one", "zero"),
+        check("highFloat", "Open activities with float over %d days" % high, sum(1 for i in open_ if TF[i] is not None and TF[i] > high), len(open_), 5,
+              "usually missing successor logic"),
+        check("loops", "Links that close a logic loop", len(loop_links), len(links), 0,
+              "left out of this analysis; fix them in the schedule", "zero"),
+        check("longDur", "Open activities over %d days long" % long_, sum(1 for i in open_work if dur[i] > long_), len(open_work), 5,
+              "long activities are hard to track; consider splitting"),
+        check("oos", "Out-of-sequence progress", oos, sum(1 for l in links if l[2] == 0), 0,
+              "started or complete while a finish-to-start predecessor is not complete", "zero"),
+    ]
+
+    def iso(v):
+        return (WBS_EPOCH + timedelta(v)).isoformat() if v is not None else None
+
+    summary = {
+        "title": cfg.get("title") or "Critical path & delay impact", "file": "logic.json", "today": today.isoformat(),
+        "activities": n, "open": len(open_), "links": len(links), "unknownLinks": unknown, "loops": len(loop_links), "noLogic": no_logic,
+        "target": "baseline" if target == "baseline" else "planned", "targetFinish": iso(TG),
+        "critical": sum(1 for i in open_ if TF[i] is not None and TF[i] <= 0),
+        "negative": sum(1 for i in open_ if TF[i] is not None and TF[i] < 0),
+        "nearCritical": sum(1 for i in open_ if TF[i] is not None and 0 < TF[i] <= near),
+        "delayed": sum(1 for i in open_ if delayed(i)), "roots": len(roots),
+        "pushed": sum(1 for i in open_ if push(i) > 0),
+        "path": len(path), "plannedFinish": iso(pp), "baselineFinish": iso(bf), "forecastFinish": iso(PF), "logicFinish": iso(PL),
+        "logicSlip": PL - pp if pp is not None else None, "progressSlip": PF - PL,
+        "calendarGap": gap,
+        "finishSlip": PF - pp if pp is not None else None, "baselineSlip": PF - bf if bf is not None else None,
+        "types": {t: tcount[t] for t in LOGIC_TYPES}, "lagLinks": len(lags), "maxLag": max(lags, default=0), "minLag": min(lags, default=0),
+        "avgLag": round(sum(lags) / len(lags), 1) if lags else 0, "health": health,
+        "nearDays": near, "highFloat": high, "longDuration": long_,
+    }
+    detail = {"epoch": WBS_EPOCH.isoformat(), "today": T, "columns": LOGIC_ACT, "states": LOGIC_STATES, "types": LOGIC_TYPES, "why": LOGIC_WHY,
+              "strings": S, "acts": A, "links": links, "loopLinks": sorted(loop_links), "path": path, "roots": roots, "targetDay": TG}
+    return summary, detail
+
+
+LOGIC_COLUMNS = ["taskId", "name", "group", "parent", "status", "state", "pct", "milestone", "baselineStart", "baselineFinish",
+                 "plannedStart", "plannedFinish", "actualStart", "actualFinish", "planLogicFinish", "forecastStart", "forecastFinish",
+                 "lateFinish", "totalFloat", "slip", "progressPush", "critical", "onDrivingPath", "setBy", "driverTaskId", "predecessors", "successors"]
+
+
+def logic_csv_rows(detail: dict) -> list[dict]:
+    """One row per activity in the network (data/<key>/scurve/schedule_logic.csv): dates spelled out."""
+    A, S, L = detail["acts"], detail["strings"], detail["links"]
+    np_, ns = Counter(l[1] for l in L), Counter(l[0] for l in L)
+    on = set(detail["path"])
+
+    def iso(v):
+        return (WBS_EPOCH + timedelta(v)).isoformat() if v is not None else ""
+
+    out = []
+    for i, a in enumerate(A):
+        tf = a[17]
+        out.append({"taskId": a[0], "name": a[1], "group": S["group"][a[2]], "parent": S["parent"][a[3]], "status": S["status"][a[4]],
+                    "state": LOGIC_STATES[a[5]], "pct": a[6], "milestone": ("", "start", "finish")[a[7]],
+                    **{k: iso(a[j]) for k, j in (("baselineStart", 8), ("baselineFinish", 9), ("plannedStart", 10), ("plannedFinish", 11),
+                                                  ("actualStart", 12), ("actualFinish", 13), ("planLogicFinish", 20), ("forecastStart", 14), ("forecastFinish", 15), ("lateFinish", 16))},
+                    "totalFloat": "" if tf is None else tf, "slip": "" if a[5] == 0 or a[11] is None else a[15] - a[11],
+                    "progressPush": "" if a[5] == 0 else a[15] - a[20],
+                    "critical": "Yes" if tf is not None and tf <= 0 else "", "onDrivingPath": "Yes" if i in on else "",
+                    "setBy": LOGIC_WHY[a[19]], "driverTaskId": A[a[18]][0] if a[18] >= 0 else "", "predecessors": np_[i], "successors": ns[i]})
+    return out

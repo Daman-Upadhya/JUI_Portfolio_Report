@@ -167,6 +167,19 @@ def scurve_source(cfg: dict) -> dict | None:
     return {"key": k, "projectId": sc["projectId"], "source": src}
 
 
+def relations_source(cfg: dict) -> dict | None:
+    """The master schedule's logic (type=taskRelationship: each activity's predecessors and successors)
+    for the Critical path page (display.logic): the S-curve feed's project and token, its own key
+    (<scurve key>-REL) for its cache and sample file. None without an S-curve."""
+    sc = scurve_source(cfg)
+    if not sc:
+        return None
+    k = sc["key"] + "-REL"
+    src = dict(sc["source"])
+    src.update({"type": "taskRelationship", "extraQuery": "", "sampleFile": "sample/%s.json.gz" % k})
+    return {"key": k, "tokenKey": sc["key"], "projectId": sc["projectId"], "source": src}
+
+
 def workforce_source(cfg: dict) -> dict | None:
     """project.json "workforce" -> a fetchable feed config (type=workForce), or None when the
     project has no workforce page. Its own key (<project>-WF) names its cache and sample file;
@@ -232,8 +245,14 @@ class Assets:
         self.mep_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "mep.js"))
         # the Milestones page (project.json display.milestones)
         self.ms_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "milestones.js"))
+        # the 4D viewer page (project.json display.fourD): loads dist/<key>/4d/ in a frame when opened
+        self.fd_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "fourd.js"))
+        # appended to the published 4D viewer: its #embed mode for the Overview page's model card
+        self.fd_embed_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "fourd-embed.js"))
         # the Commissioning page (project.json display.commissioning)
         self.tc_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "commissioning.js"))
+        # the Critical path page (project.json display.logic): loads dist/<key>/logic.json when opened
+        self.lg_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "logic.js"))
         self.tabs_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "tabs.js"))
         # per-viewer "hide this visual" buttons; last, once every title has its info icon
         self.cardhide_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "cardhide.js"))
@@ -450,6 +469,29 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
                sum(x["stage"] == len(p["stages"]) - 1 for x in a), key))
         return p
 
+    def fourd(tree, asof):
+        """The 4D viewer page (project.json display.fourD): the visilean-4d-link viewer published as it
+        is to dist/<key>/<out>/index.html, its task status and planned dates refreshed from the master
+        schedule. Loaded in a frame only when its tab opens."""
+        fd = data["fourD"]
+        src = os.path.join(ROOT, fd.get("viewer") or "")
+        if not fd.get("viewer") or not os.path.isfile(src):
+            log("::warning title=%s 4D viewer not found::display.fourD.viewer %s does not exist" % (key, fd.get("viewer")))
+            return None
+        when = datetime.fromisoformat(asof) if asof else datetime.combine(today, datetime.min.time())
+        html, info = assets.calc.fourd_refresh(read_text(src), tree, "%d %s %d" % (when.day, when.strftime("%b"), when.year))
+        html, skipped = assets.calc.fourd_patch(html)
+        if skipped:
+            log("::warning title=%s 4D viewer colour changes skipped::%s no longer match the viewer" % (key, ", ".join(skipped)))
+        html += '<script type="module">\n' + assets.fd_embed_js + "</script>\n"  # #embed mode (Overview card)
+        I.assert_clean(html, forbidden_strings(cfg))
+        out = fd.get("out") or "4d"
+        write(os.path.join(out_dir, out, "index.html"), html)
+        info.update({"file": out + "/", "title": fd.get("title") or "4D model link", "bytes": len(html.encode("utf-8"))})
+        log("%s: 4D viewer: %d of %d activities refreshed from the master schedule (%d status changes, %d not found), %s elements -> dist/%s/%s/index.html (%d KB)"
+            % (key, info["updated"], info["tasks"], info["statusChanged"], info["missingCount"], info["elements"], key, out, info["bytes"] // 1024))
+        return info
+
     def milestones(tree):
         """The Milestones page (project.json display.milestones): the project milestones WBS branch."""
         p = assets.calc.milestones(tree, data, today)
@@ -476,6 +518,31 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
             % (key, p["branch"], len(p["phases"]), len(p["items"]), len(a), sum(x["group"] == "complete" for x in a), sum(x["overdue"] for x in a), p["milestonesSkipped"],
                ", ".join("%s %d" % (l["key"], sum(x["stage"] == k for x in a)) for k, l in enumerate(p["levels"])), key))
         return p
+
+    def logic(master_rows):
+        """The Critical path page (project.json display.logic): the master schedule's relationships
+        (type=taskRelationship) over its task feed, scheduled from today. Too big to embed: the
+        network goes to dist/<key>/logic.json, loaded when the tab opens; the page gets the summary."""
+        rs = relations_source(cfg)
+        try:
+            origin4, rel, asof4 = F.fetch_raw(rs, mode, now_iso, log)
+        except (F.Unreachable, F.TokenRejected, F.TokenMissing) as e:
+            log("::warning title=%s relationships unavailable::%s" % (key, e))
+            return {"unavailable": True, "title": (data.get("logic") or {}).get("title")}
+        out = assets.calc.schedule_logic(master_rows, rel, data, today)
+        if not out:
+            log("::warning title=%s no relationships::the taskRelationship feed matched no master schedule activity" % key)
+            return {"unavailable": True, "title": (data.get("logic") or {}).get("title")}
+        s, detail = out
+        text = I.to_json(detail)
+        I.assert_clean(text, forbidden_strings(cfg))
+        write(os.path.join(out_dir, "logic.json"), text)
+        assets.calc._write_csv(os.path.join(DATA_DIR, key, "scurve", "schedule_logic.csv"), assets.calc.logic_csv_rows(detail), assets.calc.LOGIC_COLUMNS)
+        s["source"] = {"origin": origin4, "dataAsOf": asof4}
+        s["bytes"] = len(text.encode("utf-8"))
+        log("%s: logic %d activities, %d links (%d loop links left out), forecast finish %s (%+d d vs planned %s), %d critical, %d delayed (%d root causes), driving path %d -> dist/%s/logic.json (%d KB)"
+            % (key, s["activities"], s["links"], s["loops"], s["forecastFinish"], s["finishSlip"] or 0, s["plannedFinish"], s["critical"], s["delayed"], s["roots"], s["path"], key, s["bytes"] // 1024))
+        return s
 
     def wbs(tree):
         """The WBS page (project.json display.wbs): the master schedule's whole parentGUID tree,
@@ -521,10 +588,14 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         for t in m["facts"]["tasks"]:
             t["wa"] = wa.get(str(t.get("id")), "")
         log("%s: S-curve: %d of %d tasks sit under an area WBS (%s)" % (key, sum(1 for t in m["facts"]["tasks"] if t["wa"]), len(m["facts"]["tasks"]), ", ".join(sorted(names))))
+        if data.get("fourD"):
+            m["fourD"] = fourd(tree, asof2)
         if data.get("milestones"):
             m["milestones"] = milestones(tree)
         if data.get("commissioning"):
             m["commissioning"] = commissioning(tree)
+        if data.get("logic"):
+            m["logic"] = logic(rows2)
         if data.get("wbs") or data.get("procurement") or data.get("mepProcurement"):
             if data.get("wbs"):
                 m["wbs"] = wbs(tree)
@@ -569,7 +640,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
     }
     payload = {"meta": meta, "project": public_project(cfg), "data": strip_private(data), "metrics": metrics}
 
-    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.wbs_js, assets.actdrill_js, assets.procui_js, assets.proc_js, assets.mep_js, assets.tc_js, assets.ms_js, assets.tabs_js, assets.cardhide_js)))
+    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.wbs_js, assets.actdrill_js, assets.procui_js, assets.proc_js, assets.mep_js, assets.tc_js, assets.ms_js, assets.fd_js, assets.lg_js, assets.tabs_js, assets.cardhide_js)))
     page = I.fill(page, {
         "TITLE": cfg.get("title") or key, "EYEBROW": data.get("eyebrow", "JUI Portfolio"),
         "GENERATED_AT": fmt_when(now), "BUILD_ID": build_id, "LOGIC_HASH": assets.logic_hash,

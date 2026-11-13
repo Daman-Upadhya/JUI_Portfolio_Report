@@ -27,6 +27,8 @@
   var STATUS = { complete: "Complete", started: "Started", notStarted: "Not started" };
   function pills(a) { return '<span class="pill ' + a.group + '">' + esc(a.status || STATUS[a.group]) + "</span>" + (a.overdue ? ' <span class="pill overdue">Overdue</span>' : ""); }
   var FILTERS = [["", "All"], ["complete", "Complete"], ["started", "Started"], ["notStarted", "Not started"], ["overdue", "Overdue"], ["late", "Late vs baseline"]];
+  // ctx.vs: what a row's "delay" is measured against (default the baseline; "plan" for the Overview's weighted tasks)
+  function vs(t) { return t.replace("baseline", (D.ctx && D.ctx.vs) || "baseline"); }
   function pass(a, s) { return !s || (s === "overdue" ? a.overdue : s === "late" ? a.delay > 0 : a.group === s); }
 
   var COLS = [
@@ -44,7 +46,10 @@
     ["baselineStart", "Baseline start"], ["baselineFinish", "Baseline finish"], ["plannedStart", "Planned start"], ["plannedFinish", "Planned finish"],
     ["actualStart", "Actual start"], ["actualFinish", "Actual finish"], ["delay", "Delay days vs baseline"], ["location", "Location"], ["trade", "Trade"], ["owner", "Owner"]];
 
-  var D = { ctx: null, act: null, list: [], q: "", s: "", sort: { k: "plannedFinish", dir: "asc" }, all: false, opener: null };
+  var D = { ctx: null, act: null, list: [], q: "", s: "", sort: { k: "plannedFinish", dir: "asc" }, all: false, opener: null, hist: [] };
+  // ctx.cols / ctx.csv: the list's columns and CSV fields in place of the procurement ones
+  function cols() { return (D.ctx && D.ctx.cols) || COLS; }
+  function csvCols() { return (D.ctx && D.ctx.csv) || CSV; }
   function mine() { return $("drawer").getAttribute("data-owner") === "act" && !$("drawer").hidden; }
   function close() {
     $("drawer").hidden = true; $("scrim").hidden = true; $("drawer").removeAttribute("data-owner");
@@ -57,12 +62,18 @@
     var tip = $("tip"); if (tip) tip.style.display = "none";
   }
   function open(ctx) {
-    D.ctx = ctx; D.act = null; D.q = ""; D.s = ctx.status || ""; D.all = false;
+    D.ctx = ctx; D.act = null; D.q = ""; D.s = ctx.status || ""; D.all = false; D.hist = [];
+    if (ctx.sort) D.sort = ctx.sort;
     show(); renderList();
     if (ctx.act) { D.act = ctx.act; renderAct(); }  // straight to one activity (one of ctx.rows), with the list behind Back
     $("dw-close").focus();
   }
-  function back() { D.act = null; renderList(); $("dw-close").focus(); }
+  function back() {
+    if (D.hist.length) { D.act = D.hist.pop(); renderAct(); $("dw-close").focus(); return; }  // back through goto()
+    D.act = null; renderList(); $("dw-close").focus();
+  }
+  // from one activity's detail to another's (ctx.bind links); Back returns to the one before
+  function goto(a) { if (!mine() || !a) return; if (D.act) D.hist.push(D.act); D.act = a; renderAct(); $("dw-close").focus(); }
 
   function sumCell(v, l, cls) { return '<div><div class="sum-v' + (cls ? " " + cls : "") + '">' + v + '</div><div class="sum-l">' + esc(l) + "</div></div>"; }
   function summary(rows) {
@@ -70,7 +81,7 @@
     var mx = rows.reduce(function (m, a) { return a.delay != null && (m == null || a.delay > m) ? a.delay : m; }, null);
     return '<div class="sum">' + sumCell(fmtI(rows.length), "Activities") + sumCell(fmtI(n(function (a) { return a.group === "complete"; })), "Complete") +
       sumCell(fmtI(n(function (a) { return a.group === "started"; })), "Started") + sumCell(fmtI(n(function (a) { return a.group === "notStarted"; })), "Not started") +
-      sumCell(fmtI(n(function (a) { return a.overdue; })), "Overdue", "late") + sumCell(fmtI(n(function (a) { return a.delay > 0; })), "Late vs baseline", "late") +
+      sumCell(fmtI(n(function (a) { return a.overdue; })), "Overdue", "late") + sumCell(fmtI(n(function (a) { return a.delay > 0; })), vs("Late vs baseline"), "late") +
       sumCell(mx == null ? DASH : (mx > 0 ? "+" : "") + fmtI(mx) + "d", "Largest delay", mx > 0 ? "late" : "") + "</div>";
   }
   function filtered() {
@@ -80,7 +91,7 @@
     });
   }
   function sorted(rows) {
-    var c = COLS.find(function (x) { return x.k === D.sort.k; }) || COLS[0], dir = D.sort.dir === "asc" ? 1 : -1;
+    var c = cols().find(function (x) { return x.k === D.sort.k; }) || cols()[0], dir = D.sort.dir === "asc" ? 1 : -1;
     var v = c.sv || function (a) { return a[c.k]; };
     return rows.slice().sort(function (x, y) {
       var a = v(x), b = v(y);
@@ -98,7 +109,7 @@
       '<div class="dw-tools"><input class="dw-search" id="ad-q" type="search" placeholder="Search activity, ID, WBS, location or owner" value="' + esc(D.q) + '" aria-label="Search these activities">' +
       '<div class="seg" id="ad-s" role="group" aria-label="Status">' + FILTERS.map(function (f) {
         var k = c.rows.filter(function (a) { return pass(a, f[0]); }).length;
-        return '<button type="button" data-v="' + f[0] + '" aria-pressed="' + (D.s === f[0]) + '">' + f[1] + " " + fmtI(k) + "</button>";
+        return '<button type="button" data-v="' + f[0] + '" aria-pressed="' + (D.s === f[0]) + '">' + vs(f[1]) + " " + fmtI(k) + "</button>";
       }).join("") + "</div>" + '<button class="btn" type="button" id="ad-csv">Download CSV</button></div>' +
       '<div class="dw-count" id="ad-count"></div><div id="ad-table"></div>';
     $("ad-q").addEventListener("input", function () { D.q = this.value.trim(); D.all = false; renderTable(); });
@@ -110,7 +121,8 @@
     });
     $("ad-csv").addEventListener("click", function () {
       function q(v) { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
-      var text = "﻿" + CSV.map(function (x) { return q(x[0] === "where" && D.ctx.whereLabel || x[1]); }).join(",") + "\n" + D.list.map(function (a) {
+      var CSV = csvCols();
+      var text = "﻿" + CSV.map(function (x) { return q(x[0] === "where" && D.ctx.whereLabel || vs(x[1])); }).join(",") + "\n" + D.list.map(function (a) {
         return CSV.map(function (x) { return q(x[0] === "overdue" ? (a.overdue ? "Yes" : "No") : a[x[0]]); }).join(",");
       }).join("\n");
       var el = document.createElement("a");
@@ -128,9 +140,10 @@
     var shown = D.all ? D.list : D.list.slice(0, 200);
     $("ad-count").textContent = fmtI(rows.length) + " of " + fmtI(D.ctx.rows.length) + " activities" + (shown.length < rows.length ? ", showing the first 200" : "");
     if (!rows.length) { $("ad-table").innerHTML = '<div class="empty">No activities match this search or status.</div>'; return; }
+    var COLS = cols();
     $("ad-table").innerHTML = '<div class="tbl-wrap"><table><thead><tr>' + COLS.map(function (c) {
       var s = c.k === D.sort.k ? (D.sort.dir === "asc" ? "ascending" : "descending") : "none";
-      return '<th class="' + (c.r ? "r " : "") + 'sortable" data-k="' + c.k + '" aria-sort="' + s + '" tabindex="0">' + esc(c.k === "where" && D.ctx.whereLabel || c.label) + "</th>";
+      return '<th class="' + (c.r ? "r " : "") + 'sortable" data-k="' + c.k + '" aria-sort="' + s + '" tabindex="0">' + esc(c.k === "where" && D.ctx.whereLabel || vs(c.label)) + "</th>";
     }).join("") + "</tr></thead><tbody>" + shown.map(function (a, i) {
       return '<tr class="clickable" tabindex="0" data-i="' + i + '">' + COLS.map(function (c) { return '<td class="' + (c.r ? "r " : "") + (c.cls || "") + '">' + (c.f ? c.f(a) : esc(a[c.k])) + "</td>"; }).join("") + "</tr>";
     }).join("") + "</tbody></table></div>" +
@@ -159,7 +172,7 @@
       (i < D.list.length - 1 ? "" : " disabled") + ">Next &#8594;</button><span>" + fmtI(i + 1) + " of " + fmtI(D.list.length) + " in " + esc(D.ctx.title) + "</span></div>";
     h += '<div class="pills">' + pills(a) + "</div>";
     h += '<div class="sum" style="margin-top:14px">' + sumCell(nf1.format(a.pct || 0) + "%", "Complete") +
-      sumCell(a.delay == null ? DASH : (a.delay > 0 ? "+" : "") + fmtI(a.delay) + "d", "Finish vs baseline", a.delay > 0 ? "late" : a.delay < 0 ? "early" : "") +
+      sumCell(a.delay == null ? DASH : (a.delay > 0 ? "+" : "") + fmtI(a.delay) + "d", vs("Finish vs baseline"), a.delay > 0 ? "late" : a.delay < 0 ? "early" : "") +
       sumCell(fmtD(a.finish), done ? "Finished" : "Due (planned)") + "</div>";
     function row(l, b, p, x) { return "<tr><th>" + l + "</th><td>" + fmtD(b) + "</td><td>" + fmtD(p) + "</td><td>" + (x || DASH) + "</td></tr>"; }
     h += '<div class="sec-h">Dates <span>baseline · planned · actual</span></div><div class="tbl-wrap"><table class="ad-dates"><thead><tr><th></th><th>Baseline</th><th>Planned</th><th>Actual</th></tr></thead><tbody>' +
@@ -170,17 +183,21 @@
     var ps = diff(a.actualStart || a.plannedStart, a.baselineStart);
     h += '<div class="sec-h">Delays</div><dl class="dl">' +
       "<div><dt>Start vs baseline</dt><dd>" + delayTxt(ps, !started) + "</dd></div>" +
-      "<div><dt>Finish vs baseline</dt><dd>" + delayTxt(a.delay, !done) + "</dd></div>" +
+      "<div><dt>" + vs("Finish vs baseline") + "</dt><dd>" + delayTxt(a.delay, !done) + "</dd></div>" +
       "<div><dt>Planned finish vs baseline</dt><dd>" + delayTxt(diff(a.plannedFinish, a.baselineFinish), false) + "</dd></div>" +
       (done ? "<div><dt>Actual vs planned finish</dt><dd>" + delayTxt(diff(a.actualFinish, a.plannedFinish), false) + "</dd></div>" :
         "<div><dt>Days to planned finish</dt><dd>" + (a.plannedFinish ? (a.overdue ? '<span class="late">' + days(-diff(a.plannedFinish, todayIso())) + " past</span>" : days(diff(a.plannedFinish, todayIso()))) : DASH) + "</dd></div>") +
       "</dl>";
     h += '<div class="sec-h">Details</div><dl class="dl">' +
-      [[D.ctx.whereLabel || "Material › stage", a.where], ["WBS", a.wbs], ["Task ID", a.taskId], ["Status", a.status], ["Location", a.location], ["Trade", a.trade], ["Owner", a.owner]].map(function (x) {
+      [[a.whereLabel || D.ctx.whereLabel || "Material › stage", a.where], ["WBS", a.wbs], ["Task ID", a.taskId], ["Status", a.status], ["Location", a.location], ["Trade", a.trade], ["Owner", a.owner]].map(function (x) {
         return "<div><dt>" + x[0] + "</dt><dd>" + (x[1] ? esc(x[1]) : DASH) + "</dd></div>";
       }).join("") + "</dl>";
+    if (D.ctx.extra) h = h.replace('<div class="sec-h">Details</div>', D.ctx.extra(a) + '<div class="sec-h">Details</div>');
+    else if (window.JUILogic) h += window.JUILogic.section(a);  // predecessors and successors (logic.js)
     $("dw-body").innerHTML = h;
     $("dw-body").scrollTop = 0;
+    if (D.ctx.bind) D.ctx.bind($("dw-body"), a, goto);
+    else if (window.JUILogic) window.JUILogic.bind($("dw-body"), a, goto, D.ctx);
     function step(d) { D.act = D.list[i + d]; renderAct(); var b = $(d < 0 ? "ad-prev" : "ad-next"); if (b && !b.disabled) b.focus(); }
     if ($("ad-prev")) { $("ad-prev").addEventListener("click", function () { step(-1); }); $("ad-next").addEventListener("click", function () { step(1); }); }
   }
@@ -200,5 +217,5 @@
     }
   }, true);
 
-  window.JUIActDrill = { open: open };
+  window.JUIActDrill = { open: open, goto: goto };
 })();

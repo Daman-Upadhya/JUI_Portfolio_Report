@@ -182,6 +182,41 @@
     shift: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     gauge: '<path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/>',
   };
+  /* a weighted task's delay against its working plan: days since the planned finish passed while not
+     complete, else since the planned start passed while not started; null = not delayed */
+  function delayOf(t) {
+    if (t.pc < 100 && t.pe && dnum(t.pe) < TN) return TN - dnum(t.pe);
+    if (!(t.pc > 0) && t.ps && dnum(t.ps) < TN) return TN - dnum(t.ps);
+    return null;
+  }
+  function isDelayed(t) { return delayOf(t) != null; }
+  var WT_R = [];
+  var WT_SETS = {
+    done: ["Completed tasks", function (t) { return t.pc >= 100; }],
+    mid: ["Tasks in progress", function (t) { return t.pc > 0 && t.pc < 100; }],
+    none: ["Tasks not started", function (t) { return !(t.pc > 0); }],
+    late: ["Delayed tasks", isDelayed],
+  };
+  /* the activity drawer (actdrill.js) for a set of weighted tasks; "delay" is days late against the plan */
+  function drillTasks(key) {
+    if (!window.JUIActDrill || !WT_SETS[key]) return;
+    var rows = WT_R.filter(WT_SETS[key][1]).map(function (t) {
+      var d = delayOf(t), grp = t.pc >= 100 ? "complete" : t.pc > 0 ? "started" : "notStarted";
+      return { where: [t.a, t.sl].filter(Boolean).join(" › ") || DASH, taskId: t.id, name: t.n, status: t.s || "", group: grp, pct: t.pc,
+        baselineStart: t.bs, baselineFinish: t.be, plannedStart: t.ps, plannedFinish: t.pe, actualStart: t.as || null,
+        actualFinish: grp === "complete" ? t.ax || null : null, finish: grp === "complete" ? t.ax || t.pe : t.pe,
+        overdue: d != null, delay: d, wbs: "", location: [t.a, t.sl].filter(Boolean).join(" › "), trade: "", owner: "" };
+    });
+    window.JUIActDrill.open({ eyebrow: "Weighted tasks", title: WT_SETS[key][0], status: key === "late" ? "overdue" : "",
+      sub: fmtI(rows.length) + " of " + fmtI(WT_R.length) + " weighted tasks in view" + (key === "late" ? " · delay counted from the missed planned start or finish" : ""),
+      whereLabel: "Area › sub-location", vs: "plan", rows: rows });
+  }
+  function onWt(e) {
+    var b = e.target.closest("[data-wt]");
+    if (b) drillTasks(b.getAttribute("data-wt"));
+  }
+  $("s-kpis").addEventListener("click", onWt);
+
   function renderKpis(R, S) {
     var W = S ? S.W : 0, b = S ? 100 * S.baseTD / W : null, pl = S ? 100 * S.planTD / W : null, a = S ? 100 * S.actTD / W : null;
     var bs = minOf(R, "bs"), be = maxOf(R, "be"), ps = minOf(R, "ps"), pe = maxOf(R, "pe");
@@ -261,14 +296,21 @@
     }).join("") + '</div><div class="sx-cnote">Actual is <b class="' + (a - pl < -0.05 ? "neg" : "pos") + '">' + fmtPts(a - pl) + "</b> against the working plan and " +
       '<b class="' + (a - b < -0.05 ? "neg" : "pos") + '">' + fmtPts(a - b) + "</b> against the baseline</div>";
 
-    /* weighted tasks: one stacked bar by % complete */
+    /* weighted tasks: one stacked bar by % complete; Delayed below it (a task is delayed when its
+       planned start has passed and it has not started, or its planned finish has passed and it is not
+       complete). Each row opens its activities. */
     var done = R.filter(function (t) { return t.pc >= 100; }).length, mid = R.filter(function (t) { return t.pc > 0 && t.pc < 100; }).length, none = R.length - done - mid;
+    var late = R.filter(isDelayed).length;
     var pc = function (v) { return R.length ? 100 * v / R.length : 0; };
+    WT_R = R;
+    var row = function (r) {
+      return '<button type="button" class="sx-wr' + (r[0] === "w-late" ? " is-late" : "") + '" data-wt="' + r[3] + '" title="Open these ' + fmtI(r[2]) + ' activities"><i class="' + r[0] + '"></i><span>' + r[1] + "</span><b>" + fmtI(r[2]) + "</b><small>" + fmtP(pc(r[2])) + "</small></button>";
+    };
     $("s-kpis").innerHTML = '<div class="sx-wt"><div class="sx-wv">' + fmtI(R.length) + '<small> tasks</small></div><div class="sx-ws">total weightage ' + fmtN(W) + "</div>" +
       '<div class="sx-stack"><i class="w-done" style="width:' + pc(done).toFixed(2) + '%"></i><i class="w-mid" style="width:' + pc(mid).toFixed(2) + '%"></i><i class="w-none" style="width:' + pc(none).toFixed(2) + '%"></i></div>' +
-      '<div class="sx-wl">' + [["w-done", "Completed", done], ["w-mid", "In progress", mid], ["w-none", "Not started", none]].map(function (r) {
-        return '<div><i class="' + r[0] + '"></i><span>' + r[1] + "</span><b>" + fmtI(r[2]) + "</b><small>" + fmtP(pc(r[2])) + "</small></div>";
-      }).join("") + "</div></div>";
+      '<div class="sx-wl">' + [["w-done", "Completed", done, "done"], ["w-mid", "In progress", mid, "mid"], ["w-none", "Not started", none, "none"]].map(row).join("") +
+      '<div class="sx-wsep"></div>' + row(["w-late", "Delayed", late, "late"]) +
+      '<div class="sx-wnote">Planned start passed and not started, or planned finish passed and not complete</div></div></div>';
 
     $("s-inview").textContent = fmtI(R.length) + " weighted tasks in view";
     $("n-scurve").textContent = S ? fmtP(a) + " vs " + fmtP(b) : "";

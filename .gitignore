@@ -19,3 +19,8 @@ Thumbs.db
 *.rfa
 *.nwd
 *.nwc
+
+# VisiLean 4D link hand-off: the skill lives in .claude/skills/, the viewer in JUI/fourd/
+/jui01_dashboard_data/
+/visilean-4d-link/
+/START_HERE.md
