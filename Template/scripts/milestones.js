@@ -36,10 +36,10 @@
   $("ms-desc").textContent = M.branch + ": " + R.length + " milestones in " + M.groups.length + " groups, " + fmtI(open) + " still open. Baseline date against the forecast (or actual) date; more than " +
     M.delayDays + " days late, or past its forecast date and not done, is delayed.";
 
-  function inView(skipStatus) {
+  function inView(skipStatus, skipCr) {
     var q = F.q;
     return R.filter(function (r) {
-      return (skipStatus || !F.status || r.msStatus === F.status) && (!F.group || r.msGroup === F.group) && (!F.cr || r.critical === F.cr) &&
+      return (skipStatus || !F.status || r.msStatus === F.status) && (!F.group || r.msGroup === F.group) && (skipCr || !F.cr || r.critical === F.cr) &&
         (!q || (r.name + " " + r.taskId + " " + r.msGroup + " " + r.sub).toLowerCase().indexOf(q) >= 0);
     });
   }
@@ -70,15 +70,18 @@
     var cnt = function (k) { return rows.filter(function (r) { return r.msStatus === k; }).length; };
     seg("ms-status", [["", "All <b>" + rows.length + "</b>"]].concat(ORDER.map(function (k) { return [k, '<i class="ms-dot ms-' + k + '"></i>' + ST[k].l + " <b>" + cnt(k) + "</b>"]; })), "status");
     seg("ms-group", [["", "All"]].concat(M.groups.map(function (g) { return [g, esc(g)]; })), "group");
+    // the Critical Activity custom field; hidden when no milestone carries it
+    var cr = inView(false, true), crn = function (v) { return cr.filter(function (r) { return r.critical === v; }).length; };
+    $("ms-crit-fp").hidden = !R.some(function (r) { return r.critical === "Yes" || r.critical === "No"; });
+    seg("ms-crit", [["", "All <b>" + cr.length + "</b>"], ["Yes", '<i class="ms-dot ms-delayed"></i>Critical <b>' + crn("Yes") + "</b>"], ["No", "Not critical <b>" + crn("No") + "</b>"]], "cr");
   }
   $("ms-status").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { F.status = b.getAttribute("data-v"); render(); } });
   $("ms-group").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { F.group = b.getAttribute("data-v"); render(); } });
   $("ms-base").addEventListener("change", function () { F.base = $("ms-base").checked; render(); });
   var qt;
   $("ms-q").addEventListener("input", function () { clearTimeout(qt); qt = setTimeout(function () { F.q = $("ms-q").value.trim().toLowerCase(); render(); }, 150); });
-  $("ms-reset").addEventListener("click", function () { F = { status: "", group: "", q: "", base: true, cr: "" }; $("ms-q").value = ""; $("ms-base").checked = true; $("ms-crit").value = ""; render(); });
-  UI.critOptions($("ms-crit"), $("ms-crit-fp"), R, "");  // the Critical Activity custom field
-  $("ms-crit").addEventListener("change", function () { F.cr = this.value; render(); });
+  $("ms-reset").addEventListener("click", function () { F = { status: "", group: "", q: "", base: true, cr: "" }; $("ms-q").value = ""; $("ms-base").checked = true; render(); });
+  $("ms-crit").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { F.cr = b.getAttribute("data-v"); render(); } });
 
   function tip(r) {
     return r.name + "\n" + r.msGroup + (r.sub ? " › " + r.sub : "") + "\nBaseline " + fmtD(r.baseline) + " · " + (r.actual ? "actual " : "forecast ") + fmtD(r.date) +

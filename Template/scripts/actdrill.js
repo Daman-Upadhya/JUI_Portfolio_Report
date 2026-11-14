@@ -35,6 +35,7 @@
     { k: "where", label: "Material › stage", cls: "wrap" },
     { k: "taskId", label: "ID", sv: function (a) { return isFinite(+a.taskId) ? +a.taskId : a.taskId; } },
     { k: "name", label: "Activity", cls: "wrap" },
+    { k: "owner", label: "Owner", cls: "wrap", f: function (a) { return a.owner ? esc(a.owner) : '<span class="faint">' + DASH + "</span>"; } },
     { k: "group", label: "Status", f: pills, sv: function (a) { return (a.overdue ? "0" : "1") + a.group; }, csv: function (a) { return a.status + (a.overdue ? " (overdue)" : ""); } },
     { k: "pct", label: "%", r: true, f: function (a) { return nf1.format(a.pct || 0) + "%"; } },
     { k: "baselineFinish", label: "Baseline finish", f: function (a) { return fmtD(a.baselineFinish); } },

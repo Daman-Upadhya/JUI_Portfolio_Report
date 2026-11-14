@@ -39,6 +39,8 @@ section { margin-top: 18px; min-width: 0; }
 .mast-in { max-width: var(--maxw); margin: 0 auto; padding: 12px var(--gutter); display: flex; gap: 12px 22px; align-items: center; flex-wrap: wrap; }
 .logos { display: flex; align-items: center; flex: none; padding: 4px 8px; margin-left: -8px; border-radius: 10px; }
 .logo { display: block; height: 34px; width: auto; }
+.logo-sep { width: 1px; align-self: stretch; margin: 2px 12px; background: var(--line-soft); }
+.logo-client { height: 30px; }
 :root[data-theme="dark"] .logos { background: var(--logo-plate); margin-left: 0; }
 .mast-t { min-width: 0; flex: 0 1 auto; padding-left: 22px; border-left: 1px solid var(--line-soft); }
 .mast-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -78,7 +80,9 @@ section { margin-top: 18px; min-width: 0; }
 .tab .n:empty { display: none; }
 .tab .n.bad { background: var(--bad-bg); color: var(--bad); }
 .tab[aria-selected="true"] .n { background: color-mix(in srgb, var(--on-fill) 22%, transparent); color: inherit; }
-.tabs-side { margin-left: auto; padding: 0 10px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+/* tabs show the page name only; the counts scripts still fill in stay hidden */
+.tab .n { display: none !important; }
+.mast-asof { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 
 /* ---------- filter bar ---------- */
 .page { margin-top: 10px; }
@@ -1309,10 +1313,10 @@ tr.cp-sel td { background: var(--brand-soft); }
 <body>
 <header class="mast" id="appbar">
   <div class="mast-in">
-    <a class="logos" href="{{HOME_HREF}}" title="All projects"><img class="logo" src="{{LOGO_VISILEAN}}" alt="VisiLean"></a>
+    <a class="logos" href="{{HOME_HREF}}" title="All projects"><img class="logo" src="{{LOGO_VISILEAN}}" alt="VisiLean"><span class="logo-sep" aria-hidden="true"></span><img class="logo logo-client" src="{{LOGO_TATA}}" alt="Tata Projects"></a>
     <div class="mast-t">
       <div class="eyebrow">{{EYEBROW}} · Project review</div>
-      <div class="mast-row"><h1 class="mast-title">{{TITLE}}</h1><span class="mast-status" id="mast-status" hidden></span></div>
+      <div class="mast-row"><h1 class="mast-title">{{TITLE}}</h1><span class="mast-status" id="mast-status" hidden></span><span class="mast-asof" id="asof"></span></div>
       <div class="mast-warn" id="banner"></div>
     </div>
     <dl class="mast-meta" id="facts" aria-label="Project figures"></dl>
@@ -1335,7 +1339,6 @@ tr.cp-sel td { background: var(--brand-soft); }
       <button type="button" class="tab" role="tab" id="tab-4d" data-p="4d" aria-controls="pg-4d" aria-selected="false" tabindex="-1" hidden>4D viewer</button>
       <button type="button" class="tab" role="tab" id="tab-wf" data-p="wf" aria-controls="pg-wf" aria-selected="false" tabindex="-1" hidden>Workforce<span class="n" id="n-wf"></span></button>
       <button type="button" class="tab" role="tab" id="tab-site" data-p="site" aria-controls="pg-site" aria-selected="false" tabindex="-1" hidden>Site progress</button>
-      <span class="tabs-side" id="asof"></span>
     </nav>
   </div>
 
@@ -1620,9 +1623,9 @@ tr.cp-sel td { background: var(--brand-soft); }
     <div class="fbar pv-filters" role="group" aria-label="Filters">
       <div class="fp"><span>Status</span><div class="seg" id="ms-status" role="group" aria-label="Schedule status"></div></div>
       <div class="fp"><span>Group</span><div class="seg" id="ms-group" role="group" aria-label="Group"></div></div>
+      <div class="fp" id="ms-crit-fp" hidden><span>Critical</span><div class="seg" id="ms-crit" role="group" aria-label="Critical activity"></div></div>
       <div class="fp pv-q"><span>Search</span><input class="search" id="ms-q" type="search" placeholder="Milestone or ID" aria-label="Search milestones"></div>
       <label class="fp ms-chk"><input type="checkbox" id="ms-base" checked> Baseline</label>
-      <label class="fp" id="ms-crit-fp" hidden><span>Critical</span><select id="ms-crit"></select></label>
       <button class="btn pv-reset" type="button" id="ms-reset">Reset</button>
     </div>
     <section class="card" aria-labelledby="h-ms-tl">

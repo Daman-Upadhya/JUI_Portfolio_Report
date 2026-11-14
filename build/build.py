@@ -258,6 +258,7 @@ class Assets:
         self.cardhide_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "cardhide.js"))
         self.landing = read_text(os.path.join(TEMPLATE_DIR, "Landing.html"))
         self.logo = png_data_uri(os.path.join(TEMPLATE_DIR, "assets", "logo-visilean.png"))
+        self.logo_tata = png_data_uri(os.path.join(TEMPLATE_DIR, "assets", "logo-tata-projects.png"))
         self.data = read_json(os.path.join(TEMPLATE_DIR, "dashboard_data.json"))
         self.logic_hash = short_hash(read_text(os.path.join(TEMPLATE_DIR, "calculation.py")))
         self.calc = load_calculation()
@@ -645,7 +646,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
     page = I.fill(page, {
         "TITLE": cfg.get("title") or key, "EYEBROW": data.get("eyebrow", "JUI Portfolio"),
         "GENERATED_AT": fmt_when(now), "BUILD_ID": build_id, "LOGIC_HASH": assets.logic_hash,
-        "HOME_HREF": "../", "LOGO_VISILEAN": assets.logo,
+        "HOME_HREF": "../", "LOGO_VISILEAN": assets.logo, "LOGO_TATA": assets.logo_tata,
     })
     I.assert_filled(page)
     page = I.embed(page, payload)
@@ -687,7 +688,7 @@ def build_landing(summaries: list[dict], assets: Assets, now: datetime, title: s
     page = I.inline_assets(assets.landing, assets.tokens_css, "", "")
     page = I.fill(page, {"TITLE": title, "EYEBROW": assets.data.get("eyebrow", "JUI Portfolio"),
                          "GENERATED_AT": fmt_when(now), "BUILD_ID": build_id, "LOGIC_HASH": assets.logic_hash,
-                         "LOGO_VISILEAN": assets.logo})
+                         "LOGO_VISILEAN": assets.logo, "LOGO_TATA": assets.logo_tata})
     I.assert_filled(page)
     page = I.embed(page, payload)
     I.assert_clean(page, [])
