@@ -187,8 +187,26 @@ def subtrade_raw(r: dict, data: dict):
     return r.get(col) if col else (r.get("customField") or {}).get(data.get("subtradeField", "Subtrade"))
 
 
-def table_tasks(rows: list[dict], data: dict) -> list[dict]:
-    """Table 2: parents and non-Construction tasks removed, de-duplicated by guid."""
+def location_parts(location, cfg: dict, cf: dict | None = None) -> tuple[str, str]:
+    """VisiLean location path -> (area, sub-location): the area is the building, from the custom
+    field cfg.areaField (e.g. "Building") or else the location's first level; the sub-location is the
+    next cfg.subLevels levels. 'DC Building > Second Floor > DC-4' -> ('DC Building', 'Second Floor').
+    A one-level location is the whole area; no building and no location is unassigned."""
+    parts = [p.strip() for p in str(location or "").split(cfg.get("delimiter", " > ")) if p.strip()]
+    area = _clean((cf or {}).get(cfg["areaField"])) if cfg.get("areaField") else ""
+    area = area or (parts[0] if parts else cfg.get("blank", "Unassigned"))
+    sub = cfg.get("delimiter", " > ").join(parts[1:1 + int(cfg.get("subLevels", 1))])
+    return area, sub or (cfg.get("wholeArea", "Whole area") if parts else cfg.get("blank", "Unassigned"))
+
+
+def table_tasks(rows: list[dict], data: dict, src: dict | None = None) -> list[dict]:
+    """Table 2: parents and non-Construction tasks removed, de-duplicated by guid.
+    src (data.quantitySource, the P6 master schedule as the quantity feed): total quantity and unit
+    from the task's own totalQuantity / quantityUnits, leaving out units in src.excludeUnits (the
+    "100 Units" placeholder); actual quantity = total x percent complete (100 once Complete);
+    subtrade from the task column src.subtradeColumn (trade); area = the building (first level of
+    the location) and sub-location the next level (src.location); forecast finish = the activity's
+    own baseline finish."""
     types = set(data.get("taskTypes") or ["Construction"])
     unit_alias = data.get("unitAliases") or {}
     sub_alias = data.get("subtradeAliases") or {}
@@ -208,24 +226,35 @@ def table_tasks(rows: list[dict], data: dict) -> list[dict]:
         seen = latest.get(g)
         if seen is None or (parse_dt(r.get("historyDateTime")) or datetime.min) > (parse_dt(seen.get("historyDateTime")) or datetime.min):
             latest[g] = r
+    skip_units = {str(u).strip().lower() for u in (src or {}).get("excludeUnits") or []}
     out = []
     for r in latest.values():
-        area, sub = split_location(r.get("location"), loc_cfg)
+        area, sub = location_parts(r.get("location"), {**loc_cfg, **src["location"]}, r.get("customField")) if src and src.get("location") else split_location(r.get("location"), loc_cfg)
         tq, aq = num(r.get("totalQuantity")), num(r.get("actualQuantity"))
+        units = r.get("quantityUnits")
+        if src:
+            if str(units or "").strip().lower() in skip_units or tq <= 0:
+                continue
+            if src.get("actualFromPercent"):
+                pct = 100.0 if r.get("status") == "Complete" else max(0.0, min(100.0, num(r.get("percentComplete"))))
+                aq = round(tq * pct / 100, 6)
         t = {k: r.get(k) for k in TASK_COLUMNS if k in r}
         for k in ("plannedStartDate", "plannedEndDate", "actualStartDate", "actualEndDate"):
             d = parse_date(r.get(k))
             t[k] = d.isoformat() if d else None
         cf = r.get("customField") or {}
-        subtrade = clean_label(subtrade_raw(r, data), sub_alias)
+        subtrade = clean_label(subtrade_raw(r, {**data, **{k: src[k] for k in ("subtradeColumn", "subtradeField") if k in src}} if src else data), sub_alias)
         lap = re.sub(r"\s+", " ", str(cf.get(lap_field) or "")).strip()
         t.update({
             "subtrade": subtrade or data.get("noSubtrade", "Unassigned"),
             "lapPlan": lap or None,
             "critical": critical_flag(cf, data), "criticalSource": "task" if critical_flag(cf, data) else None,
             "elementId": re.sub(r"\s+", "", str(cf.get(data.get("elementIdField", "Element ID")) or "")) or None,
-            "joinKey": join_key(area, sub, subtrade, lap),
-            "unit": clean_label(r.get("quantityUnits"), unit_alias) or data.get("noUnit", "No unit"),
+            "joinKey": None if src else join_key(area, sub, subtrade, lap),
+            "unit": clean_label(units, unit_alias) or data.get("noUnit", "No unit"),
+            "quantityUnits": units,
+            "percentComplete": (100 if r.get("status") == "Complete" else max(0, min(100, r.get("percentComplete") or 0))) if src and src.get("actualFromPercent") else r.get("percentComplete"),
+            "baselineEnd": _iso(parse_date(r.get("baselineEndDate"))) if src and src.get("forecast") == "baseline" else None,
             "area": area, "subLocation": sub,
             "scheduleStart": _iso(parse_date((r.get("customField") or {}).get(sched.get("start", "Schedule Start")))),
             "scheduleFinish": _iso(parse_date((r.get("customField") or {}).get(sched.get("finish", "Schedule Finish")))),
@@ -278,8 +307,8 @@ def table_actual(tasks: list[dict], today: date) -> list[dict]:
     return out
 
 
-def build_tables(rows: list[dict], data: dict, today: date) -> dict:
-    tasks = table_tasks(rows, data)
+def build_tables(rows: list[dict], data: dict, today: date, src: dict | None = None) -> dict:
+    tasks = table_tasks(rows, data, src)
     return {"raw": table_raw(rows), "tasks": tasks, "planned": table_planned(tasks), "actual": table_actual(tasks, today)}
 
 
@@ -394,12 +423,13 @@ def apply_forecast(metrics: dict, tasks: list[dict], join_rows: list[dict] | Non
     """Forecast finish of each Table 2 activity, written to the task (forecastFinish /
     forecastSource) and to its page fact (fc / fs):
       1. the baseline end of the JUI-1A master task(s) with the same join key (area | sub-location |
-         subtrade | LAP Plan), when the master schedule has one        -> source "baseline"
+         subtrade | LAP Plan), when the master schedule has one, or the activity's own baseline
+         end when the master schedule is the quantity feed (baselineEnd)  -> source "baseline"
       2. otherwise the activity's Schedule Finish custom field           -> source "schedule"
       3. otherwise none."""
     base = {r["joinKey"]: r["baselineEnd"] for r in join_rows or [] if r.get("match") == "both" and r.get("baselineEnd")}
     for f, t in zip(metrics["facts"]["tasks"], tasks):  # facts are built from tasks in the same order
-        b = base.get(t.get("joinKey")) if t.get("joinKey") else None
+        b = (base.get(t.get("joinKey")) if t.get("joinKey") else None) or t.get("baselineEnd")
         fc, src = (b, "baseline") if b else ((t["scheduleFinish"], "schedule") if t.get("scheduleFinish") else (None, None))
         t["forecastFinish"], t["forecastSource"] = fc, src
         f["fc"], f["fs"] = fc, src
@@ -507,6 +537,9 @@ def scurve_master(rows: list[dict], data: dict) -> list[dict]:
     for r in latest.values():
         cf = r.get("customField") or {}
         area, sub = split_location(r.get("location"), loc_cfg)
+        jkey = (area, sub)  # the join with the quantity project keeps its own area / sub-location split
+        if cfg.get("location"):  # data.scurve.location: area = the Building custom field, sub-location = next location level
+            area, sub = location_parts(r.get("location"), {**loc_cfg, **cfg["location"]}, cf)
         subtrade = clean_label(subtrade_raw(r, data), sub_alias)
         lap = _clean(cf.get(lap_field))
         w = num(cf.get(wf)) if dw is None or str(cf.get(wf) or "").strip() else num(dw)
@@ -516,7 +549,7 @@ def scurve_master(rows: list[dict], data: dict) -> list[dict]:
             t[k] = _iso(parse_date(r.get(k)))
         t.update({
             "area": area, "subLocation": sub, "subtrade": subtrade or None, "lapPlan": lap or None,
-            "joinKey": join_key(area, sub, subtrade, lap),
+            "joinKey": join_key(*jkey, subtrade, lap),
             "sCurveGroup": _clean(cf.get(gf)) or blank, "constructionPhase": _clean(cf.get(pf)) or blank,
             "weightage": w, "percentComplete": pc, "earnedWeightage": w * pc / 100,
             "critical": critical_flag(cf, data),

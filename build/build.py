@@ -335,13 +335,32 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
     today = run_date
     out_dir = os.path.join(DIST_DIR, key)
 
+    qsrc = data.get("quantitySource") or None  # the P6 master schedule as the Quantity tracking feed
+    if qsrc and qsrc.get("feed") != "scurve":
+        qsrc = None
+    fetched, meta_src = {}, {}  # meta_src: the master schedule's origin / data-as-of when it is the page's feed
+
+    def master_rows():
+        """The master schedule feed (project.json "scurve"), fetched once per build."""
+        if "sc" not in fetched:
+            fetched["sc"] = F.fetch_raw(scurve_source(cfg), mode, now_iso, log)
+        return fetched["sc"]
+
     def compute(rows):
         m = compute_main(rows)
         m["workforce"] = workforce(rows)
         return m
 
     def compute_main(rows):
-        tables = assets.calc.build_tables(rows, data, today)
+        # Every page from the master schedule (data.quantitySource) or this project's own feed; with
+        # quantitySource this project's own feed is used only by the Workforce page, and the S-curve
+        # has no quantity project to join to.
+        if qsrc:
+            origin_q, rows, asof_q = master_rows()
+            meta_src.update(origin=origin_q, dataAsOf=asof_q)
+            log("%s: Quantity tracking from the master schedule (%s, %s): totalQuantity / quantityUnits (without %s) x percent complete, subtrade from %s, area = location building"
+                % (key, cfg["scurve"].get("title"), origin_q, ", ".join(repr(u) for u in qsrc.get("excludeUnits") or []) or "no unit left out", qsrc.get("subtradeColumn") or qsrc.get("subtradeField") or data.get("subtradeField", "Subtrade")))
+        tables = assets.calc.build_tables(rows, data, today, qsrc)
         m = assets.calc.compute(tables, data, today)
         problems = assets.calc.invariants(tables, m)
         if problems:
@@ -349,7 +368,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
 
         log("%s: Table 1 %d rows, Table 2 %d tasks, Table 3 %d task-days, Table 4 %d task-days -> data/%s/"
             % (key, len(tables["raw"]), len(tables["tasks"]), len(tables["planned"]), len(tables["actual"]), key))
-        m["scurve"] = scurve(tables["tasks"])
+        m["scurve"] = scurve(None if qsrc else tables["tasks"])
         # forecast finish: the master schedule's baseline end via the join, else Schedule Finish
         assets.calc.apply_forecast(m, tables["tasks"], ((m["scurve"] or {}).get("join") or {}).get("rows"))
         assets.calc.apply_critical(m, tables["tasks"], ((m["scurve"] or {}).get("join") or {}).get("rows"))
@@ -570,7 +589,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         if not sc:
             return None
         try:
-            origin2, rows2, asof2 = F.fetch_raw(sc, mode, now_iso, log)
+            origin2, rows2, asof2 = master_rows()
         except (F.Unreachable, F.TokenRejected, F.TokenMissing) as e:
             log("::warning title=%s S-curve unavailable::%s" % (key, e))
             return {"unavailable": True, "title": cfg["scurve"].get("title")}
@@ -614,6 +633,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         origin, rows, data_as_of = F.fetch_raw(cfg, mode, now_iso, log)
         today = resolve_today(origin, run_date, data_as_of)
         metrics = compute(rows)
+        origin, data_as_of = meta_src.get("origin", origin), meta_src.get("dataAsOf", data_as_of)
         if origin == "cache":
             state = "stale"
     except F.TokenRejected as e:
