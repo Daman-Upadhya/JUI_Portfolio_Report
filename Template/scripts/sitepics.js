@@ -69,14 +69,12 @@
   }
   var areas = [];
   PR.slides.forEach(function (s) { if (s.area && areas.indexOf(s.area) < 0) areas.push(s.area); });
+  function aList() { return F.a ? F.a.split("|") : []; }  // several areas, "|"-joined in F.a and the URL
   function pills() {
-    $("sp-area").innerHTML = '<option value="">All areas</option>' + areas.map(function (a) {
-      var n = PR.slides.filter(function (s) { return s.area === a; }).length;
-      return '<option value="' + esc(a) + '"' + (F.a === a ? " selected" : "") + ">" + esc(a) + " (" + n + ")</option>";
-    }).join("");
+    window.JUIMulti($("sp-area"), areas.map(function (a) { return [a, a, PR.slides.filter(function (s) { return s.area === a; }).length]; }), aList(), "All areas",
+      function (list) { F.a = list.join("|"); render(); });
     $("sp-reset").disabled = !F.a;
   }
-  $("sp-area").addEventListener("change", function () { F.a = this.value; render(); });
   $("sp-reset").addEventListener("click", function () { F.a = ""; render(); });
 
   /* ---------- a drawing: the picture, the DPR's own mark-up, and a chip per pour ---------- */
@@ -131,7 +129,7 @@
 
   function render() {
     pills();
-    var list = PR.slides.filter(function (s) { return !F.a || s.area === F.a; });
+    var list = PR.slides.filter(function (s) { return !F.a || aList().indexOf(s.area) >= 0; });
     $("sp-cards").innerHTML = list.length ? list.map(card).join("") : '<div class="empty">No drawing for this area.</div>';
     writeHash();
   }

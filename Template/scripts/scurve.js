@@ -63,7 +63,7 @@
   var T = M.facts.tasks, TODAY = M.today, TN = dnum(TODAY), J = M.join || { rows: [] };
 
   /* ---------- filters ---------- */
-  var SEL = { a: "s-f-area", sl: "s-f-sub", grp: "s-f-grp", ph: "s-f-ph", cr: "s-f-crit" };
+  var SEL = { grp: "s-f-grp", ph: "s-f-ph", cr: "s-f-crit" };
   function countBy(rows, key) { var m = new Map(); rows.forEach(function (r) { m.set(r[key], (m.get(r[key]) || 0) + 1); }); return m; }
   function byCount(m) { return Array.from(m.entries()).sort(function (a, b) { return b[1] - a[1] || String(a[0]).localeCompare(String(b[0])); }); }
   function options(id, entries, all, value) {
@@ -88,11 +88,14 @@
     });
   }
   function fillFilters() {
-    options("s-f-area", byCount(countBy(T, "a")), "All areas", F.a);
-    chipSlicer("s-f-area", "s-f-area-chips");
-    var subs = byCount(countBy(F.a ? T.filter(function (t) { return t.a === F.a; }) : T, "sl"));
-    if (F.sl && !subs.some(function (e) { return e[0] === F.sl; })) F.sl = "";
-    options("s-f-sub", subs, F.a ? "All in " + F.a : "All sub-locations", F.sl);
+    var areaN = byCount(countBy(T, "a"));
+    F.a = vals("a").filter(function (v) { return areaN.some(function (e) { return e[0] === v; }); }).join("|");
+    window.JUIMulti($("s-f-area"), areaN.map(function (e) { return [e[0], e[0], e[1]]; }), vals("a"), "All areas", function (list) { F.a = list.join("|"); render(); });
+    var aOn = aSet(), as = vals("a");
+    var subs = byCount(countBy(aOn ? T.filter(function (t) { return aOn[t.a]; }) : T, "sl"));
+    F.sl = vals("sl").filter(function (v) { return subs.some(function (e) { return e[0] === v; }); }).join("|");  // several, like the areas
+    window.JUIMulti($("s-f-sub"), subs.map(function (e) { return [e[0], e[0], e[1]]; }), vals("sl"),
+      as.length === 1 ? "All in " + as[0] : as.length ? "All in " + as.length + " areas" : "All sub-locations", function (list) { F.sl = list.join("|"); render(); });
     options("s-f-grp", byCount(countBy(T, "grp")), "All groups", F.grp);
     options("s-f-ph", byCount(countBy(T, "ph")), "All phases", F.ph);
     var crn = countBy(T, "cr");  // the Critical Activity custom field
@@ -101,8 +104,13 @@
     $("s-f-crit").value = F.cr;
     $("s-reset").disabled = !Object.keys(F).some(function (k) { return F[k]; });
   }
-  function matches(t) { return (!F.wa || t.wa === F.wa) && (!F.a || t.a === F.a) && (!F.sl || t.sl === F.sl) && (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph) && (!F.cr || t.cr === F.cr); }
-  Object.keys(SEL).forEach(function (k) { $(SEL[k]).addEventListener("change", function () { F[k] = this.value; if (k === "a") F.sl = ""; render(); }); });
+  /* the area filter takes several areas: "|"-joined in F.a and in the URL */
+  function vals(k) { return F[k] ? F[k].split("|") : []; }
+  function aSet() { if (!F.a) return null; var o = {}; vals("a").forEach(function (v) { o[v] = true; }); return o; }
+  function slSet() { if (!F.sl) return null; var o = {}; vals("sl").forEach(function (v) { o[v] = true; }); return o; }
+  var aS = null, slS = null;
+  function matches(t) { return (!F.wa || t.wa === F.wa) && (!aS || aS[t.a]) && (!slS || slS[t.sl]) && (!F.grp || t.grp === F.grp) && (!F.ph || t.ph === F.ph) && (!F.cr || t.cr === F.cr); }
+  Object.keys(SEL).forEach(function (k) { $(SEL[k]).addEventListener("change", function () { F[k] = this.value; render(); }); });
   $("s-reset").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k] = ""; }); render(); });
 
   /* ---------- daily series from the rates ---------- */
@@ -127,7 +135,7 @@
   }
 
   /* ---------- KPI tiles ---------- */
-  function joinInView(r) { return (!F.a || r.area === F.a) && (!F.sl || r.subLocation === F.sl); }
+  function joinInView(r) { return (!aS || aS[r.area]) && (!slS || slS[r.subLocation]); }
   /* ---------- shared: plan bars, progress ring, status colour (as on the quantity page) ---------- */
   function band(a, p) {
     if (a == null || (!a && !p)) return "idle";
@@ -504,7 +512,7 @@
     var c = function (v) { return Math.max(0, Math.min(100, v)); };
     return '<div class="vb"><div class="vb-track"><div class="vb-act" style="width:' + c(act) + '%"></div>' + (base != null ? '<div class="vb-base" style="left:' + c(base) + '%"></div>' : "") + "</div></div>";
   }
-  function slug() { return (meta.key || "JUI") + "-scurve" + (F.a ? "-" + F.a : "") + (F.grp ? "-" + F.grp : ""); }
+  function slug() { return (meta.key || "JUI") + "-scurve" + (vals("a").length === 1 ? "-" + F.a : vals("a").length ? "-" + vals("a").length + "-areas" : "") + (F.grp ? "-" + F.grp : ""); }
 
   /* ---------- join: master keys against this project's Table 2 ---------- */
   var joinSort = { k: "weightage", dir: "desc" }, joinMatch = "both", joinQ = "", joinRows = [];
@@ -550,6 +558,7 @@
   var current = [], curS = null;
   function render() {
     fillFilters();
+    aS = aSet(); slS = slSet();
     current = T.filter(matches);
     curS = series(current);
     renderKpis(current, curS);
@@ -557,7 +566,7 @@
     renderAreas();
     renderJoin();
     writeHash();
-    window.JUIScurveFilter = { a: F.a, sl: F.sl };  // the 3D model on this page follows the area slicer
+    window.JUIScurveFilter = { a: F.a, as: vals("a"), sl: vals("sl").length === 1 ? F.sl : "" };  // the 3D models on this page follow the area filter (as: the areas)
     document.dispatchEvent(new CustomEvent("jui:scurve-filter", { detail: window.JUIScurveFilter }));
   }
   var lastW = 0;

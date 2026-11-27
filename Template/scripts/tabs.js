@@ -6,6 +6,11 @@
   function $(id) { return document.getElementById(id); }
   var tabs = $("tabs");
   if (!tabs) return;
+  // the filter bars stick right under the tab bar: its height, kept current, as --tabbar-h
+  var bar = tabs.closest(".tabbar");
+  function barH() { if (bar) document.documentElement.style.setProperty("--tabbar-h", bar.offsetHeight + "px"); }
+  barH();
+  if (bar && window.ResizeObserver) new ResizeObserver(barH).observe(bar);
   function available() {
     return Array.prototype.filter.call(tabs.querySelectorAll("[data-p]"), function (b) { return !b.hidden; }).map(function (b) { return b.getAttribute("data-p"); });
   }

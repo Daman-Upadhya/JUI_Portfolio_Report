@@ -121,6 +121,7 @@ section { margin-top: 18px; min-width: 0; }
 .ms-range { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; border-top: 1px solid var(--line-soft); padding-top: 8px; }
 .ms-range > span { grid-column: 1 / -1; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .fbar .reset { margin-left: auto; }
+@media (min-width: 761px) { .fbar { position: sticky; top: var(--tabbar-h, 62px); z-index: 25; } }  /* --tabbar-h: tabs.js */
 .fchips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .fchip { appearance: none; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; min-height: 32px; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: border-color .12s linear, background-color .12s linear, color .12s linear; }
 .fchip:hover { border-color: var(--brand); }
@@ -1218,6 +1219,8 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .w-avgc b { font-weight: 600; display: inline-block; min-width: 44px; }
 .w-bar { display: inline-block; width: 70px; height: 7px; border-radius: 4px; background: var(--inset); margin-right: 8px; vertical-align: middle; overflow: hidden; }
 .w-bar i { display: block; height: 100%; border-radius: 4px; background: var(--brand); }
+#w-months .w-bar { width: 40px; margin-right: 6px; }  /* the period table sits in the narrow column */
+#w-months small.faint { font-size: 10.5px; }
 #w-trades tr.is-on td { background: var(--brand-soft); }
 .w-mx td:first-child, .w-mx th:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); white-space: nowrap; }
 .w-mx td.w-cell { background: color-mix(in srgb, var(--brand) calc(var(--h) * .45), transparent); }
@@ -1402,8 +1405,8 @@ tr.cp-sel td { background: var(--brand-soft); }
   <!-- ======================================================= page 2: progress and S-curve -->
   <div class="page" id="pg-scurve" role="tabpanel" aria-labelledby="tab-scurve" hidden>
   <section class="fbar" id="s-filters" aria-label="S-curve filters">
-    <label class="fp"><span>Area</span><select id="s-f-area"></select></label>
-    <label class="fp"><span>Sub-location</span><select id="s-f-sub"></select></label>
+    <div class="fp"><span>Area</span><div class="ms" id="s-f-area"></div></div>
+    <div class="fp"><span>Sub-location</span><div class="ms" id="s-f-sub"></div></div>
     <label class="fp"><span>S-curve group</span><select id="s-f-grp"></select></label>
     <label class="fp"><span>Phase</span><select id="s-f-ph"></select></label>
     <label class="fp" id="s-f-crit-fp" hidden><span>Critical</span><select id="s-f-crit"></select></label>
@@ -1486,7 +1489,7 @@ tr.cp-sel td { background: var(--brand-soft); }
   <!-- ======================================================= page 3: site progress drawings -->
   <div class="page" id="pg-site" role="tabpanel" aria-labelledby="tab-site" hidden>
   <section class="fbar" aria-label="Site progress filters">
-    <label class="fp"><span>Area</span><select id="sp-area"></select></label>
+    <div class="fp"><span>Area</span><div class="ms" id="sp-area"></div></div>
     <button class="btn reset" id="sp-reset" type="button">Clear all filters</button>
   </section>
 
@@ -1516,14 +1519,16 @@ tr.cp-sel td { background: var(--brand-soft); }
     <div class="card">
       <div class="card-head">
         <h2 id="h-wdaily">Monthly workforce and running average</h2>
-        <span class="desc">Each bar is a month's <b>average daily workforce</b> (its man-days ÷ its reporting days in the date range), split by shift; the dark tick on a bar is that month's peak day. The dark line is the <b>running average</b>: man-days from the start of the date range to the month's last report, divided by the reporting days so far. The amber diamond is the month's planned average, where the labour report plans a trade. A reporting day is a date with any record in the labour report</span>
+        <span class="desc">Group the timeline by month, week (Monday to Sunday) or day. Each bar is the period's <b>average daily workforce</b> (its man-days ÷ its reporting days in the date range), split by shift; the dark tick on a bar is the period's peak day (a day's bar is that day's workforce). The dark line is the <b>running average</b>: man-days from the start of the date range to the period's last report, divided by the reporting days so far. The amber diamond is the period's planned average, where the labour report plans a trade. A reporting day is a date with any record in the labour report</span>
+        <div class="tools"><div class="seg" id="w-gran" role="group" aria-label="Timeline by"><button type="button" data-g="" aria-pressed="true">Month</button><button type="button" data-g="w" aria-pressed="false">Week</button><button type="button" data-g="d" aria-pressed="false">Day</button></div></div>
       </div>
       <div class="stats" id="w-stats" style="margin:0 0 12px"></div>
       <div class="legend"><span><i class="w-day"></i>Day shift</span><span><i class="w-night"></i>Night shift</span><span><i class="w-gen"></i>No shift split</span><span><i class="w-k-peak"></i>Peak day</span><span><i class="w-k-run"></i>Running average</span><span id="w-k-plan"><i class="w-k-plan"></i>Planned average (some trades)</span></div>
       <div id="w-chart"></div>
     </div>
     <div class="card">
-      <div class="card-head"><h2 id="h-wmonths">Monthly</h2><span class="desc">Average daily workforce per calendar month: the month's man-days divided by its reporting days in the date range. "part" marks a month the range cuts</span></div>
+      <div class="card-head"><h2 id="h-wmonths">Monthly</h2><span class="desc" id="w-months-desc">Average daily workforce per calendar month: the month's man-days divided by its reporting days in the date range. "part" marks a month the range cuts</span>
+        <div class="tools"><div class="seg" id="w-gran2" role="group" aria-label="Table by"><button type="button" data-g="" aria-pressed="true">Month</button><button type="button" data-g="w" aria-pressed="false">Week</button><button type="button" data-g="d" aria-pressed="false">Day</button></div></div></div>
       <div id="w-months"></div>
     </div>
   </section>

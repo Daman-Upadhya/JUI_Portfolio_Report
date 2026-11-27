@@ -333,6 +333,12 @@
      its area. Rings of other areas fade too. An area without rectangles leaves the model whole. */
   function inRects(rs, x, y) { return rs.some(function (r) { return x >= r[0] && x <= r[1] && y >= r[2] && y <= r[3]; }); }
   function focusTest(f) {
+    var as = (f && (f.as || (f.a ? [f.a] : []))) || [];
+    if (as.length > 1) {  // several areas: an element stays when it is in any of them; an area without rectangles leaves the model whole
+      var tests = as.map(function (a) { return focusTest({ a: a }); });
+      if (tests.some(function (t) { return !t; })) return null;
+      return function (x, y) { return tests.some(function (t) { return t(x, y); }); };
+    }
     var A = CFG.areas || {}, SUB = CFG.subLocations || {}, Z = (P.data && P.data.bim && P.data.bim.elementIds && P.data.bim.elementIds.zones) || {};
     if (!f || !f.a) return null;
     var rs = (f.sl && (SUB[f.sl] || (Z[f.sl] && [Z[f.sl]]))) || A[f.a];
@@ -346,11 +352,12 @@
   function applyFocus() {
     var f = window.JUIScurveFilter || {};
     if (viewer) viewer.setFocus(focusTest(f));
-    var inArea = buildings.filter(function (B) { return B.area === f.a; });
-    var bySub = f.sl && inArea.some(function (B) { return B.sl === f.sl; });
+    var as = f.as || (f.a ? [f.a] : []);
+    var inArea = buildings.filter(function (B) { return as.indexOf(B.area) >= 0; });
+    var bySub = as.length === 1 && f.sl && inArea.some(function (B) { return B.sl === f.sl; });
     $("m3d").querySelectorAll(".lay-pin").forEach(function (el) {
       var B = buildings[+el.getAttribute("data-b")];
-      el.classList.toggle("is-off", !!f.a && (B.area !== f.a || (bySub && B.sl !== f.sl)));
+      el.classList.toggle("is-off", !!as.length && (as.indexOf(B.area) < 0 || (bySub && B.sl !== f.sl)));
     });
   }
   document.addEventListener("jui:scurve-filter", applyFocus);

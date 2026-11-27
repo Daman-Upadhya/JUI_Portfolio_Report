@@ -11,10 +11,12 @@
     "extraQuery": "IncludeStatusChange=true&IncludeReschedule=true&IncludeQuantities=true&IncludeConstraintNotes=true"
   },
   "workforce": {
-    "_comment": "Workforce page: VisiLean's type=workForce feed (daily planned / actual workers per activity) for this same project, matched guid to guid to its task feed. It uses the project's own token (tokenKey JUI: secret VL_TOKEN_JUI, or tokens.json \"JUI\"); only type= differs.",
+    "_comment": "Workforce page: VisiLean's type=workForce feed (daily planned / actual workers per activity) of the P6 master schedule JUI-1A (the scurve project and its token JUI-1A), matched guid to guid to the master schedule's activities (taskFeed scurve) and kept to the activities under the WBS node named in wbs (JUI01-DLR > DLR-<month> > Day / Night Shift > Employees / Workers / Facility & Support service > labour type).",
     "title": "JUI daily labour report",
-    "projectId": "5C57A386-D0F3-E63B-F076-8CD9CE218042",
-    "tokenKey": "JUI"
+    "projectId": "F7126A24-1E22-0186-8A88-E9BC72BFF388",
+    "tokenKey": "JUI-1A",
+    "taskFeed": "scurve",
+    "wbs": "JUI01-DLR"
   },
   "display": {
     "_quantitySource": "Quantity tracking page from the P6 master schedule (the scurve feed) instead of this project's own quantity feed: total quantity and unit from the task's own totalQuantity / quantityUnits (excludeUnits left out: the '100 Units' placeholder), actual quantity = total x percent complete (100 once Complete), subtrade from the task's trade (subtradeColumn), area = the Building custom field (else the first level of the location) and sub-location the next subLevels levels; forecast finish = the activity's own baseline finish. This project's own feed still drives the S-curve join, the 3D model links and the Workforce page",
@@ -27,7 +29,9 @@
       "forecast": "baseline"
     },
     "_fourD": "4D viewer page: the VisiLean 4D link viewer made by the visilean-4d-link skill (.claude/skills/), published as it is to dist/JUI/<out>/; each build refreshes its activity status and planned dates from the master schedule. Replace the file after re-running the skill",
-    "fourD": {"title": "4D model link", "viewer": "JUI/fourd/JUI01_4D_Viewer.html", "out": "4d"},
+    "fourD": {"title": "4D model link", "viewer": "JUI/fourd/JUI01_4D_Viewer.html", "out": "4d",
+      "_areaMap": "Overview Area filter -> the linked model's building or module names, for areas whose name differs (the others match by name: DC Building, DG Building, External Development, Ancillary Structures, HSD Yard = AS_HSD Yard, STP = AS_STP, OWC, GIS Substation = GIS). Areas found nowhere are ignored by the model.",
+      "areaMap": {"Pump House": ["AS_Pump Room"], "Security Building": ["Security Block / NANO Canopy"], "Vehicle Canopy": ["Security Block / NANO Canopy"]}},
     "_logic": "Critical path page (page: false hides the tab; the activity drawers still list each activity's predecessors and successors): the master schedule's relationships (type=taskRelationship, same project and token as the S-curve) scheduled from today, see calculation.py schedule_logic. target: the finish float is measured against (planned | baseline); nearCritical: float up to this many days; highFloat / longDuration: logic check limits in days; calendarGap: a planned start up to this many days after its predecessors allow still follows them",
     "logic": {"page": false, "title": "Critical path & delay impact", "target": "planned", "nearCritical": 10, "highFloat": 44, "longDuration": 44, "calendarGap": 3},
     "_milestones": "Milestones page: the project milestones WBS branch. path: a WBS node name pattern, then each child step; its child nodes are the groups (Core and Shell, Payment Milestones, ...). A milestone slipping more than delayDays against its baseline date (or past its forecast date and not done) is Delayed; 1..delayDays is At risk",

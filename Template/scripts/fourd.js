@@ -38,7 +38,30 @@
   if (card && lf) {
     card.hidden = false;
     if ($("m3d-card")) $("m3d-card").hidden = true;
-    var F = { bld: "", lvl: "" }, opts = null;
+    var F = { bld: "", lvl: "" }, opts = null, areaSel = [], areaNote = "";
+    /* the page's Area filter (scurve.js): each area is found among the model's buildings and modules by
+       name (case and an "AS_" prefix ignored; "GIS Substation" finds "GIS" by its first word) or through
+       display.fourD.areaMap; areas the model does not have are ignored, and with none found the model
+       stays whole */
+    var nm = function (s) { return String(s || "").toLowerCase().replace(/^as_/, "").replace(/\s+/g, " ").trim(); };
+    function modelNames(area) {
+      var map = FD.areaMap || {};
+      if (map[area]) return [].concat(map[area]);
+      var all = (opts.buildings || []).concat(opts.modules || []), a = nm(area), first = a.split(" ")[0];
+      var hit = all.filter(function (n) { return nm(n) === a; });
+      return hit.length ? hit : all.filter(function (n) { return nm(n) === first && first.length >= 3; });
+    }
+    function applyArea() {
+      if (!opts) return;
+      var names = [], missing = [];
+      areaSel.forEach(function (a) { var m = modelNames(a); if (m.length) names = names.concat(m); else missing.push(a); });
+      areaNote = areaSel.length ? (names.length ? "Area filter: " + areaSel.filter(function (a) { return missing.indexOf(a) < 0; }).join(", ") : "") +
+        (missing.length ? (names.length ? " · " : "") + "not in the model: " + missing.join(", ") + (names.length ? "" : " (showing the whole model)") : "") : "";
+      tell({ type: "vl4d-area", names: names });
+      drawLeg();
+    }
+    document.addEventListener("jui:scurve-filter", function (e) { areaSel = (e.detail && e.detail.as) || []; applyArea(); });
+    if (window.JUIScurveFilter) areaSel = window.JUIScurveFilter.as || [];
     lf.addEventListener("load", function () { themeOf(lf); });
     lf.src = FD.file + "#embed";
     var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
@@ -74,13 +97,20 @@
         opts = d;
         if (d.title) $("h-l4d").textContent = d.title;
         slicers();
+        applyArea();
       } else if (d.type === "vl4d-legend") {
-        $("l4d-leg").innerHTML = d.items.map(function (it, i) {
-          return '<button type="button" data-i="' + i + '" aria-pressed="' + it.on + '" title="Show or hide ' + esc(it.label) + '"><i style="background:' + esc(it.color) + '"></i>' +
-            esc(it.label) + " <b>" + esc(it.n) + "</b></button>";
-        }).join("") + '<span class="l4d-n">' + esc(d.shown) + " elements shown</span>";
+        lastLeg = d; drawLeg();
       }
     });
+    var lastLeg = null;
+    function drawLeg() {  // the viewer's legend, with the area filter's note
+      var d = lastLeg;
+      if (!d) return;
+      $("l4d-leg").innerHTML = d.items.map(function (it, i) {
+        return '<button type="button" data-i="' + i + '" aria-pressed="' + it.on + '" title="Show or hide ' + esc(it.label) + '"><i style="background:' + esc(it.color) + '"></i>' +
+          esc(it.label) + " <b>" + esc(it.n) + "</b></button>";
+      }).join("") + '<span class="l4d-n">' + esc(d.shown) + " elements shown" + (areaNote ? " · " + esc(areaNote) : "") + "</span>";
+    }
   }
 
   // the dashboard's theme button: follow it inside the frames

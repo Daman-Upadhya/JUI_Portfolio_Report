@@ -226,6 +226,7 @@ class Assets:
         self.dashboard = read_text(os.path.join(TEMPLATE_DIR, "Dashboard.html"))
         # the S-curve page of a project with a weightage master schedule (project.json "scurve")
         self.scurve_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "scurve.js"))
+        self.msel_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "msel.js"))  # the multi-select filter (before the pages that use it)
         # the Site progress page (project.json "progressDeck"), and the tabs, which run last
         self.sitepics_js = read_text(os.path.join(TEMPLATE_DIR, "scripts", "sitepics.js"))
         # the 3D model viewer (WebGL, no library) and the site model card that uses it
@@ -436,15 +437,27 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
 
     def workforce(task_rows):
         """The Workforce page: the type=workForce feed matched guid to guid to this project's task
-        feed (every row). None when not configured; {"unavailable": true} when it has no data."""
+        feed (every row), or to the master schedule's (workforce.taskFeed "scurve"), and then kept to
+        the activities under the WBS node named workforce.wbs (e.g. JUI01-DLR) when it is set.
+        None when not configured; {"unavailable": true} when it has no data."""
         ws = workforce_source(cfg)
         if not ws:
             return None
+        wcfg = cfg["workforce"]
         try:
             origin3, rows3, asof3 = F.fetch_raw(ws, mode, now_iso, log)
+            if wcfg.get("taskFeed") == "scurve":
+                task_rows = master_rows()[1]
         except (F.Unreachable, F.TokenRejected, F.TokenMissing) as e:
             log("::warning title=%s workforce unavailable::%s" % (key, e))
-            return {"unavailable": True, "title": cfg["workforce"].get("title")}
+            return {"unavailable": True, "title": wcfg.get("title")}
+        if wcfg.get("wbs"):
+            under = assets.calc.guids_under(task_rows, wcfg["wbs"])
+            if not under:
+                log("::warning title=%s workforce WBS not found::no WBS node named %s in the task feed" % (key, wcfg["wbs"]))
+            kept = [w for w in rows3 if str(w.get("activityGuid") or "").upper() in under]
+            log("%s: workforce: %d of %d activities are under the WBS %s" % (key, len(kept), len(rows3), wcfg["wbs"]))
+            rows3 = kept
         tables = assets.calc.workforce_tables(rows3, task_rows, data)
         m = assets.calc.compute_workforce(tables, data, today)
         problems = assets.calc.workforce_invariants(tables, m)
@@ -510,7 +523,8 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         I.assert_clean(html, forbidden_strings(cfg))
         out = fd.get("out") or "4d"
         write(os.path.join(out_dir, out, "index.html"), html)
-        info.update({"file": out + "/", "title": fd.get("title") or "4D model link", "bytes": len(html.encode("utf-8"))})
+        info.update({"file": out + "/", "title": fd.get("title") or "4D model link", "bytes": len(html.encode("utf-8")),
+                     "areaMap": strip_private(fd.get("areaMap") or {})})
         log("%s: 4D viewer: %d of %d activities refreshed from the master schedule (%d status changes, %d not found), %s elements -> dist/%s/%s/index.html (%d KB)"
             % (key, info["updated"], info["tasks"], info["statusChanged"], info["missingCount"], info["elements"], key, out, info["bytes"] // 1024))
         log("%s: 4D viewer: %d activities without an external ID linked by name to %d elements (%d with no matching activity name, %d whose mark no element has; %d element marks known)"
@@ -666,7 +680,7 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
     }
     payload = {"meta": meta, "project": public_project(cfg), "data": strip_private(data), "metrics": metrics}
 
-    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.wbs_js, assets.actdrill_js, assets.procui_js, assets.proc_js, assets.mep_js, assets.tc_js, assets.ms_js, assets.fd_js, assets.lg_js, assets.tabs_js, assets.cardhide_js)))
+    page = I.inline_assets(assets.dashboard, assets.tokens_css, "", "\n".join((assets.msel_js, assets.app_js, assets.scurve_js, assets.ifcview_js, assets.model3d_js, assets.sitepics_js, assets.workforce_js, assets.wbs_js, assets.actdrill_js, assets.procui_js, assets.proc_js, assets.mep_js, assets.tc_js, assets.ms_js, assets.fd_js, assets.lg_js, assets.tabs_js, assets.cardhide_js)))
     page = I.fill(page, {
         "TITLE": cfg.get("title") or key, "EYEBROW": data.get("eyebrow", "JUI Portfolio"),
         "GENERATED_AT": fmt_when(now), "BUILD_ID": build_id, "LOGIC_HASH": assets.logic_hash,

@@ -7,7 +7,9 @@
      out  {type: "vl4d-ready", buildings: [name], levels: [[value, label]]}
           {type: "vl4d-legend", items: [{label, color, n, on}], shown: "12,707"}
      in   {type: "vl4d-filter", bld: "" | name, lvl: "" | value}
-          {type: "vl4d-legend-toggle", index: n} */
+          {type: "vl4d-legend-toggle", index: n}
+          {type: "vl4d-area", names: [building or module name]}  the page's Area filter ([] = whole model);
+            uses window.vlArea, which the build's patch adds to the viewer (calculation.py FOURD_PATCHES) */
 (function () {
   "use strict";
   if (!/embed/.test(location.hash) || window.parent === window) return;
@@ -59,13 +61,17 @@
       });
       if ($("lvl").value !== (d.lvl || "")) { $("lvl").value = d.lvl || ""; $("lvl").dispatchEvent(new Event("change")); }
       $("fitBtn").click();
+    } else if (d.type === "vl4d-area") {
+      if (window.vlArea) window.vlArea(d.names || []);
     } else if (d.type === "vl4d-legend-toggle") {
       var b = $("legend").querySelectorAll("button.lg")[d.index];
       if (b) b.click();
     }
   });
 
-  send({ type: "vl4d-ready", title: $("title") ? $("title").textContent : "",
+  var modules = [];
+  try { modules = JSON.parse($("vl-data").textContent).dict.m.filter(Boolean); } catch (e) { /* no module list */ }
+  send({ type: "vl4d-ready", title: $("title") ? $("title").textContent : "", modules: modules,
     buildings: Array.prototype.map.call($("bld").querySelectorAll("button.chip"), function (c) { return c.textContent; }),
     levels: Array.prototype.filter.call($("lvl").options, function (o) { return o.value; }).map(function (o) { return [o.value, o.textContent]; }) });
   legend();

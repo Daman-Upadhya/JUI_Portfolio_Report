@@ -66,8 +66,8 @@
   SHIFTS.forEach(function (s) { SHIFT_CLS[s] = /day/i.test(s) ? "w-day" : /night/i.test(s) ? "w-night" : "w-gen"; });
 
   /* ---------- filters (hash keys beside the other pages') ---------- */
-  var HK = { from: "wf", to: "wt", sh: "wsh", c: "wc", tr: "wtr" };
-  var F = { from: "", to: "", sh: "", c: "", tr: "" };
+  var HK = { from: "wf", to: "wt", sh: "wsh", c: "wc", tr: "wtr", g: "wg" };
+  var F = { from: "", to: "", sh: "", c: "", tr: "", g: "" };  // g: chart period, "" = month, "w" week, "d" day
   try {
     var hp = new URLSearchParams(location.hash.slice(1));
     Object.keys(HK).forEach(function (k) { if (hp.get(HK[k])) F[k] = hp.get(HK[k]); });
@@ -112,6 +112,14 @@
       render(b[0], v);
     });
   });
+  ["w-gran", "w-gran2"].forEach(function (id) {  // the chart's and the period table's switch: one setting
+    $(id).addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-g]");
+      if (!b) return;
+      F.g = b.getAttribute("data-g");
+      render("keep");
+    });
+  });
   $("w-from").addEventListener("change", function () { F.from = this.value; render(); });
   $("w-to").addEventListener("change", function () { F.to = this.value; render(); });
   $("w-presets").addEventListener("click", function (e) {
@@ -121,7 +129,7 @@
     F.from = v[0]; F.to = v[1];
     render("w-presets", b.getAttribute("data-r"));
   });
-  $("w-reset").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k] = ""; }); tradeOpen = false; render(); });
+  $("w-reset").addEventListener("click", function () { Object.keys(F).forEach(function (k) { if (k !== "g") F[k] = ""; }); tradeOpen = false; render(); });
 
   /* trade: a dropdown of checkboxes (the shared .ms look); it is drawn once per opening, so ticking
      a box only refreshes the figures and the button */
@@ -291,10 +299,22 @@
   }
   /* per calendar month in the range: average daily workforce (split by shift), peak day, and the
      running average from the start of the range to the month's last report */
+  /* the chart's periods: calendar months, weeks from Monday, or single days */
+  var GRAN = {
+    "": { key: function (d) { return d.slice(0, 7); }, tick: function (k) { return fmtM(k); }, head: function (k) { return MON[+k.slice(5) - 1] + " " + k.slice(0, 4); }, in: function (k) { return fmtM(k); }, one: "Month", many: "Months", title: "Monthly" },
+    w: { key: function (d) { var n = dnum(d), wd = (new Date(n * DAY).getUTCDay() + 6) % 7; return diso(n - wd); },
+         tick: function (k) { return fmtDM(k); }, head: function (k) { return "Week of " + fmtD(k) + ' <span class="faint">(' + fmtDM(k) + " – " + fmtDM(diso(dnum(k) + 6)) + ")</span>"; },
+         in: function (k) { return "week of " + fmtDM(k); }, one: "Week", many: "Weeks", title: "Weekly" },
+    d: { key: function (d) { return d; }, tick: function (k) { return fmtDM(k); }, head: function (k) { return WD[new Date(dnum(k) * DAY).getUTCDay()] + " " + fmtD(k); },
+         in: function (k) { return fmtDM(k); }, one: "Day", many: "Days", title: "Daily" },
+  };
+  var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function fmtDM(iso) { var p = iso.split("-"); return +p[2] + " " + MON[+p[1] - 1]; }
+  function gran() { return GRAN[F.g] || GRAN[""]; }
   function monthSeries(S) {
-    var out = [], idx = {}, cumA = 0, cumN = 0;
+    var out = [], idx = {}, cumA = 0, cumN = 0, G = gran();
     S.days.forEach(function (d) {
-      var mk = d.d.slice(0, 7);
+      var mk = G.key(d.d);
       if (!(mk in idx)) { idx[mk] = out.length; out.push({ m: mk, n: 0, a: 0, p: 0, pn: 0, sh: {}, peak: 0, peakD: null }); }
       var o = out[idx[mk]];
       o.n++; o.a += d.a; o.p += d.p; if (d.p > 0) o.pn++;
@@ -313,7 +333,8 @@
   function renderChart(S) {
     var el = $("w-chart");
     if (!S.n) { el.innerHTML = '<div class="empty">No reporting day falls in this date range.</div>'; $("w-stats").innerHTML = ""; return; }
-    var ms = monthSeries(S), n = ms.length, hasPlan = S.p > 0;
+    var ms = monthSeries(S), n = ms.length, hasPlan = S.p > 0, G = gran();
+    $("h-wdaily").textContent = G.title + " workforce and running average";
     var W = Math.max(320, Math.round(el.clientWidth || 900)), H = W < 560 ? 260 : 330, L = 46, Rm = 14, Tm = 22, B = 28, iw = W - L - Rm, ih = H - Tm - B;
     var ymax = 0;
     ms.forEach(function (o) { ymax = Math.max(ymax, o.avg, o.peak, o.pavg || 0); });
@@ -324,7 +345,7 @@
     var g = "";
     for (var tv = 0; tv <= top + 1e-9; tv += step) g += '<line class="grid-l" x1="' + L + '" x2="' + (W - Rm) + '" y1="' + y(tv) + '" y2="' + y(tv) + '"/><text x="' + (L - 6) + '" y="' + (y(tv) + 3.5) + '" text-anchor="end">' + fmtI(tv) + "</text>";
     var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 52))));
-    ms.forEach(function (o, j) { if (j % every === 0) g += '<text x="' + x(j) + '" y="' + (H - 9) + '" text-anchor="middle">' + fmtM(o.m) + "</text>"; });
+    ms.forEach(function (o, j) { if (j % every === 0) g += '<text x="' + x(j) + '" y="' + (H - 9) + '" text-anchor="middle">' + G.tick(o.m) + "</text>"; });
     g += '<line class="axis-l" x1="' + L + '" x2="' + (W - Rm) + '" y1="' + (Tm + ih) + '" y2="' + (Tm + ih) + '"/>';
     /* bars: the month's average daily workforce, stacked by shift; a tick marks its peak day */
     ms.forEach(function (o, j) {
@@ -335,7 +356,7 @@
         g += '<rect class="' + SHIFT_CLS[s] + '" x="' + (cx - bw / 2).toFixed(1) + '" y="' + y(base + v).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (y(base) - y(base + v)).toFixed(1) + '"/>';
         base += v;
       });
-      if (o.peak > 0) g += '<line class="w-peak" x1="' + (cx - bw / 2).toFixed(1) + '" x2="' + (cx + bw / 2).toFixed(1) + '" y1="' + y(o.peak).toFixed(1) + '" y2="' + y(o.peak).toFixed(1) + '"/>';
+      if (o.peak > 0 && o.n > 1) g += '<line class="w-peak" x1="' + (cx - bw / 2).toFixed(1) + '" x2="' + (cx + bw / 2).toFixed(1) + '" y1="' + y(o.peak).toFixed(1) + '" y2="' + y(o.peak).toFixed(1) + '"/>';
       if (bw >= 26 && y(0) - y(o.avg) > 22) g += '<text class="w-bl" x="' + cx + '" y="' + (y(0) - 8).toFixed(1) + '" text-anchor="middle">' + fmtI(o.avg) + "</text>";
     });
     function line(vs, cls) {
@@ -357,10 +378,10 @@
     var last = ms[n - 1];
     g += '<text class="lbl" x="' + Math.min(x(n - 1) + 8, W - Rm - 2) + '" y="' + (y(last.run) - 8) + '" text-anchor="' + (x(n - 1) + 60 > W - Rm ? "end" : "start") + '">avg ' + fmtA(last.run) + "</text>";
     g += '<g class="hov"></g><rect x="' + L + '" y="' + Tm + '" width="' + iw + '" height="' + ih + '" fill="transparent"/>';
-    el.innerHTML = '<svg class="chart" viewBox="0 0 ' + W + " " + H + '" tabindex="0" role="img" aria-label="Average daily workforce per month by shift, with the running average. Use the arrow keys to read each month.">' + g + "</svg>";
+    el.innerHTML = '<svg class="chart" viewBox="0 0 ' + W + " " + H + '" tabindex="0" role="img" aria-label="Average daily workforce per ' + G.one.toLowerCase() + ' by shift, with the running average. Use the arrow keys to read each ' + G.one.toLowerCase() + '.">' + g + "</svg>";
     function stat(v, l) { return '<div><div class="stat-v">' + v + '</div><div class="stat-l">' + esc(l) + "</div></div>"; }
-    $("w-stats").innerHTML = stat(fmtA(S.avg), "Running average") + stat(fmtA(last.avg), "Average in " + fmtM(last.m)) + stat(fmtI(S.a), "Actual man-days") +
-      (hasPlan ? stat(fmtI(S.p), "Planned man-days") : "") + stat(fmtI(n), n === 1 ? "Month" : "Months") + stat(fmtI(S.n), "Reporting days");
+    $("w-stats").innerHTML = stat(fmtA(S.avg), "Running average") + stat(fmtA(last.avg), (F.g === "d" ? "Workforce on " : "Average in ") + G.in(last.m)) + stat(fmtI(S.a), "Actual man-days") +
+      (hasPlan ? stat(fmtI(S.p), "Planned man-days") : "") + stat(fmtI(n), n === 1 ? G.one : G.many) + stat(fmtI(S.n), "Reporting days");
     $("w-k-plan").hidden = !hasPlan;
     var svg = el.querySelector("svg"), hov = el.querySelector(".hov");
     function show(j, cx, cy) {
@@ -368,12 +389,12 @@
       var o = ms[j], xx = x(j);
       hov.innerHTML = '<rect class="w-hov" x="' + (xx - slot / 2).toFixed(1) + '" y="' + Tm + '" width="' + slot.toFixed(1) + '" height="' + ih + '"/>';
       var rows = SHIFTS.filter(function (s) { return o.sh[s]; }).map(function (s) { return '<div class="tip-row"><span><i class="tip-k ' + SHIFT_CLS[s] + '"></i>' + esc(s) + "</span><b>" + fmtA(o.sh[s] / o.n) + "</b></div>"; }).join("");
-      var html = '<div class="tip-h">' + MON[+o.m.slice(5) - 1] + " " + o.m.slice(0, 4) + ' <span class="faint">· ' + fmtI(o.n) + " reporting days</span></div>" + rows +
-        '<div class="tip-row tip-sum"><span>Average daily workforce</span><b>' + fmtA(o.avg) + "</b></div>" +
-        '<div class="tip-row"><span>Peak day' + (o.peakD ? " (" + fmtD(o.peakD, true) + ")" : "") + "</span><b>" + fmtI(o.peak) + "</b></div>" +
+      var html = '<div class="tip-h">' + G.head(o.m) + (F.g === "d" ? "" : ' <span class="faint">· ' + fmtI(o.n) + " reporting day" + (o.n === 1 ? "" : "s") + "</span>") + "</div>" + rows +
+        '<div class="tip-row tip-sum"><span>' + (F.g === "d" ? "Workforce" : "Average daily workforce") + "</span><b>" + fmtA(o.avg) + "</b></div>" +
+        (F.g === "d" ? "" : '<div class="tip-row"><span>Peak day' + (o.peakD ? " (" + fmtD(o.peakD, true) + ")" : "") + "</span><b>" + fmtI(o.peak) + "</b></div>") +
         '<div class="tip-row"><span>Man-days</span><b>' + fmtI(o.a) + "</b></div>" +
         (o.pavg != null ? '<div class="tip-row"><span>Planned average</span><b>' + fmtA(o.pavg) + "</b></div>" : "") +
-        '<div class="tip-row"><span>Running average to month end</span><b>' + fmtA(o.run) + "</b></div>";
+        '<div class="tip-row"><span>Running average to ' + (F.g === "d" ? "this day" : G.one.toLowerCase() + " end") + "</span><b>" + fmtA(o.run) + "</b></div>";
       var box = svg.getBoundingClientRect();
       showTip(html, cx != null ? cx : box.left + xx / W * box.width, cy != null ? cy : box.top + y(o.avg) / H * box.height);
     }
@@ -440,17 +461,30 @@
     }, foot);
   }
 
+  /* the period table: the chart's periods (month / week / day, the same switch) */
   function renderMonths(S) {
-    var el = $("w-months");
-    if (!S.monthOrder.length) { el.innerHTML = '<div class="empty">No reporting day falls in this date range.</div>'; return; }
-    var rows = S.monthOrder.map(function (k) { return S.months[k]; });
-    var maxAvg = Math.max.apply(null, rows.map(function (m) { return m.n ? m.a / m.n : 0; }));
+    var el = $("w-months"), G = gran(), day = F.g === "d";
+    $("h-wmonths").textContent = G.title;
+    $("w-months-desc").textContent = day ? "The workforce of each reporting day in the date range"
+      : "Average daily workforce per " + (F.g === "w" ? "week (Monday to Sunday)" : "calendar month") + ": its man-days divided by its reporting days in the date range. \"part\" marks a " + G.one.toLowerCase() + " the range cuts";
+    if (!S.n) { el.innerHTML = '<div class="empty">No reporting day falls in this date range.</div>'; return; }
+    var rows = monthSeries(S);
+    var maxAvg = Math.max.apply(null, rows.map(function (m) { return m.avg; }));
     var r = range();
-    el.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Month</th><th class="r">Average daily</th><th class="r">Peak</th><th class="r">Man-days</th><th class="r">Days</th></tr></thead><tbody>' +
+    function part(k) {
+      if (day) return false;
+      if (F.g === "w") return k < r[0] || (diso(dnum(k) + 6) > r[1] && r[1] < LAST);
+      return (r[0] > k + "-01" && r[0].slice(0, 7) === k) || (r[1].slice(0, 7) === k && r[1] < LAST && r[1].slice(8) !== String(new Date(Date.UTC(+k.slice(0, 4), +k.slice(5), 0)).getUTCDate()));
+    }
+    function wk(k) { var e = diso(dnum(k) + 6); return k.slice(5, 7) === e.slice(5, 7) ? +k.slice(8) + "–" + fmtDM(e) : fmtDM(k) + "–" + fmtDM(e); }  // 2–8 Nov, 26 Oct–1 Nov
+    function label(k) { return F.g === "w" ? wk(k) : day ? WD[new Date(dnum(k) * DAY).getUTCDay()] + " " + fmtDM(k) : fmtM(k); }
+    el.innerHTML = '<div class="tbl-wrap"' + (rows.length > 10 ? ' style="max-height:420px;overflow:auto"' : "") + "><table><thead><tr><th>" + G.one + '</th><th class="r">' + (day ? "Workforce" : "Average daily") + "</th>" +
+      (day ? "" : '<th class="r">Peak</th>') + '<th class="r">Man-days</th>' + (day ? "" : '<th class="r">Days</th>') + "</tr></thead><tbody>" +
       rows.map(function (m) {
-        var part = (r[0] > m.m + "-01" && r[0].slice(0, 7) === m.m) || (r[1].slice(0, 7) === m.m && r[1] < LAST && r[1].slice(8) !== String(new Date(Date.UTC(+m.m.slice(0, 4), +m.m.slice(5), 0)).getUTCDate()));
-        return "<tr><td>" + fmtM(m.m) + (part ? ' <small class="faint">part</small>' : "") + '</td><td class="r w-avgc">' + mbar(m.n ? m.a / m.n : 0, maxAvg) + "<b>" + fmtA(m.n ? m.a / m.n : null) + '</b></td><td class="r">' + fmtI(m.peak) + '</td><td class="r">' + fmtI(m.a) + '</td><td class="r">' + fmtI(m.n) + "</td></tr>";
-      }).join("") + '</tbody><tfoot><tr><td>Range</td><td class="r"><b>' + fmtA(S.avg) + '</b></td><td class="r">' + fmtI(Math.max.apply(null, rows.map(function (m) { return m.peak; }))) + '</td><td class="r">' + fmtI(S.a) + '</td><td class="r">' + fmtI(S.n) + "</td></tr></tfoot></table></div>";
+        return "<tr><td>" + label(m.m) + (part(m.m) ? ' <small class="faint">part</small>' : "") + '</td><td class="r w-avgc">' + mbar(m.avg, maxAvg) + "<b>" + fmtA(m.n ? m.avg : null) + "</b></td>" +
+          (day ? "" : '<td class="r">' + fmtI(m.peak) + "</td>") + '<td class="r">' + fmtI(m.a) + "</td>" + (day ? "" : '<td class="r">' + fmtI(m.n) + "</td>") + "</tr>";
+      }).join("") + '</tbody><tfoot><tr><td>Range</td><td class="r"><b>' + fmtA(S.avg) + "</b></td>" +
+      (day ? "" : '<td class="r">' + fmtI(Math.max.apply(null, rows.map(function (m) { return m.peak; }))) + "</td>") + '<td class="r">' + fmtI(S.a) + "</td>" + (day ? "" : '<td class="r">' + fmtI(S.n) + "</td>") + "</tr></tfoot></table></div>";
   }
 
   var mxMode = "avg";
@@ -509,6 +543,7 @@
     $("w-presets").innerHTML = PRESETS.map(function (p) { return '<button type="button" data-r="' + p[0] + '" aria-pressed="' + (pon === p[0]) + '">' + p[1] + "</button>"; }).join("");
     chips("w-shift", "sh", SHIFTS);
     chips("w-cat", "c", CATS);
+    document.querySelectorAll("#w-gran button, #w-gran2 button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-g") === (F.g || ""))); });
     if (focusBox && $(focusBox) && focusVal != null) {
       var fb = $(focusBox).querySelector('[data-v="' + focusVal.replace(/"/g, '\\"') + '"], [data-r="' + focusVal + '"]');
       if (fb) fb.focus();
@@ -516,7 +551,7 @@
     tradeButton();
     if (tradeOpen) $("w-trade").querySelectorAll(".ms-opt input").forEach(function (c) { c.checked = vals("tr").indexOf(c.value) >= 0; });
     counts();
-    $("w-reset").disabled = !Object.keys(F).some(function (k) { return F[k]; });
+    $("w-reset").disabled = !Object.keys(F).some(function (k) { return k !== "g" && F[k]; });  // the chart period is a view, not a filter
     var S = current = compute();
     renderStrip(S);
     if (!$("pg-wf").hidden) renderChart(S);

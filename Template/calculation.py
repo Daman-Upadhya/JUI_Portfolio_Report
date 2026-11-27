@@ -949,6 +949,13 @@ FOURD_PATCHES = [
     ("legend order", 'status: [...VS_ORDER, "unl"]',
      'status: VS_ORDER.flatMap(k => k === "notready" ? [k, "nrf"] : [k])', 1),
     ("plan legend", 'plan: ["dn", "ip", "ns", "unl"]', 'plan: ["dn", "ip", "ns"]', 1),
+    # the Overview card's area filter (fourd-embed.js "vl4d-area"): window.vlArea([building or module
+    # names]) keeps the elements whose building or module is listed; [] shows the whole model again
+    ("area filter",
+     "function inFilter(i) {\n",
+     "window.vlArea = list => { st.area = list && list.length ? new Set(list) : null; render(); fit(); };\n"
+     "function inFilter(i) {\n"
+     "  if (st.area && !st.area.has(dict.b[at(i, 0)]) && !st.area.has(dict.m[at(i, 1)])) return false;\n", 1),
     # elements with no linked activity (and, in the 4D plan, none with planned dates) are not drawn at
     # all, not even as ghosts, in any colour mode; they are left out of the counts and the camera fit
     ("hide not linked",
@@ -1623,6 +1630,24 @@ def _wf_date(ms) -> date | None:
         return (datetime(1970, 1, 1) + timedelta(milliseconds=float(ms), hours=5, minutes=30)).date()
     except (TypeError, ValueError, OverflowError):
         return None
+
+
+def guids_under(task_rows: list[dict], wbs_name: str) -> set[str]:
+    """Upper-case guids of every task below the WBS node(s) named wbs_name (by parentGUID, latest row
+    per guid; the name compared without case or extra spaces)."""
+    norm = lambda v: re.sub(r"\s+", " ", str(v or "")).strip().lower()
+    latest = {g.upper(): r for g, r in latest_rows(task_rows).items()}
+    roots = {g for g, r in latest.items() if norm(r.get("taskName")) == norm(wbs_name)}
+    out: set[str] = set()
+    for g, r in latest.items():
+        p, hops = str(r.get("parentGUID") or "").upper(), 0
+        while p and hops < 20:
+            if p in roots:
+                out.add(g)
+                break
+            p = str((latest.get(p) or {}).get("parentGUID") or "").upper()
+            hops += 1
+    return out
 
 
 def workforce_tables(wf_rows: list[dict], task_rows: list[dict], data: dict) -> dict:
