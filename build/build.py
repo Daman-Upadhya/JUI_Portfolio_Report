@@ -500,7 +500,9 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
             log("::warning title=%s 4D viewer not found::display.fourD.viewer %s does not exist" % (key, fd.get("viewer")))
             return None
         when = datetime.fromisoformat(asof) if asof else datetime.combine(today, datetime.min.time())
-        html, info = assets.calc.fourd_refresh(read_text(src), tree, "%d %s %d" % (when.day, when.strftime("%b"), when.year))
+        mk = os.path.join(os.path.dirname(src), "element_marks.json")  # build/fourd_marks.py: GlobalId -> Mark
+        marks = json.loads(read_text(mk)).get("marks", {}) if os.path.isfile(mk) else {}
+        html, info = assets.calc.fourd_refresh(read_text(src), tree, "%d %s %d" % (when.day, when.strftime("%b"), when.year), marks)
         html, skipped = assets.calc.fourd_patch(html)
         if skipped:
             log("::warning title=%s 4D viewer colour changes skipped::%s no longer match the viewer" % (key, ", ".join(skipped)))
@@ -511,6 +513,8 @@ def build_project(cfg: dict, assets: Assets, mode: str, run_date: date, now: dat
         info.update({"file": out + "/", "title": fd.get("title") or "4D model link", "bytes": len(html.encode("utf-8"))})
         log("%s: 4D viewer: %d of %d activities refreshed from the master schedule (%d status changes, %d not found), %s elements -> dist/%s/%s/index.html (%d KB)"
             % (key, info["updated"], info["tasks"], info["statusChanged"], info["missingCount"], info["elements"], key, out, info["bytes"] // 1024))
+        log("%s: 4D viewer: %d activities without an external ID linked by name to %d elements (%d with no matching activity name, %d whose mark no element has; %d element marks known)"
+            % (key, info["nameLinked"], info["nameElements"], info["nameUnmatched"], info["nameNoMark"], len(marks)))
         return info
 
     def milestones(tree):

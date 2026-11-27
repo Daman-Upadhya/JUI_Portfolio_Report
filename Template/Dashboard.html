@@ -244,11 +244,16 @@ tbody tr:hover td { background: color-mix(in srgb, var(--brand) 5%, transparent)
 tr.grp td { background: var(--inset); font-weight: 600; }
 tr.grp.clickable, tr.clickable { cursor: pointer; }
 /* area > sub-location > subtrade tree */
-td.lv { white-space: normal; min-width: 220px; }
+td.lv { white-space: normal; min-width: 300px; }
 td.lv2 { padding-left: 26px; font-weight: 600; }
 td.lv3 { padding-left: 62px; color: var(--ink); }
 tr.lv3 td { font-size: 12.5px; }
 tr.lv3 td:not(.lv) { color: var(--muted); }
+td.lv3 { font-weight: 500; }
+.lv-w { color: var(--brand-ink); font-weight: 600; }
+td.lv4 { padding-left: 98px; color: var(--muted); }
+tr.lv4 td { font-size: 12px; background: var(--inset); }
+tr.lv4 td:not(.lv) { color: var(--muted); }
 .lv-n { font-size: 11px; font-weight: 400; color: var(--faint); margin-left: 4px; }
 .tg { appearance: none; border: 0; background: none; width: 22px; height: 22px; margin: -3px 6px -3px -4px; padding: 0; border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; display: inline-grid; place-items: center; vertical-align: middle; transition: transform .12s var(--ease), background .12s var(--ease); }
 .tg[aria-expanded="true"] { transform: rotate(90deg); }
@@ -974,7 +979,10 @@ tr.is-sel td { background: color-mix(in srgb, var(--brand) 9%, transparent); }
 .pk-col:hover { background: color-mix(in srgb, var(--brand) 4%, transparent); }
 .pk-col:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .pk-name { min-width: 0; }
+.h-ctx { font-size: 13.5px; font-weight: 500; color: var(--muted); }
+.h-ctx:empty { display: none; }
 .pk-name b { font-size: 14px; font-weight: 600; }
+.pk-work { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pk-unit { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 6px; border-radius: 5px; background: var(--inset); color: var(--muted); border: 1px solid var(--line-soft); vertical-align: 1px; }
 .pk-unit.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
 .pk-pill { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--pb); color: var(--pt); white-space: nowrap; flex: none; }
@@ -1345,7 +1353,7 @@ tr.cp-sel td { background: var(--brand-soft); }
   <!-- ======================================================= page 1: quantity tracking -->
   <div class="page" id="pg-qty" role="tabpanel" aria-labelledby="tab-qty">
   <section class="fbar" id="filters" aria-label="Filters">
-    <label class="fp"><span>Area</span><select id="f-area"></select></label>
+    <div class="fp"><span>Area</span><div class="ms" id="f-area"></div></div>
     <div class="fp"><span>Sub-location</span><div class="ms" id="f-sub"></div></div>
     <div class="fp"><span>Subtrade</span><div class="ms" id="f-subtrade"></div></div>
     <label class="fp"><span>Unit</span><select id="f-unit"></select></label>
@@ -1363,7 +1371,7 @@ tr.cp-sel td { background: var(--brand-soft); }
 
   <section class="card q-sec" aria-labelledby="h-prog">
     <div class="card-head">
-      <h2 id="h-prog">Subtrade progress</h2>
+      <h2 id="h-prog">Subtrade progress <span class="h-ctx" id="prog-ctx"></span></h2>
       <span class="desc">One location at a time, in construction sequence: choose it below or with the Area filter. Quantities are cumulative to today. Select a card for its activities</span>
       <div class="tools">
         <div class="seg" id="prog-by" role="group" aria-label="Group by"><button type="button" data-v="area" aria-pressed="true">Area</button><button type="button" data-v="sub" aria-pressed="false">Sub-location</button></div>
@@ -1380,13 +1388,13 @@ tr.cp-sel td { background: var(--brand-soft); }
       <h2 id="h-qd">Quantity details</h2>
       <span class="desc" id="qd-desc"></span>
       <div class="tools">
-        <div class="seg" id="qd-view" role="group" aria-label="View"><button type="button" data-v="sub" id="h-sub" aria-pressed="true">By subtrade</button><button type="button" data-v="loc" id="h-loc" aria-pressed="false">By area &amp; sub-location</button></div>
+        <div class="seg" id="qd-view" role="group" aria-label="View"><button type="button" data-v="loc" id="h-loc" aria-pressed="true">By area &amp; sub-location</button><button type="button" data-v="sub" id="h-sub" aria-pressed="false">By subtrade</button></div>
         <button class="btn" type="button" id="loc-expand" hidden>Expand all</button><button class="btn" type="button" id="loc-collapse" hidden>Collapse all</button>
         <button class="btn" type="button" id="csv-sub">Download CSV</button><button class="btn" type="button" id="csv-loc" hidden>Download CSV</button>
       </div>
     </div>
-    <div id="qd-sub"><div id="subtrade"></div></div>
-    <div id="qd-loc" hidden><div id="locations"></div><span id="loc-desc" hidden></span></div>
+    <div id="qd-sub" hidden><div id="subtrade"></div></div>
+    <div id="qd-loc"><div id="locations"></div><span id="loc-desc" hidden></span></div>
   </section>
 
   </div>
@@ -1442,7 +1450,7 @@ tr.cp-sel td { background: var(--brand-soft); }
   <section class="card sx-m3d" id="l4d-card" aria-labelledby="h-l4d" hidden>
     <div class="card-head">
       <h2 id="h-l4d">JUI01 linked model</h2>
-      <span class="desc">The BIM model with every element linked to the master schedule activities that build it, coloured by their VisiLean status today (rolled up from its activities; grey: no linked activity). Drag to turn, scroll to zoom, right-drag to pan; select an element for its activities, a legend entry to show or hide it. The 4D viewer tab has the date slider and every other view</span>
+      <span class="desc">The BIM model with every element linked to the master schedule activities that build it, coloured by their VisiLean status today (rolled up from its activities). Elements with no linked activity are hidden. Drag to turn, scroll to zoom, right-drag to pan; select an element for its activities, a legend entry to show or hide it. The 4D viewer tab has the date slider and every other view</span>
       <div class="tools"><button class="btn" type="button" id="l4d-open">Open 4D viewer</button></div>
     </div>
     <div class="l4d-bar">

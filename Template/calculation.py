@@ -949,6 +949,13 @@ FOURD_PATCHES = [
     ("legend order", 'status: [...VS_ORDER, "unl"]',
      'status: VS_ORDER.flatMap(k => k === "notready" ? [k, "nrf"] : [k])', 1),
     ("plan legend", 'plan: ["dn", "ip", "ns", "unl"]', 'plan: ["dn", "ip", "ns"]', 1),
+    # elements with no linked activity (and, in the 4D plan, none with planned dates) are not drawn at
+    # all, not even as ghosts, in any colour mode; they are left out of the counts and the camera fit
+    ("hide not linked",
+     "    const [key, label, v] = category(i);\n    if (!counts.has(key))",
+     "    const [key, label, v] = category(i);\n"
+     "    if (!eVS[i] || key === \"unl\") { setM(solid, i, false); setM(ghost, i, false); continue; }\n"
+     "    if (!counts.has(key))", 1),
 ]
 
 
@@ -963,8 +970,80 @@ def fourd_patch(html: str) -> tuple[str, list[str]]:
     return html, skipped
 
 
-def fourd_refresh(html: str, tree: dict, snapshot: str) -> tuple[str, dict]:
-    """The viewer with its task list refreshed from the WBS tree; and counts for the log and the page."""
+# Activities without an external ID (wbsId) are linked by name. The schedule split some activities into
+# one per element, named by its mark and with no external ID (DC1-2F-C70 under the WBS node
+# "2F-DC1 - Concreting works - Columns", GIS-2F-C12-1st Lift, DC1A-3F-LW4 ...). Such an activity is
+# matched to the viewer's activity whose title equals its own name or, failing that, its parent WBS
+# node's name; it then links to that activity's elements, narrowed to the elements whose Revit Mark is
+# the one in its name (element_marks.json, from build/fourd_marks.py). An activity whose name has a mark
+# that none of those elements carry is left unlinked, rather than linked to the whole set. The elements
+# it links to get their own work package (the original name + " · " + mark) holding the original
+# activities plus the new ones, less the original activities the schedule no longer has (replaced).
+FOURD_MARK = re.compile(r"(?:^|-)((?:C|LW|SW|PB|GB|FC|B|F)\d+[A-Z]?)(?=-|$)", re.I)
+
+
+def _fourd_name_links(d: dict, tree: dict, marks: dict, missing_ids: set, ps_i: int, pe_i: int, epoch: int) -> dict:
+    N, S = tree["nodes"], tree["strings"]
+    norm = lambda v: re.sub(r"\s+", " ", str(v or "")).strip().lower()
+    tasks, A = d["tasks"], 10
+    n_el = d["meta"]["count"]
+    by_title: dict[str, list[int]] = {}
+    for ti, t in enumerate(tasks):
+        by_title.setdefault(norm(t[1]), []).append(ti)
+    els_of_task: dict[int, list[int]] = {}  # viewer activity -> its elements
+    for i in range(n_el):
+        for ti in d["wpTasks"][d["attr"][i * A + 5]] or []:
+            els_of_task.setdefault(ti, []).append(i)
+    stale = {ti for ti, t in enumerate(tasks) if t[0] in missing_ids}
+    added: dict[int, list[int]] = {}  # element -> new activity rows
+    replaced: dict[int, set] = {}     # element -> original activities its new ones stand for
+    linked = unmatched = nomark = 0
+    names = []
+    for n in N:
+        if n[2] or str(n[4] or "").strip():
+            continue  # a WBS node, or an activity with an external ID (matched by ID above)
+        own = norm(n[3])
+        parent = norm(N[n[0]][3]) if n[0] is not None and n[0] >= 0 else ""
+        base = by_title.get(own) or by_title.get(parent)
+        if not base:
+            unmatched += 1
+            continue
+        els = sorted({e for ti in base for e in els_of_task.get(ti, [])})
+        mk = FOURD_MARK.findall(str(n[3] or ""))
+        if mk:
+            want = mk[-1].upper()
+            els = [e for e in els if (marks.get(d["guid"][e]) or "").upper() == want]
+            if not els:
+                nomark += 1
+                continue
+        status = FOURD_API_STATUS.get((S["status"][n[6]] if n[6] >= 0 else "").strip().lower(), "NOT_READY")
+        tasks.append(["#" + str(n[5]), n[3], n[ps_i] + epoch if n[ps_i] is not None else None,
+                      n[pe_i] + epoch if n[pe_i] is not None else None, status])
+        new = len(tasks) - 1
+        for e in els:
+            added.setdefault(e, []).append(new)
+            replaced.setdefault(e, set()).update(base)
+        linked += 1
+        names.append(n[3])
+    # elements with new activities move to their own work package (one per original package + mark)
+    W = d["dict"]["w"]
+    split: dict[tuple, int] = {}
+    for e, new in added.items():
+        w0 = d["attr"][e * A + 5]
+        key = (w0, tuple(sorted(new)))
+        if key not in split:
+            mk = marks.get(d["guid"][e]) or ""
+            keep = [ti for ti in d["wpTasks"][w0] or [] if not (ti in stale and ti in replaced[e])]
+            W.append((W[w0] or "") + (" · " + mk if mk else ""))
+            d["wpTasks"].append(keep + sorted(new))
+            split[key] = len(W) - 1
+        d["attr"][e * A + 5] = split[key]
+    return {"nameLinked": linked, "nameUnmatched": unmatched, "nameNoMark": nomark, "nameElements": len(added)}
+
+
+def fourd_refresh(html: str, tree: dict, snapshot: str, marks: dict | None = None) -> tuple[str, dict]:
+    """The viewer with its task list refreshed from the WBS tree, and the activities without an external
+    ID linked by name (marks: element GlobalId -> Mark); and counts for the log and the page."""
     m = _FOURD_DATA.search(html)
     if not m:
         raise ValueError("4D viewer: no vl-data block")
@@ -988,10 +1067,12 @@ def fourd_refresh(html: str, tree: dict, snapshot: str) -> tuple[str, dict]:
         t[4] = status
         updated += 1
     d["meta"]["snapshot"] = snapshot
+    n_tasks = len(d.get("tasks") or [])  # the viewer's own activities, before the name links add theirs
+    names = _fourd_name_links(d, tree, marks or {}, set(missing), ps_i, pe_i, epoch)
     text = json.dumps(d, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     out = html[:m.start(2)] + text + html[m.end(2):]
-    return out, {"tasks": len(d.get("tasks") or []), "updated": updated, "statusChanged": changed, "missing": missing[:20],
-                 "missingCount": len(missing), "elements": d["meta"].get("count"), "snapshot": snapshot}
+    return out, {"tasks": n_tasks, "updated": updated, "statusChanged": changed, "missing": missing[:20],
+                 "missingCount": len(missing), "elements": d["meta"].get("count"), "snapshot": snapshot, **names}
 
 
 # ============================================================================= Milestones page

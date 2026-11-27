@@ -144,9 +144,9 @@
     if (!r) return "";
     return r[0] === r[1] ? r[0] + "% complete" : r[1] >= 100 ? r[0] + "% complete or more" : r[0] + "–" + r[1] + "% complete";
   }
-  var SEL = { a: "f-area", u: "f-unit", s: "f-status", cr: "f-crit", q: "f-q" };
-  /* sub-location, subtrade and % complete take several values: kept "|"-joined in F and in the URL */
-  var MULTI = { sl: "f-sub", st: "f-subtrade", pc: "f-pc" };
+  var SEL = { u: "f-unit", s: "f-status", cr: "f-crit", q: "f-q" };
+  /* area, sub-location, subtrade and % complete take several values: kept "|"-joined in F and in the URL */
+  var MULTI = { a: "f-area", sl: "f-sub", st: "f-subtrade", pc: "f-pc" };
   function vals(k) { return F[k] ? F[k].split("|") : []; }
   function pcLabelShort(v) {
     var r = pcRange(v);
@@ -242,11 +242,13 @@
     if (e.key === "Escape" && msOpen) { var k = msOpen; msOpen = null; render(); $(MULTI[k]).querySelector(".ms-btn").focus(); }
   });
   function fillFilters() {
-    options("f-area", byCountDesc(countBy(T, "a")).map(function (e) { return [e[0], e[0] + " (" + e[1] + ")"]; }), "All areas", F.a);
-    chipSlicer("f-area", "f-area-chips");
-    var subs = byCountDesc(countBy(F.a ? T.filter(function (t) { return t.a === F.a; }) : T, "sl"));
+    var areaN = byCountDesc(countBy(T, "a"));
+    F.a = vals("a").filter(function (v) { return areaN.some(function (e) { return e[0] === v; }); }).join("|");
+    multiSelect("a", areaN.map(function (e) { return [e[0], e[0], e[1]]; }), "All areas");
+    var aOn = asSet("a"), as = vals("a");
+    var subs = byCountDesc(countBy(aOn ? T.filter(function (t) { return aOn[t.a]; }) : T, "sl"));
     F.sl = vals("sl").filter(function (v) { return subs.some(function (e) { return e[0] === v; }); }).join("|");
-    multiSelect("sl", subs.map(function (e) { return [e[0], e[0], e[1]]; }), F.a ? "All in " + F.a : "All sub-locations");
+    multiSelect("sl", subs.map(function (e) { return [e[0], e[0], e[1]]; }), as.length === 1 ? "All in " + as[0] : as.length ? "All in " + as.length + " areas" : "All sub-locations");
     multiSelect("st", Array.from(countBy(T, "st").entries()).sort(function (a, b) { return a[0].localeCompare(b[0]); }).map(function (e) { return [e[0], e[0], e[1]]; }), "All " + stl + "s");
     options("f-unit", byCountDesc(countBy(T, "u")).map(function (e) { return [e[0], e[0] + " (" + e[1] + ")"]; }), "All units", F.u);
     options("f-status", [["complete", "Complete"], ["started", "Started"], ["notStarted", "Not started"], ["overdue", "Overdue"]], "All statuses", F.s);
@@ -268,10 +270,10 @@
     var active = Object.keys(F).some(function (k) { return F[k]; });
     $("reset").disabled = !active;
   }
-  var pcR = [], slSet = null, stSet = null;
+  var pcR = [], aSet = null, slSet = null, stSet = null;
   function asSet(k) { if (!F[k]) return null; var o = {}; vals(k).forEach(function (v) { o[v] = true; }); return o; }
   function matches(t) {
-    if (F.a && t.a !== F.a) return false;
+    if (aSet && !aSet[t.a]) return false;
     if (slSet && !slSet[t.sl]) return false;
     if (stSet && !stSet[t.st]) return false;
     if (F.u && t.u !== F.u) return false;
@@ -286,7 +288,6 @@
   }
   function setFilter(k, v) {
     F[k] = v;
-    if (k === "a") F.sl = "";
     render();
   }
   Object.keys(SEL).forEach(function (k) {
@@ -366,7 +367,7 @@
     var top = byCountDesc(countBy(rows, "u"))[0];
     return top ? top[0] : null;
   }
-  function slug() { var st = vals("st"); return (meta.key || "JUI") + (F.a ? "-" + F.a : "") + (st.length === 1 ? "-" + st[0] : st.length ? "-" + st.length + "-" + stl + "s" : ""); }
+  function slug() { var st = vals("st"); return (meta.key || "JUI") + (vals("a").length === 1 ? "-" + F.a : vals("a").length ? "-" + vals("a").length + "-areas" : "") + (st.length === 1 ? "-" + st[0] : st.length ? "-" + st.length + "-" + stl + "s" : ""); }
 
   /* ---------- KPI 1: quantity by subtrade ---------- */
   var subSort = { k: "st", dir: "asc" }, subRows = [];
@@ -440,11 +441,13 @@
   $("csv-sub").addEventListener("click", function () { downloadCSV(slug() + "-" + stl + "-quantities.csv", SUB_COLS, sortRows(subRows, SUB_COLS, subSort)); });
 
   /* ---------- KPI 2: location bifurcation ---------- */
-  /* area > sub-location > subtrade tree. Area and sub-location quantities are in locUnit (the unit
-     filter, or the most common unit); a subtrade row is one subtrade in one unit, in that unit. */
+  /* area > sub-location > subtrade > activity tree. Area and sub-location quantities are in locUnit (the
+     unit filter, or the most common unit); a subtrade row is one subtrade in one unit, in that unit, named
+     with its work item when the subtrade has several units there (workOf: Concreting, Formwork ...); an
+     activity row is one activity in its own unit. */
   var locRows = [], locUnit = null, locOpen = null;  // locOpen: expanded row keys; null = default (areas open)
   var LOC_COLS = [
-    { k: "name", label: "Area › sub-location › " + stl, cls: "wrap" },
+    { k: "name", label: "Area › sub-location › " + stl + " › activity", cls: "wrap" },
     { k: "unit", label: "Unit", f: function (r) { return r.unit ? esc(r.unit) : DASH; } },
     /* the same quantity and date columns as "Quantity by subtrade"; quantities only count the row's unit */
     { k: "tq", label: "Total qty", r: true, f: function (r) { return r.qn ? fmtN(r.tq) : DASH; }, csv: function (r) { return r.qn ? r.tq : ""; } },
@@ -455,8 +458,9 @@
     { k: "pct", label: "Progress", f: function (r) { return r.qn ? pbar(r.pct) : DASH; }, csv: function (r) { return r.pct == null ? "" : r.pct.toFixed(1); } },
     { k: "ssMin", label: "Schedule start", f: function (r) { return schedCell(r.ssMin, r.ssN, r.n, "Schedule Start", r.ssBad); }, csv: function (r) { return r.ssMin || ""; } },
     { k: "sfMax", label: "Schedule end", f: function (r) { return schedCell(r.sfMax, r.sfN, r.n, "Schedule Finish", r.ssBad); }, csv: function (r) { return r.sfMax || ""; } },
-    { k: "asAll", label: "Actual start", f: function (r) { return actualCell(r, r.asMin); }, csv: function (r) { return r.done ? r.asMin || "" : ""; } },
-    { k: "aeAll", label: "Actual end", f: function (r) { return actualCell(r, r.aeMax); }, csv: function (r) { return r.done ? r.aeMax || "" : ""; } },
+    /* an activity shows its own actual dates; a group only once every activity in it is complete */
+    { k: "asAll", label: "Actual start", f: function (r) { return r.task ? (r.asMin ? fmtD(r.asMin) : DASH) : actualCell(r, r.asMin); }, csv: function (r) { return r.task || r.done ? r.asMin || "" : ""; } },
+    { k: "aeAll", label: "Actual end", f: function (r) { return r.task ? (r.aeMax ? fmtD(r.aeMax) : DASH) : actualCell(r, r.aeMax); }, csv: function (r) { return r.task || r.done ? r.aeMax || "" : ""; } },
   ];
   function renderLocations(R, focusKey) {
     locUnit = qtyUnit(R);
@@ -478,9 +482,15 @@
       s.get(t.sl).push(t);
     });
     function areaN(s) { var c = 0; s.forEach(function (v) { c += v.length; }); return c; }
+    var wide = new Map();  // subtrade + unit -> work-item parts over every filtered activity (workOf's tie-break)
+    function wideOf(st, u) {
+      var k = st + "\u0001" + u;
+      if (!wide.has(k)) wide.set(k, workParts(R.filter(function (t) { return t.st === st && t.u === u; }).map(function (t) { return t.n; })));
+      return wide.get(k);
+    }
     if (!locOpen) { locOpen = new Set(); areas.forEach(function (v, a) { locOpen.add("a\u0001" + a); }); }
     locRows = [];
-    var body = "";
+    var body = "", actLists = {};
     function cells(r) { return LOC_COLS.slice(1).map(function (c) { return "<td" + (c.r ? ' class="r"' : "") + ">" + c.f(r) + "</td>"; }).join(""); }
     function toggle(key, label, what) {
       var open = locOpen.has(key);
@@ -501,12 +511,28 @@
         locRows.push(sr);
         body += '<tr class="clickable lv2" data-a="' + esc(a) + '" data-sl="' + esc(sl) + '" tabindex="0"' + (aOpen ? "" : " hidden") + '><td class="lv lv2">' +
           toggle(ks, sl, stl + "s") + esc(sl) + ' <span class="lv-n">' + fmtI(sts.size) + " " + stl + (sts.size === 1 ? "" : "s") + "</span></td>" + cells(sr) + "</tr>";
+        // a subtrade with several units here: each row names its work item from the activity names
+        var parts = new Map(), perSt = {};
+        sts.forEach(function (list, k) { var st = k.split("\u0001")[0]; perSt[st] = (perSt[st] || 0) + 1; });
+        sts.forEach(function (list, k) { if (perSt[k.split("\u0001")[0]] > 1) parts.set(k, workParts(list.map(function (t) { return t.n; }))); });
+        var slOpen = aOpen && locOpen.has(ks);
         Array.from(sts.entries()).sort(function (x, y) { return y[1].length - x[1].length || x[0].localeCompare(y[0]); }).forEach(function (te) {
-          var p = te[0].split("\u0001");
-          var tr = Object.assign({ name: p[0], area: a, sub: sl, st: p[0], level: STL }, agg(te[1], p[1]));
+          var p = te[0].split("\u0001"), kt = "t\u0001" + a + "\u0001" + sl + "\u0001" + te[0];
+          var work = parts.has(te[0]) ? workOf(parts.get(te[0]), Array.from(parts.keys()).filter(function (k) { return k !== te[0] && k.split("\u0001")[0] === p[0]; }).map(function (k) { return parts.get(k); }), wideOf(p[0], p[1])) : null;
+          var tr = Object.assign({ name: p[0] + (work ? " · " + work.text : ""), area: a, sub: sl, st: p[0], work: work ? work.text : "", level: STL }, agg(te[1], p[1]));
           locRows.push(tr);
           body += '<tr class="clickable lv3" data-a="' + esc(a) + '" data-sl="' + esc(sl) + '" data-st="' + esc(p[0]) + '" data-u="' + esc(p[1]) + '" tabindex="0"' +
-            (aOpen && locOpen.has(ks) ? "" : " hidden") + '><td class="lv lv3">' + esc(p[0]) + "</td>" + cells(tr) + "</tr>";
+            (slOpen ? "" : " hidden") + '><td class="lv lv3">' + toggle(kt, p[0], "activities") + esc(p[0]) + (work ? ' <span class="lv-w">· ' + esc(work.text) + "</span>" : "") +
+            ' <span class="lv-n">' + fmtI(te[1].length) + " activit" + (te[1].length === 1 ? "y" : "ies") + "</span></td>" + cells(tr) + "</tr>";
+          var acts = te[1].slice().sort(function (x, y) { return (x.ps || "9").localeCompare(y.ps || "9") || String(x.n).localeCompare(String(y.n)); });
+          var tOpen = slOpen && locOpen.has(kt);
+          acts.forEach(function (t, i) {
+            var r = Object.assign({ name: t.n, area: a, sub: sl, st: p[0], work: work ? work.text : "", id: t.id, level: "Activity", task: true }, agg([t], t.u));
+            locRows.push(r);
+            if (tOpen) body += '<tr class="clickable lv4" data-a="' + esc(a) + '" data-sl="' + esc(sl) + '" data-st="' + esc(p[0]) + '" data-u="' + esc(p[1]) + '" data-i="' + i + '" tabindex="0">' +
+              '<td class="lv lv4">' + esc(t.n) + (t.id ? ' <span class="lv-n">' + esc(t.id) + "</span>" : "") + "</td>" + cells(r) + "</tr>";
+          });
+          if (tOpen) actLists[kt] = acts;
         });
       });
     });
@@ -514,6 +540,11 @@
     $("locations").querySelectorAll("tr.clickable").forEach(function (tr) {
       function go() {
         var a = tr.getAttribute("data-a"), sl = tr.getAttribute("data-sl"), st = tr.getAttribute("data-st"), u = tr.getAttribute("data-u");
+        if (tr.hasAttribute("data-i")) {
+          var acts = actLists["t\u0001" + a + "\u0001" + sl + "\u0001" + st + "\u0001" + u];
+          openTask(acts[+tr.getAttribute("data-i")], { eyebrow: STL, title: [a, sl, st + " (" + u + ")"].join(" · "), sub: ctxSub(), rows: acts, filter: { a: a, sl: sl, st: st, u: u } }, acts);
+          return;
+        }
         drill({ eyebrow: st ? STL : sl ? "Sub-location" : "Area", title: [a, sl, st && st + " (" + u + ")"].filter(Boolean).join(" · "), sub: ctxSub(),
           rows: R.filter(function (t) { return t.a === a && (!sl || t.sl === sl) && (!st || (t.st === st && t.u === u)); }),
           filter: st ? { a: a, sl: sl, st: st, u: u } : { a: a, sl: sl || "" } });
@@ -546,7 +577,8 @@
   });
   $("loc-collapse").addEventListener("click", function () { locOpen = new Set(); renderLocations(current); });
   $("csv-loc").addEventListener("click", function () {
-    var cols = [{ k: "level", label: "Level" }, { k: "area", label: "Area" }, { k: "sub", label: "Sub-location" }, { k: "st", label: STL }].concat(LOC_COLS.slice(1));
+    var cols = [{ k: "level", label: "Level" }, { k: "area", label: "Area" }, { k: "sub", label: "Sub-location" }, { k: "st", label: STL }, { k: "work", label: "Work item" },
+      { k: "id", label: "Activity ID" }, { k: "name", label: "Activity", csv: function (r) { return r.task ? r.name : ""; } }].concat(LOC_COLS.slice(1));
     downloadCSV(slug() + "-locations.csv", cols, locRows);
   });
 
@@ -572,12 +604,39 @@
     return "onTrack";
   }
   function daysWord(n) { return fmtI(n) + " day" + (n === 1 ? "" : "s"); }
+  /* The work item of a card, from its activity names ("HSD H1 - Concreting works" -> "Concreting"): the
+     names split on " - ", the leading location part and location-like parts (Zone 8, DC-1, South Side, 2F ...)
+     dropped; workParts counts the parts (each once per name), workOf picks the most common one that the
+     same subtrade's other cards in the location do not have (those are sub-locations such as TRFM-YRD),
+     ties going to the part most common for this subtrade and unit across the filtered activities.
+     -> {text, top: [[part, count]]} or null */
+  var LOCISH = /^(zone\b|dc-?\d|h\d\b|\d+f\b|gf\b|tf\b|ss\b|unassigned|(north|south|east|west|ne|nw|se|sw)( side)?$|.*\bside$)/i;
+  function workParts(names) {
+    var cnt = new Map();
+    names.forEach(function (n) {
+      var seg = String(n || "").split(/\s+-\s*|\s*-\s+/).map(function (x) { return x.trim(); }).filter(Boolean);
+      if (seg.length < 2) return;
+      seg.slice(1).filter(function (x) { return !LOCISH.test(x); }).map(function (x) { return x.replace(/\s+works?$/i, ""); })
+        .filter(function (x, i, a) { return x && a.indexOf(x) === i; })
+        .forEach(function (x) { cnt.set(x, (cnt.get(x) || 0) + 1); });
+    });
+    return cnt;
+  }
+  function workOf(cnt, siblings, wide) {
+    if (!cnt.size) return null;
+    var top = Array.from(cnt.entries()).sort(function (a, b) { return b[1] - a[1] || (wide.get(b[0]) || 0) - (wide.get(a[0]) || 0); });
+    var own = top.filter(function (e) { return !siblings.some(function (m) { return m.has(e[0]); }); });
+    return { text: (own[0] || top[0])[0], top: top.slice(0, 4) };
+  }
   function pkRows(R) {
     var whole = (P.data && P.data.location && P.data.location.wholeArea) || "Whole area";
     function loc(t) { return prog.by === "sub" && t.sl !== whole && t.sl !== t.a ? t.sl : t.a; }
-    var m = groupQty(R, function (t) { return loc(t) + "\u0001" + t.st + "\u0001" + t.u; });
+    function key(t) { return loc(t) + "\u0001" + t.st + "\u0001" + t.u; }
+    var m = groupQty(R, key), names = new Map();
+    R.forEach(function (t) { var k = key(t); if (!names.has(k)) names.set(k, []); names.get(k).push(t.n); });
     return Array.from(m.entries()).map(function (e) {
       var p = e[0].split("\u0001"), g = Object.assign({ loc: p[0], st: p[1], u: p[2] }, e[1]);
+      g.names = names.get(e[0]) || [];
       g.ptdPct = g.tq ? 100 * g.ptd / g.tq : null;
       g.status = pkStatus(g);
       g.attention = g.status === "finishLate" || g.status === "startLate" || g.status === "behind";
@@ -593,6 +652,23 @@
     var skip = P.data && P.data.progressExclude ? new RegExp(P.data.progressExclude, "i") : null;  // e.g. the PCC subtrades
     var rows = pkRows(R).filter(function (g) { return g.st !== noSub && !(skip && skip.test(g.st)); }), groups = new Map();  // no chart for tasks without a subtrade
     rows.forEach(function (g) { if (!groups.has(g.loc)) groups.set(g.loc, []); groups.get(g.loc).push(g); });
+    var wide = new Map();  // subtrade + unit -> its parts over every filtered activity
+    groups.forEach(function (list) {
+      var per = {};
+      list.forEach(function (g) { per[g.st] = (per[g.st] || 0) + 1; });
+      list.forEach(function (g) { g.parts = per[g.st] > 1 ? workParts(g.names) : null; });
+      list.forEach(function (g) {
+        if (!g.parts) { g.work = null; return; }
+        var k = g.st + "\u0001" + g.u;
+        if (!wide.has(k)) wide.set(k, workParts(R.filter(function (t) { return t.st === g.st && t.u === g.u; }).map(function (t) { return t.n; })));
+        g.work = workOf(g.parts, list.filter(function (o) { return o !== g && o.st === g.st && o.parts; }).map(function (o) { return o.parts; }), wide.get(k));
+      });
+      var anyWork = list.some(function (g) { return g.work; });
+      list.forEach(function (g) { g.padWork = anyWork && !g.work; });  // keeps the cards' rows aligned
+    });
+    var fp = filterParts();  // the title names the page filters in force
+    $("prog-ctx").textContent = fp.length ? "(" + fp.join(" · ") + ")" : "";
+    $("prog-ctx").title = fp.length ? "Filtered by: " + fp.join(" · ") : "";
     var att = rows.filter(function (g) { return g.attention; }).length;
     $("prog-desc").textContent = rows.length ? fmtI(rows.length) + " " + stl + (rows.length === 1 ? "" : "s") + " in " + fmtI(groups.size) + (prog.by === "sub" ? " locations" : " areas") + " · " + fmtI(att) + " need attention" : "";
     if (!rows.length) {
@@ -607,7 +683,7 @@
     });
     // one location at a time: the Area filter's area when grouping by area, else the one picked, else the first
     var names = order.map(function (ge) { return ge[0]; });
-    if (prog.by === "area" && F.a && names.indexOf(F.a) >= 0) prog.loc = F.a;
+    if (prog.by === "area" && vals("a").length === 1 && names.indexOf(F.a) >= 0) prog.loc = F.a;
     if (names.indexOf(prog.loc) < 0) prog.loc = names[0];
     $("prog-locs").innerHTML = order.map(function (ge) {
       var list = ge[1], need = list.filter(function (g) { return g.attention; }).length, done = list.filter(function (g) { return g.status === "complete"; }).length, on = ge[0] === prog.loc;
@@ -623,9 +699,9 @@
       '<div class="pk-cols">' + list.map(pkCard).join("") + "</div></div>";
     $("progress").querySelectorAll(".pk-col").forEach(function (el) {
       el.addEventListener("click", function () {
-        var lc = el.getAttribute("data-loc"), st = el.getAttribute("data-st"), u = el.getAttribute("data-u");
+        var lc = el.getAttribute("data-loc"), st = el.getAttribute("data-st"), u = el.getAttribute("data-u"), wk = el.querySelector(".pk-work");
         var whole = (P.data && P.data.location && P.data.location.wholeArea) || "Whole area";
-        drill({ eyebrow: STL + " progress", title: st + " · " + lc + " (" + u + ")", sub: ctxSub(), filter: null,
+        drill({ eyebrow: STL + " progress", title: st + (wk ? " · " + wk.textContent : "") + " · " + lc + " (" + u + ")", sub: ctxSub(), filter: null,
           rows: R.filter(function (t) { var l = prog.by === "sub" && t.sl !== whole && t.sl !== t.a ? t.sl : t.a; return l === lc && t.st === st && t.u === u; }) });
       });
     });
@@ -635,7 +711,7 @@
     var b = e.target.closest(".q-loc");
     if (!b) return;
     prog.loc = b.getAttribute("data-loc");
-    if (prog.by === "area" && F.a && F.a !== prog.loc) { F.a = ""; render(); } else renderProgress(current);
+    if (prog.by === "area" && F.a && vals("a").indexOf(prog.loc) < 0) { F.a = ""; render(); } else renderProgress(current);
     var nb = $("prog-locs").querySelector('[aria-selected="true"]'); if (nb) nb.focus();
   });
   $("prog-locs").addEventListener("keydown", function (e) {
@@ -666,7 +742,7 @@
     sec.hidden = false;
     var by = new Map(), W = 0;
     MT.forEach(function (t) {
-      if (F.a && t.a !== F.a) return;  // the Area filter; the other filters are about quantities
+      if (aSet && !aSet[t.a]) return;  // the Area filter; the other filters are about quantities
       var k = t.ph || "Unassigned";
       if (!by.has(k)) by.set(k, { n: 0, w: 0, bw: 0, pw: 0, aw: 0 });
       var g = by.get(k);
@@ -681,7 +757,7 @@
       var g = e[1];
       return { name: e[0], n: g.n, w: g.w, b: 100 * g.bw / g.w, p: 100 * g.pw / g.w, a: 100 * g.aw / g.w };
     }).sort(function (x, y) { return y.w - x.w; });
-    $("q-ov-desc").textContent = "Physical progress from the master schedule, weighted by its weightage, per construction phase" + (F.a ? " in " + F.a : "") + ". Actual is earned to date; baseline and planned are what is due by today";
+    $("q-ov-desc").textContent = "Physical progress from the master schedule, weighted by its weightage, per construction phase" + (F.a ? " in " + vals("a").join(", ") : "") + ". Actual is earned to date; baseline and planned are what is due by today";
     if (!rows.length) { $("q-kpis").innerHTML = '<div class="empty">No weighted master-schedule task in this area.</div>'; return; }
     function pf(v) { return v == null || !isFinite(v) ? DASH : (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, "") + "%"; }
     function ring(a, b, tone) {
@@ -713,7 +789,7 @@
   $("q-kpis").addEventListener("keydown", onKpi);
 
   /* ---------- quantity details: by subtrade or by area and sub-location ---------- */
-  var qdView = "sub";
+  var qdView = "loc";  // by area & sub-location first
   function qdShow() {
     var sub = qdView === "sub";
     $("qd-sub").hidden = !sub; $("qd-loc").hidden = sub;
@@ -762,8 +838,9 @@
     if (!g.done) dates += kv("Forecast", g.fcMax ? fmtD(g.fcMax, true) : DASH, g.fcMax && g.peMax && g.fcMax > g.peMax ? "late" : "", g.fcMax ? FC_SRC[g.fcSrc] || "" : "no forecast date");
     var missing = st === "missing";
     return '<button type="button" class="pk-col pk-' + st + '" data-loc="' + esc(g.loc) + '" data-st="' + esc(g.st) + '" data-u="' + U + '" aria-label="' +
-      esc(g.st + " in " + g.loc + ": " + PK[st].label + ", " + fmtP(g.pct) + " of scope against " + fmtP(g.ptdPct) + " planned. Show the activities") + '">' +
-      '<div class="pk-name"><b>' + esc(g.st) + '</b> <span class="pk-unit' + (noUnit ? " warn" : "") + '">' + (noUnit ? "no unit" : U.toLowerCase()) + "</span></div>" +
+      esc(g.st + (g.work ? " (" + g.work.text + ")" : "") + " in " + g.loc + ": " + PK[st].label + ", " + fmtP(g.pct) + " of scope against " + fmtP(g.ptdPct) + " planned. Show the activities") + '">' +
+      '<div class="pk-name"><b>' + esc(g.st) + '</b> <span class="pk-unit' + (noUnit ? " warn" : "") + '">' + (noUnit ? "no unit" : U.toLowerCase()) + "</span>" +
+      (g.work ? '<span class="pk-work" title="' + esc("From the activity names: " + g.work.top.map(function (w) { return w[0] + " (" + w[1] + ")"; }).join(", ")) + '">' + esc(g.work.text) + "</span>" : g.padWork ? '<span class="pk-work" aria-hidden="true">&nbsp;</span>' : "") + "</div>" +
       '<span class="pk-pill pk-' + st + '"><i aria-hidden="true">' + PK[st].ic + "</i>" + PK[st].label + "</span>" +
       pkDonut(g) +
       (missing ? '<div class="pk-planl">No scope or planned dates in the source</div>'
@@ -968,16 +1045,19 @@
       else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
     }
   });
-  function ctxSub() {
+  function ctxSub() { var parts = filterParts(); return parts.length ? "Within the page filters: " + parts.join(" · ") : ""; }
+  /* the page filters in words: one part per active filter */
+  function filterParts() {
     var parts = [];
-    if (F.a) parts.push(F.a);
+    if (F.a) parts.push(vals("a").join(", "));
     if (F.sl) parts.push(vals("sl").join(", "));
     if (F.st) parts.push(vals("st").join(", "));
     if (F.u) parts.push(F.u);
     if (F.s) parts.push(F.s === "overdue" ? "Overdue" : STATUS[F.s]);
+    if (F.cr) parts.push(F.cr === "Yes" ? "Critical" : "Not critical");
     if (F.pc) parts.push(vals("pc").length === 1 ? pcLabel(F.pc) : vals("pc").map(pcLabelShort).join(", ") + " complete");
     if (F.q) parts.push("“" + F.q + "”");
-    return parts.length ? "Within the page filters: " + parts.join(" · ") : "";
+    return parts;
   }
 
   /* ---------- render ---------- */
@@ -985,7 +1065,7 @@
   function render() {
     fillFilters();
     pcR = vals("pc").map(pcRange).filter(Boolean);
-    slSet = asSet("sl"); stSet = asSet("st");
+    aSet = asSet("a"); slSet = asSet("sl"); stSet = asSet("st");
     current = T.filter(matches);
     renderKpis();
     renderSubtrade(current);
